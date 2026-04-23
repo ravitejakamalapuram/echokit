@@ -1,6 +1,6 @@
 // EchoKit — MAIN-world injected script.
-// Hooks window.fetch + XMLHttpRequest to RECORD real traffic and MOCK matched traffic.
-// Uses an in-memory mock index pushed from the extension.
+// Hooks window.fetch + XMLHttpRequest. Records real traffic (when recording is on)
+// and serves mocked responses (when mocking is on AND a match exists).
 
 (function () {
   if (window.__echokitInjected) return;
@@ -9,13 +9,12 @@
   const SRC_INJECTED = 'echokit-injected';
   const SRC_CONTENT = 'echokit-content';
 
-  // ---------- Local state ----------
   const state = {
     recording: false,
     mocking: false,
-    mockIndex: {}, // hash -> [versions]
+    // mockIndex is a per-mode map: { mode -> { key -> [versions] } }
+    mockIndex: { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {} },
   };
-  // Debug mirror — useful for tests + devtools console.
   window.__echokitState = state;
 
   // ---------- Matcher (inlined — MAIN world can't import shared modules) ----------
@@ -30,6 +29,11 @@
       return u.toString();
     } catch { return String(url); }
   }
+  function stripQuery(url) {
+    try {
+      const u = new URL(url, location.href); u.search = ''; u.hash = ''; return u.toString();
+    } catch { return String(url); }
+  }
   function stableStringify(v) {
     if (v === null || typeof v !== 'object') return JSON.stringify(v);
     if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
@@ -38,9 +42,7 @@
   }
   function normalizeBody(body) {
     if (body == null || body === '') return '';
-    if (typeof body === 'string') {
-      try { return stableStringify(JSON.parse(body)); } catch { return body; }
-    }
+    if (typeof body === 'string') { try { return stableStringify(JSON.parse(body)); } catch { return body; } }
     if (typeof FormData !== 'undefined' && body instanceof FormData) {
       const arr = []; for (const [k, v] of body.entries()) arr.push([k, typeof v === 'string' ? v : '[file]']);
       arr.sort(); return JSON.stringify(arr);
@@ -55,15 +57,21 @@
   }
   function fnv1a(str) {
     let h = 0x811c9dc5;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
-    }
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; }
     return h.toString(16).padStart(8, '0');
   }
-  function computeHash(method, url, body) {
-    const key = `${String(method || 'GET').toUpperCase()}|${normalizeUrl(url)}|${normalizeBody(body)}`;
-    return fnv1a(key) + '-' + key.length.toString(16);
+  function computeMatchKeys(method, url, body) {
+    const M = String(method || 'GET').toUpperCase();
+    const full = `${M}|${normalizeUrl(url)}|${normalizeBody(body)}`;
+    const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
+    const noBody = `${M}|${normalizeUrl(url)}|`;
+    const pathOnly = `${M}|${stripQuery(url)}|`;
+    return {
+      strict: fnv1a(full) + '-' + full.length.toString(16),
+      'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),
+      'ignore-body': fnv1a(noBody) + '-' + noBody.length.toString(16),
+      'path-wildcard': fnv1a(pathOnly) + '-' + pathOnly.length.toString(16)
+    };
   }
 
   // ---------- Messaging ----------
@@ -73,7 +81,7 @@
   window.addEventListener('message', (ev) => {
     const d = ev.data;
     if (!d || d.source !== SRC_CONTENT) return;
-    if (d.type === 'echokit:mockIndex') state.mockIndex = d.payload || {};
+    if (d.type === 'echokit:mockIndex') state.mockIndex = d.payload || state.mockIndex;
     else if (d.type === 'echokit:tabState') {
       state.recording = !!d.payload?.recording;
       state.mocking = !!d.payload?.mocking;
@@ -81,18 +89,23 @@
   }, false);
   emit('ready');
 
-  // ---------- Mock lookup ----------
-  function pickMock(hash) {
+  // ---------- Mock lookup (tries each supported match mode) ----------
+  const MODES = ['strict', 'ignore-query', 'ignore-body', 'path-wildcard'];
+  function pickMock(keys) {
     if (!state.mocking) return null;
-    const versions = state.mockIndex[hash];
-    if (!versions || !versions.length) return null;
-    // activeVersionId wins; else latest (already sorted desc).
-    const active = versions[0].activeVersionId;
-    if (active) {
-      const match = versions.find(v => v.id === active);
-      if (match) return match;
+    for (const mode of MODES) {
+      const bucket = state.mockIndex?.[mode];
+      if (!bucket) continue;
+      const versions = bucket[keys[mode]];
+      if (!versions || !versions.length) continue;
+      const active = versions[0].activeVersionId;
+      if (active) {
+        const m = versions.find(v => v.id === active);
+        if (m) return m;
+      }
+      return versions[0];
     }
-    return versions[0];
+    return null;
   }
 
   function delay(ms) { return new Promise(r => setTimeout(r, Math.max(0, ms | 0))); }
@@ -117,25 +130,21 @@
           reqHeaders = headersToObject(init && init.headers);
           reqBody = init && init.body != null ? await bodyToText(init.body) : null;
         } else if (input && typeof input === 'object') {
-          // Request object
           url = input.url;
           method = input.method || 'GET';
           reqHeaders = headersToObject(input.headers);
           try { reqBody = await input.clone().text(); } catch { reqBody = null; }
         } else {
-          url = String(input);
-          method = 'GET';
-          reqHeaders = {};
-          reqBody = null;
+          url = String(input); method = 'GET'; reqHeaders = {}; reqBody = null;
         }
       } catch { return origFetch(input, init); }
 
-      const hash = computeHash(method, url, reqBody);
-      const mock = pickMock(hash);
+      const matchKeys = computeMatchKeys(method, url, reqBody);
+      const mock = pickMock(matchKeys);
       if (mock) {
         if (mock.latency) await delay(mock.latency);
         if (mock.errorMode === 'network') throw new TypeError('Failed to fetch (EchoKit mock: network failure)');
-        if (mock.errorMode === 'timeout') return new Promise(() => { /* hangs forever */ });
+        if (mock.errorMode === 'timeout') return new Promise(() => {});
         let status = mock.status || 200;
         if (mock.errorMode === '4xx') status = 400;
         else if (mock.errorMode === '5xx') status = 500;
@@ -144,19 +153,18 @@
         return new Response(mock.body ?? '', { status, statusText: statusText(status), headers });
       }
 
-      // Real call — and record on success/failure.
       const started = Date.now();
       let res, err;
-      try { res = await origFetch(input, init); }
-      catch (e) { err = e; }
+      try { res = await origFetch(input, init); } catch (e) { err = e; }
       if (state.recording) {
         try {
           if (res) {
             const clone = res.clone();
             const text = await clone.text().catch(() => '');
             emit('record', {
-              hash,
-              method, url: normalizeUrl(url), requestHeaders: reqHeaders, requestBody: reqBody,
+              matchKeys,
+              method, url: normalizeUrl(url),
+              requestHeaders: reqHeaders, requestBody: reqBody,
               responseStatus: res.status,
               responseHeaders: headersToObject(res.headers),
               responseBody: text,
@@ -165,13 +173,14 @@
             });
           } else if (err) {
             emit('record', {
-              hash,
-              method, url: normalizeUrl(url), requestHeaders: reqHeaders, requestBody: reqBody,
+              matchKeys,
+              method, url: normalizeUrl(url),
+              requestHeaders: reqHeaders, requestBody: reqBody,
               responseStatus: 0, responseHeaders: {}, responseBody: String(err),
               durationMs: Date.now() - started, type: 'fetch', failed: true
             });
           }
-        } catch { /* ignore logging failures */ }
+        } catch {}
       }
       if (err) throw err;
       return res;
@@ -199,7 +208,7 @@
     const origSend = XHR.prototype.send;
     const origSetHeader = XHR.prototype.setRequestHeader;
 
-    XHR.prototype.open = function (method, url, async, user, password) {
+    XHR.prototype.open = function (method, url, async) {
       this.__echokit = { method: String(method || 'GET').toUpperCase(), url: String(url), headers: {}, async: async !== false };
       return origOpen.apply(this, arguments);
     };
@@ -210,18 +219,14 @@
     XHR.prototype.send = function (body) {
       const ctx = this.__echokit || {};
       ctx.body = body != null ? (typeof body === 'string' ? body : (body instanceof URLSearchParams ? body.toString() : '[binary]')) : null;
-      const hash = computeHash(ctx.method, ctx.url, ctx.body);
-      const mock = pickMock(hash);
+      const matchKeys = computeMatchKeys(ctx.method, ctx.url, ctx.body);
+      const mock = pickMock(matchKeys);
       if (mock) {
-        // Fake a response asynchronously.
         const xhr = this;
         setTimeout(async () => {
           if (mock.latency) await delay(mock.latency);
           if (mock.errorMode === 'timeout') { xhr.dispatchEvent(new Event('timeout')); return; }
-          if (mock.errorMode === 'network') {
-            xhr.dispatchEvent(new Event('error'));
-            return;
-          }
+          if (mock.errorMode === 'network') { xhr.dispatchEvent(new Event('error')); return; }
           let status = mock.status || 200;
           if (mock.errorMode === '4xx') status = 400;
           else if (mock.errorMode === '5xx') status = 500;
@@ -239,12 +244,12 @@
               const line = headerStr.split(/\r\n/).find(l => l.toLowerCase().startsWith(name.toLowerCase() + ':'));
               return line ? line.split(':').slice(1).join(':').trim() : null;
             };
-          } catch { /* ignore */ }
+          } catch {}
           xhr.dispatchEvent(new Event('readystatechange'));
           xhr.dispatchEvent(new Event('load'));
           xhr.dispatchEvent(new Event('loadend'));
         }, 0);
-        return; // Do NOT call origSend — bypass network completely.
+        return;
       }
 
       if (state.recording) {
@@ -252,15 +257,16 @@
         this.addEventListener('loadend', () => {
           try {
             emit('record', {
-              hash,
-              method: ctx.method, url: normalizeUrl(ctx.url), requestHeaders: ctx.headers, requestBody: ctx.body,
+              matchKeys,
+              method: ctx.method, url: normalizeUrl(ctx.url),
+              requestHeaders: ctx.headers, requestBody: ctx.body,
               responseStatus: this.status,
               responseHeaders: parseXhrHeaders(this.getAllResponseHeaders()),
               responseBody: typeof this.responseText === 'string' ? this.responseText : '',
               durationMs: Date.now() - started,
               type: 'xhr'
             });
-          } catch { /* ignore */ }
+          } catch {}
         });
       }
       return origSend.apply(this, arguments);
@@ -268,12 +274,10 @@
   }
 
   function parseXhrHeaders(str) {
-    const o = {};
-    if (!str) return o;
+    const o = {}; if (!str) return o;
     for (const line of str.split(/\r\n/)) {
       if (!line) continue;
-      const i = line.indexOf(':');
-      if (i < 0) continue;
+      const i = line.indexOf(':'); if (i < 0) continue;
       o[line.slice(0, i).trim()] = line.slice(i + 1).trim();
     }
     return o;

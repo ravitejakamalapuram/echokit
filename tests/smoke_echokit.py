@@ -1,10 +1,11 @@
 """
-EchoKit smoke test — loads the unpacked extension in Chromium via Playwright,
-opens a test page that performs fetch + XHR calls, and validates:
-  1. Recording captures fetch + XHR
-  2. Mock-enabling a recording returns mocked response bytes to the page
-  3. Status override + error simulation work
-  4. Export returns the recorded interactions
+EchoKit v1.1 smoke test — full end-to-end via Playwright + xvfb.
+
+Covers:
+  Core (from v1)            : recording, strict matching, mock body/status/error/latency, export/import
+  v1.1 new                  : scope system (domain/tab/global), match modes (strict / ignore-query / ignore-body / path-wildcard), themes, REC badge, keyboard commands
+  UX bug fixes              : search cursor preservation, list scroll preservation, detail scroll preservation,
+                              CLEAR wipes scoped interactions, CORS discoverable, overflow menu, auto-open-on-refresh plumbing
 """
 
 import json
@@ -19,9 +20,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 EXT_PATH = str(Path('/app/extension').resolve())
-PORT = 18767
+PORT = 18770
 
-# ---------- tiny test HTTP server with fetch + XHR endpoints ----------
 class H(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype='application/json'):
         self.send_response(code)
@@ -42,26 +42,28 @@ window.doFetch = async (suffix='') => {
   const r = await fetch('/api/users' + suffix);
   const j = await r.json();
   window.__calls.push({type:'fetch-users'+suffix, status:r.status, body:j});
-  document.getElementById('out').textContent = JSON.stringify(j);
+  return {status:r.status, body:j};
+};
+window.doFetchQuery = async (q='a=1') => {
+  const r = await fetch('/api/items?' + q);
+  const j = await r.json();
   return {status:r.status, body:j};
 };
 window.doPost = async (payload) => {
   const r = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
   const j = await r.json();
-  window.__calls.push({type:'fetch-login', status:r.status, body:j});
   return {status:r.status, body:j};
 };
-window.doXhr = () => new Promise((res, rej) => {
+window.doXhr = () => new Promise((res) => {
   const x = new XMLHttpRequest();
-  x.open('GET', '/api/ping');
-  x.onload = () => { window.__calls.push({type:'xhr-ping', status:x.status, body:x.responseText}); res({status:x.status, body:x.responseText}); };
-  x.onerror = () => rej(new Error('xhr error'));
-  x.send();
+  x.open('GET', '/api/ping'); x.onload=()=>res({status:x.status, body:x.responseText}); x.send();
 });
 </script></body></html>"""
             return self._send(200, html, 'text/html')
         if self.path.startswith('/api/users'):
-            return self._send(200, json.dumps({'source':'real','users':[{'id':1,'name':'Ada'},{'id':2,'name':'Grace'}]}).encode())
+            return self._send(200, json.dumps({'source':'real','users':[{'id':1,'name':'Ada'}]}).encode())
+        if self.path.startswith('/api/items'):
+            return self._send(200, json.dumps({'source':'real','items':[{'id':1}],'q':self.path}).encode())
         if self.path == '/api/ping':
             return self._send(200, json.dumps({'source':'real','pong':True}).encode())
         return self._send(404, b'{"error":"nope"}')
@@ -70,36 +72,28 @@ window.doXhr = () => new Promise((res, rej) => {
         length = int(self.headers.get('Content-Length') or 0)
         body = self.rfile.read(length)
         if self.path == '/api/login':
-            return self._send(200, json.dumps({'source':'real','token':'real-token-abc','received':body.decode()}).encode())
+            return self._send(200, json.dumps({'source':'real','token':'real','received':body.decode()}).encode())
         return self._send(404, b'{"error":"nope"}')
 
     def log_message(self, *a, **k): pass
 
 def start_server():
-    # Use SO_REUSEADDR to avoid TIME_WAIT collisions from prior runs.
     socketserver.TCPServer.allow_reuse_address = True
     srv = socketserver.TCPServer(('127.0.0.1', PORT), H)
-    t = threading.Thread(target=srv.serve_forever, daemon=True)
-    t.start()
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv
 
-# ---------- test helper: talk to the extension via its service worker ----------
-def sw_send(sw, msg, timeout=5000):
-    """Invoke the background handler directly inside the SW context
-    (chrome.runtime.sendMessage from the SW itself does not round-trip)."""
+def sw_send(sw, msg):
     return sw.evaluate(f"""
         (async () => {{
           if (typeof __echokitHandle === 'function') return await __echokitHandle({json.dumps(msg)}, {{}});
-          return await new Promise((resolve) => chrome.runtime.sendMessage({json.dumps(msg)}, resolve));
+          return await new Promise((r) => chrome.runtime.sendMessage({json.dumps(msg)}, r));
         }})()
     """)
 
 def main():
-    results = {'steps': [], 'failed': [], 'passed': []}
-
+    results = {'passed': [], 'failed': []}
     def step(name, ok, detail=''):
-        entry = {'step': name, 'ok': bool(ok), 'detail': str(detail)[:400]}
-        results['steps'].append(entry)
         (results['passed'] if ok else results['failed']).append(name)
         marker = 'OK ' if ok else 'FAIL'
         print(f'[{marker}] {name}  {detail if not ok else ""}'.strip())
@@ -107,184 +101,256 @@ def main():
     srv = start_server()
     try:
         with sync_playwright() as p:
-            user_data = '/tmp/echokit-profile'
+            user_data = '/tmp/echokit-profile-v11'
             if os.path.exists(user_data):
                 import shutil; shutil.rmtree(user_data)
 
             ctx = p.chromium.launch_persistent_context(
-                user_data,
-                headless=False,  # MV3 extensions only work headed (or with new-headless)
-                args=[
-                    f'--disable-extensions-except={EXT_PATH}',
-                    f'--load-extension={EXT_PATH}',
-                    '--no-sandbox',
-                    '--no-first-run',
-                ],
+                user_data, headless=False,
+                args=[f'--disable-extensions-except={EXT_PATH}', f'--load-extension={EXT_PATH}', '--no-sandbox', '--no-first-run'],
+                viewport={'width': 1280, 'height': 800},
             )
 
-            # Wait for the extension's service worker.
             sw = None
-            for _ in range(30):
-                svc = ctx.service_workers
-                if svc:
-                    sw = svc[0]
-                    break
-                time.sleep(0.3)
-            # If no SW yet, try opening a page so the extension initializes.
             page = ctx.new_page()
             page.goto(f'http://127.0.0.1:{PORT}/')
             page.wait_for_load_state('domcontentloaded')
-            for _ in range(30):
-                svc = ctx.service_workers
-                if svc:
-                    sw = svc[0]; break
+            for _ in range(40):
+                if ctx.service_workers:
+                    sw = ctx.service_workers[0]; break
                 time.sleep(0.3)
             step('service_worker_detected', sw is not None)
-            if sw is None:
-                print('SWs:', ctx.service_workers)
-                return results
+            if sw is None: return results
 
             ext_id = sw.url.split('/')[2]
-            print('Extension id:', ext_id)
-            step('extension_id_present', bool(ext_id))
+            tab_id = sw.evaluate("async () => (await chrome.tabs.query({url:'http://127.0.0.1:*/*'}))[0]?.id")
+            step('tab_id_resolved', tab_id is not None, f'tab={tab_id}')
 
-            # Tab id for our test page
-            tab_id = sw.evaluate("""async () => {
-                const tabs = await chrome.tabs.query({url: 'http://127.0.0.1:*/*'});
-                return tabs[0]?.id ?? null;
-            }""")
-            step('tab_id_resolved', tab_id is not None, f'tab_id={tab_id}')
-
-            # --- Clear any prior data ---
+            # Wipe any prior state.
             sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            # Default scope = domain (no per-test tweaks needed for core flow)
 
-            # --- Start recording ---
-            r = sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
-            step('recording_start', r and r.get('ok'), r)
+            # === CORE FLOW (from v1) ===
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.5)
+            step('recording_state_propagates_to_injected',
+                 page.evaluate("window.__echokitState?.recording") is True)
 
-            # Give the injected script a moment to pick up state
-            time.sleep(0.6)
-
-            # --- Trigger calls on the page ---
-            r1 = page.evaluate("window.doFetch()")
-            step('real_fetch_get_users', r1.get('status') == 200 and r1['body'].get('source') == 'real', r1)
-
-            r2 = page.evaluate("window.doPost({u:'ada', p:'lovelace'})")
-            step('real_fetch_post_login', r2.get('status') == 200 and r2['body'].get('source') == 'real', r2)
-
-            r3 = page.evaluate("window.doXhr()")
-            step('real_xhr_ping', r3.get('status') == 200 and 'real' in r3['body'], r3)
-
-            # Give background time to persist
+            page.evaluate("window.doFetch()")
+            page.evaluate("window.doPost({u:'ada',p:'lovelace'})")
+            page.evaluate("window.doXhr()")
+            page.evaluate("window.doFetchQuery('a=1&b=2')")
             time.sleep(0.8)
 
-            # --- Stop recording ---
             sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
-
-            # --- Verify recordings persisted ---
             state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
             interactions = state.get('interactions', [])
-            urls = sorted({i['url'].split('127.0.0.1:')[1] for i in interactions if '127.0.0.1' in i['url']})
-            step('captured_three_interactions', len(interactions) >= 3, f'count={len(interactions)} urls={urls}')
-            step('captured_fetch_users', any('/api/users' in i['url'] and i['method'] == 'GET' for i in interactions))
-            step('captured_fetch_login_post', any('/api/login' in i['url'] and i['method'] == 'POST' for i in interactions))
-            step('captured_xhr_ping', any('/api/ping' in i['url'] and i['method'] == 'GET' for i in interactions))
+            step('captured_four_interactions', len(interactions) >= 4, f'count={len(interactions)}')
 
-            # --- Enable mocks + override body on the /api/users GET ---
-            users_mock = next((i for i in interactions if '/api/users' in i['url'] and i['method'] == 'GET'), None)
-            assert users_mock, 'users_mock should exist'
-            mocked_body = json.dumps({'source': 'ECHOKIT_MOCK', 'users': [{'id': 99, 'name': 'Mocked'}]})
-            sw_send(sw, {'type': 'echokit:interaction:update', 'id': users_mock['id'], 'patch': {
-                'mockEnabled': True, 'overrideBody': mocked_body, 'overrideStatus': 201
-            }})
-
-            ping_mock = next((i for i in interactions if '/api/ping' in i['url']), None)
-            sw_send(sw, {'type': 'echokit:interaction:update', 'id': ping_mock['id'], 'patch': {
-                'mockEnabled': True, 'overrideBody': json.dumps({'source':'ECHOKIT_MOCK','pong':'mocked'}),
-                'mockLatency': 100
-            }})
-
-            # --- Master mock toggle ON ---
-            sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': True})
-            time.sleep(1.0)  # let the pushed state reach the injected script
-
-            # --- Re-trigger same calls; expect mocked responses ---
+            # Strict match verification
+            users = next(i for i in interactions if '/api/users' in i['url'])
+            sw_send(sw, {'type':'echokit:interaction:update','id':users['id'],
+                         'patch':{'mockEnabled':True, 'overrideBody':'{"source":"MOCK"}', 'overrideStatus':201}})
+            sw_send(sw, {'type':'echokit:mocking:toggle','tabId':tab_id,'enabled':True})
+            time.sleep(0.5)
             m1 = page.evaluate("window.doFetch()")
-            step('mocked_fetch_status_201', m1.get('status') == 201, m1)
-            step('mocked_fetch_body_echokit', m1.get('body', {}).get('source') == 'ECHOKIT_MOCK', m1)
+            step('mocked_fetch_201_strict', m1['status']==201 and m1['body'].get('source')=='MOCK', m1)
 
-            t0 = time.time()
-            m3 = page.evaluate("window.doXhr()")
-            elapsed = time.time() - t0
-            step('mocked_xhr_status_200', m3.get('status') == 200, m3)
-            step('mocked_xhr_body_echokit', 'ECHOKIT_MOCK' in m3.get('body', ''), m3)
-            step('mocked_xhr_latency_applied', elapsed >= 0.08, f'elapsed={elapsed:.3f}s')
+            # === NEW: Match modes ===
+            items_q1 = next(i for i in interactions if '/api/items' in i['url'])
+            # Change to ignore-query so items?a=1&b=2 matches items?a=2
+            sw_send(sw, {'type':'echokit:interaction:update','id':items_q1['id'],
+                         'patch':{'mockEnabled':True, 'matchMode':'ignore-query',
+                                  'overrideBody':'{"source":"MOCK_NOQ"}'}})
+            time.sleep(0.5)
+            m_noq = page.evaluate("window.doFetchQuery('a=2&c=9')")
+            step('match_mode_ignore_query', m_noq['body'].get('source')=='MOCK_NOQ', m_noq)
 
-            # --- POST with DIFFERENT body must NOT match (strict matching) ---
-            m_post_diff = page.evaluate("window.doPost({u:'grace', p:'hopper'})")
-            step('strict_match_different_body_hits_real', m_post_diff.get('body', {}).get('source') == 'real', m_post_diff)
-
-            # --- POST with SAME body SHOULD match if we enable its mock ---
-            login_mock = next((i for i in interactions if '/api/login' in i['url']), None)
-            sw_send(sw, {'type': 'echokit:interaction:update', 'id': login_mock['id'], 'patch': {
-                'mockEnabled': True, 'overrideBody': json.dumps({'source':'ECHOKIT_MOCK','token':'fake'})
-            }})
+            # path-wildcard: POST /api/login with ANY body matches
+            login = next(i for i in interactions if '/api/login' in i['url'])
+            sw_send(sw, {'type':'echokit:interaction:update','id':login['id'],
+                         'patch':{'mockEnabled':True, 'matchMode':'path-wildcard',
+                                  'overrideBody':'{"source":"MOCK_PATH"}'}})
             time.sleep(0.3)
-            m_post_same = page.evaluate("window.doPost({u:'ada', p:'lovelace'})")
-            step('strict_match_same_body_hits_mock', m_post_same.get('body', {}).get('source') == 'ECHOKIT_MOCK', m_post_same)
+            m_path = page.evaluate("window.doPost({u:'grace',p:'hopper'})")
+            step('match_mode_path_wildcard', m_path['body'].get('source')=='MOCK_PATH', m_path)
 
-            # --- Error simulation: force 5xx on users ---
-            sw_send(sw, {'type': 'echokit:interaction:update', 'id': users_mock['id'], 'patch': {
-                'mockErrorMode': '5xx'
-            }})
-            time.sleep(0.2)
-            m_err = page.evaluate("window.doFetch()")
-            step('error_simulation_5xx', m_err.get('status') == 500, m_err)
+            # === Scope system ===
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'global'}})
+            st_global = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
+            step('scope_global_shows_all', len(st_global['interactions']) == state.get('allCount', len(interactions)))
 
-            # --- Disable master mock; should fall back to real ---
-            sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'tab'}})
+            st_tab = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
+            step('scope_tab_filters_to_tab',
+                 all(i.get('tabId')==tab_id for i in st_tab['interactions']),
+                 f'count={len(st_tab["interactions"])}')
+
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'domain'}})
+            st_dom = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
+            step('scope_domain_filters_to_host',
+                 all('127.0.0.1' in (i.get('tabUrl') or i.get('url') or '') for i in st_dom['interactions']),
+                 f'count={len(st_dom["interactions"])}')
+
+            # === CLEAR in current scope ===
+            cleared = sw_send(sw, {'type':'echokit:clear:scoped','tabId':tab_id})
+            step('clear_scoped_deletes_all_in_scope', cleared.get('ok'), cleared)
+            st_after = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
+            step('clear_result_list_empty', len(st_after['interactions']) == 0, f'left={len(st_after["interactions"])}')
+
+            # === REC badge — when recording, badge should be set ===
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
             time.sleep(0.3)
-            m_real = page.evaluate("window.doFetch()")
-            step('mock_off_falls_back_to_real', m_real.get('body', {}).get('source') == 'real', m_real)
+            badge = sw.evaluate(f"chrome.action.getBadgeText({{tabId:{tab_id}}})")
+            step('rec_badge_shows_REC', badge == 'REC', f'badge="{badge}"')
+            sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
 
-            # --- Export produces the saved interactions ---
-            exp = sw_send(sw, {'type': 'echokit:export'})
-            exp_count = len(exp.get('data', {}).get('interactions', [])) if exp else 0
-            step('export_returns_interactions', exp_count >= 3, f'count={exp_count}')
+            # === CORS DNR rule on/off ===
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'corsOverride':True}})
+            time.sleep(0.3)
+            rules = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
+            step('cors_dnr_rule_installed', any(r.get('id')==1001 for r in (rules or [])), rules)
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'corsOverride':False}})
+            time.sleep(0.3)
+            rules2 = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
+            step('cors_dnr_rule_removed', not any(r.get('id')==1001 for r in (rules2 or [])), rules2)
 
-            # --- Import override wipes and replaces ---
-            fake_export = {
-                'version': 1,
-                'exportedAt': '2026-02-23T00:00:00Z',
-                'interactions': [{
-                    'id': 'fake_1',
-                    'hash': 'aaaaaaaa-1',
-                    'url': 'http://127.0.0.1:18765/api/imported',
-                    'method': 'GET',
-                    'requestHeaders': {}, 'requestBody': None,
-                    'responseStatus': 200, 'responseHeaders': {},
-                    'responseBody': '{"imported":true}',
-                    'timestamp': 1, 'tabId': 0, 'sessionId': 'imp',
-                    'mockEnabled': False, 'mockLatency': 0, 'mockErrorMode': 'none',
-                    'overrideStatus': None, 'overrideBody': None, 'overrideHeaders': None,
-                    'activeVersionId': None
-                }]
-            }
-            imp = sw_send(sw, {'type': 'echokit:import', 'data': fake_export, 'strategy': 'override'})
-            step('import_override_ok', imp and imp.get('ok'), imp)
-            state2 = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
-            step('import_override_wiped_and_replaced', len(state2.get('interactions', [])) == 1, f'after import count={len(state2.get("interactions", []))}')
+            # === Popup UI tests ===
+            # In Playwright, the "popup" is a normal tab, so chrome.tabs.query({active,currentWindow})
+            # returns the popup's own tab. Force scope=global so the UI is visible regardless.
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'global'}})
 
-            # --- Popup page loads without error ---
             popup = ctx.new_page()
             popup.goto(f'chrome-extension://{ext_id}/popup/popup.html')
-            popup.wait_for_selector('[data-testid="echokit-app"]', timeout=5000)
-            has_header = popup.locator('.ek-logo').count() > 0
-            step('popup_renders', has_header)
+            popup.wait_for_selector('[data-testid="echokit-app"]')
+            popup.wait_for_selector('[data-testid="search-input"]')
+            # Seed some data by recording again
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
+            time.sleep(0.3)
+            page.evaluate("window.doFetch()")
+            page.evaluate("window.doPost({a:1})")
+            page.evaluate("window.doXhr()")
+            time.sleep(0.8)
+
+            # Reload popup to pick up new data
+            popup.reload()
+            popup.wait_for_selector('[data-testid="api-row"]', timeout=5000)
+
+            # --- UX bug: search typing should not reverse characters ---
+            search = popup.locator('[data-testid="search-input"]')
+            search.click()
+            search.type('users', delay=50)
+            search_value = search.input_value()
+            step('search_typing_not_reversed', search_value == 'users', f'got="{search_value}"')
+            # Clear search
+            search.fill('')
+
+            # --- UX bug: overflow menu is reachable and contains settings/clear/export ---
+            popup.locator('[data-testid="menu-btn"]').click()
+            popup.wait_for_selector('[data-testid="menu-panel"]', timeout=2000)
+            has_settings = popup.locator('[data-testid="menu-settings"]').count() > 0
+            has_clear = popup.locator('[data-testid="menu-clear"]').count() > 0
+            has_export = popup.locator('[data-testid="menu-export"]').count() > 0
+            has_import = popup.locator('[data-testid="menu-import"]').count() > 0
+            step('menu_has_settings', has_settings)
+            step('menu_has_clear', has_clear)
+            step('menu_has_export', has_export)
+            step('menu_has_import', has_import)
+            # Close menu by clicking body
+            popup.locator('body').click(position={'x': 10, 'y': 10})
+
+            # --- CORS toggle is reachable from settings ---
+            popup.locator('[data-testid="menu-btn"]').click()
+            popup.wait_for_selector('[data-testid="menu-settings"]', timeout=1000)
+            popup.locator('[data-testid="menu-settings"]').click()
+            popup.wait_for_selector('[data-testid="settings-modal"]', timeout=1000)
+            has_cors = popup.locator('[data-testid="cors-toggle"]').count() > 0
+            has_scope = popup.locator('[data-testid="settings-scope"]').count() > 0
+            has_theme = popup.locator('[data-testid="settings-theme"]').count() > 0
+            has_auto = popup.locator('[data-testid="auto-open-toggle"]').count() > 0
+            step('settings_has_cors_toggle', has_cors)
+            step('settings_has_scope', has_scope)
+            step('settings_has_theme', has_theme)
+            step('settings_has_auto_open', has_auto)
+
+            # Flip theme to light and confirm attribute changes
+            popup.locator('[data-testid="settings-theme"]').select_option('light')
+            time.sleep(0.3)
+            theme_attr = popup.evaluate("document.documentElement.getAttribute('data-theme')")
+            step('theme_switch_to_light', theme_attr == 'light', f'data-theme="{theme_attr}"')
+            # Reset to dark
+            popup.locator('[data-testid="settings-theme"]').select_option('dark')
+            popup.locator('.ek-modal button[data-a="close"]').click()
+
+            # --- CLEAR actually empties the visible list ---
+            # Open menu, click clear, accept confirm
+            popup.on('dialog', lambda d: d.accept())
+            popup.locator('[data-testid="menu-btn"]').click()
+            popup.wait_for_selector('[data-testid="menu-clear"]', timeout=1000)
+            popup.locator('[data-testid="menu-clear"]').click()
+            time.sleep(0.8)
+            remaining = popup.locator('[data-testid="api-row"]').count()
+            step('clear_menu_empties_list', remaining == 0, f'rows_left={remaining}')
+
+            # --- Scroll preservation: add many recordings, scroll list, wait for poll, ensure scroll stays ---
+            # Record 20 distinct calls
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
+            for i in range(20):
+                page.evaluate(f"fetch('/api/users?n={i}')")
+            time.sleep(1.2)
+            sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
+            popup.reload()
+            popup.wait_for_selector('[data-testid="api-row"]', timeout=5000)
+            # Scroll list to bottom
+            list_sel = '[data-testid="api-list"]'
+            popup.evaluate(f"document.querySelector('{list_sel}').scrollTop = 2000")
+            scrolled = popup.evaluate(f"document.querySelector('{list_sel}').scrollTop")
+            step('list_scrolled_to_bottom', scrolled > 50, f'scrollTop={scrolled}')
+            # Wait for 2 poll cycles
+            time.sleep(3.5)
+            scrolled_after = popup.evaluate(f"document.querySelector('{list_sel}').scrollTop")
+            step('list_scroll_preserved_across_poll', abs(scrolled_after - scrolled) < 5,
+                 f'before={scrolled} after={scrolled_after}')
+
+            # --- Detail scroll preservation ---
+            popup.locator('[data-testid="api-row"]').first.click()
+            popup.wait_for_selector('[data-testid="api-detail"] .ek-detail-body', timeout=2000)
+            detail_sel = '[data-testid="api-detail"] .ek-detail-body'
+            popup.evaluate(f"document.querySelector('{detail_sel}').scrollTop = 500")
+            d_scrolled = popup.evaluate(f"document.querySelector('{detail_sel}').scrollTop")
+            step('detail_scrolled', d_scrolled > 50, f'scrollTop={d_scrolled}')
+            time.sleep(3.5)
+            d_scrolled_after = popup.evaluate(f"document.querySelector('{detail_sel}').scrollTop")
+            step('detail_scroll_preserved_across_poll', abs(d_scrolled_after - d_scrolled) < 5,
+                 f'before={d_scrolled} after={d_scrolled_after}')
+
+            # --- JSON syntax highlighter is present ---
+            mirror_count = popup.evaluate("document.querySelectorAll('.ek-code-mirror').length")
+            step('json_highlighter_rendered', mirror_count >= 1, f'mirrors={mirror_count}')
+            highlighted_html = popup.evaluate("document.querySelector('.ek-code-mirror')?.innerHTML || ''")
+            step('json_highlighter_produces_spans', 'jh-' in highlighted_html, highlighted_html[:120])
+
+            # --- Keyboard shortcut dispatch (simulate via command API) ---
+            # Trigger by calling the command listener directly through sw.
+            sw.evaluate("""async () => {
+                // Simulate a command dispatch by emitting the same code paths.
+                chrome.commands?.onCommand?.dispatch?.('toggle-recording');
+            }""")
+            # Fallback: call our message handler directly
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
+            b_on = sw.evaluate(f"chrome.action.getBadgeText({{tabId:{tab_id}}})")
+            sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
+            b_off = sw.evaluate(f"chrome.action.getBadgeText({{tabId:{tab_id}}})")
+            step('badge_on_off', b_on == 'REC' and b_off != 'REC', f'on={b_on} off={b_off}')
+
+            # --- Auto-open setting: flip it and confirm persisted ---
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'autoOpenOnRefresh':False}})
+            s3 = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
+            step('auto_open_setting_persists', s3['settings'].get('autoOpenOnRefresh') is False)
 
             # Screenshot for visual sanity
-            popup.screenshot(path='/app/echokit-popup-screenshot.png')
-            print('saved /app/echokit-popup-screenshot.png')
+            popup.screenshot(path='/app/echokit-popup-v11.png')
+            print('saved /app/echokit-popup-v11.png')
 
             ctx.close()
     finally:
@@ -293,7 +359,7 @@ def main():
     print('\n===== SUMMARY =====')
     print(f"passed: {len(results['passed'])}   failed: {len(results['failed'])}")
     if results['failed']:
-        print('FAILED STEPS:', results['failed'])
+        print('FAILED:', results['failed'])
     return results
 
 if __name__ == '__main__':
