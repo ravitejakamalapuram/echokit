@@ -1,0 +1,39 @@
+# EchoKit repo — include only extension source, smoke test, README, and PRD.
+
+# --- Exclude everything by default approach: allowlist what we want ---
+# Workspace scaffold we don't want in the repo:
+backend/
+frontend/
+scripts/
+test_reports/
+test_result.md
+yarn.lock
+design_guidelines.json
+echokit-extension.zip
+
+# Tests: keep only the smoke test
+tests/*
+!tests/smoke_echokit.py
+
+# Python / tooling artefacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+.env.*
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# OS / editor noise
+Thumbs.db
+*.swp
+
+# Emergent platform internals
+.emergent/
+memory/test_credentials.md

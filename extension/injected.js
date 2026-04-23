@@ -1,0 +1,286 @@
+// EchoKit — MAIN-world injected script.
+// Hooks window.fetch + XMLHttpRequest to RECORD real traffic and MOCK matched traffic.
+// Uses an in-memory mock index pushed from the extension.
+
+(function () {
+  if (window.__echokitInjected) return;
+  window.__echokitInjected = true;
+
+  const SRC_INJECTED = 'echokit-injected';
+  const SRC_CONTENT = 'echokit-content';
+
+  // ---------- Local state ----------
+  const state = {
+    recording: false,
+    mocking: false,
+    mockIndex: {}, // hash -> [versions]
+  };
+  // Debug mirror — useful for tests + devtools console.
+  window.__echokitState = state;
+
+  // ---------- Matcher (inlined — MAIN world can't import shared modules) ----------
+  function normalizeUrl(url) {
+    try {
+      const u = new URL(url, location.href);
+      const params = [...u.searchParams.entries()].sort((a, b) =>
+        a[0] === b[0] ? (a[1] < b[1] ? -1 : 1) : a[0] < b[0] ? -1 : 1
+      );
+      u.search = params.length ? '?' + params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+      u.hash = '';
+      return u.toString();
+    } catch { return String(url); }
+  }
+  function stableStringify(v) {
+    if (v === null || typeof v !== 'object') return JSON.stringify(v);
+    if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+    const keys = Object.keys(v).sort();
+    return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+  }
+  function normalizeBody(body) {
+    if (body == null || body === '') return '';
+    if (typeof body === 'string') {
+      try { return stableStringify(JSON.parse(body)); } catch { return body; }
+    }
+    if (typeof FormData !== 'undefined' && body instanceof FormData) {
+      const arr = []; for (const [k, v] of body.entries()) arr.push([k, typeof v === 'string' ? v : '[file]']);
+      arr.sort(); return JSON.stringify(arr);
+    }
+    if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
+      const arr = [...body.entries()].sort(); return JSON.stringify(arr);
+    }
+    if (typeof Blob !== 'undefined' && body instanceof Blob) return `[blob:${body.size}:${body.type}]`;
+    if (body instanceof ArrayBuffer) return `[ab:${body.byteLength}]`;
+    if (ArrayBuffer.isView(body)) return `[view:${body.byteLength}]`;
+    try { return stableStringify(body); } catch { return String(body); }
+  }
+  function fnv1a(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  }
+  function computeHash(method, url, body) {
+    const key = `${String(method || 'GET').toUpperCase()}|${normalizeUrl(url)}|${normalizeBody(body)}`;
+    return fnv1a(key) + '-' + key.length.toString(16);
+  }
+
+  // ---------- Messaging ----------
+  function emit(type, payload, requestId) {
+    window.postMessage({ source: SRC_INJECTED, type, payload, requestId }, '*');
+  }
+  window.addEventListener('message', (ev) => {
+    const d = ev.data;
+    if (!d || d.source !== SRC_CONTENT) return;
+    if (d.type === 'echokit:mockIndex') state.mockIndex = d.payload || {};
+    else if (d.type === 'echokit:tabState') {
+      state.recording = !!d.payload?.recording;
+      state.mocking = !!d.payload?.mocking;
+    }
+  }, false);
+  emit('ready');
+
+  // ---------- Mock lookup ----------
+  function pickMock(hash) {
+    if (!state.mocking) return null;
+    const versions = state.mockIndex[hash];
+    if (!versions || !versions.length) return null;
+    // activeVersionId wins; else latest (already sorted desc).
+    const active = versions[0].activeVersionId;
+    if (active) {
+      const match = versions.find(v => v.id === active);
+      if (match) return match;
+    }
+    return versions[0];
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, Math.max(0, ms | 0))); }
+
+  function headersToObject(h) {
+    if (!h) return {};
+    if (h instanceof Headers) { const o = {}; h.forEach((v, k) => { o[k] = v; }); return o; }
+    if (Array.isArray(h)) { const o = {}; for (const [k, v] of h) o[k] = v; return o; }
+    if (typeof h === 'object') return { ...h };
+    return {};
+  }
+
+  // ---------- fetch hook ----------
+  const origFetch = window.fetch?.bind(window);
+  if (origFetch) {
+    window.fetch = async function echokitFetch(input, init) {
+      let url, method, reqHeaders, reqBody;
+      try {
+        if (typeof input === 'string' || input instanceof URL) {
+          url = String(input);
+          method = (init && init.method) || 'GET';
+          reqHeaders = headersToObject(init && init.headers);
+          reqBody = init && init.body != null ? await bodyToText(init.body) : null;
+        } else if (input && typeof input === 'object') {
+          // Request object
+          url = input.url;
+          method = input.method || 'GET';
+          reqHeaders = headersToObject(input.headers);
+          try { reqBody = await input.clone().text(); } catch { reqBody = null; }
+        } else {
+          url = String(input);
+          method = 'GET';
+          reqHeaders = {};
+          reqBody = null;
+        }
+      } catch { return origFetch(input, init); }
+
+      const hash = computeHash(method, url, reqBody);
+      const mock = pickMock(hash);
+      if (mock) {
+        if (mock.latency) await delay(mock.latency);
+        if (mock.errorMode === 'network') throw new TypeError('Failed to fetch (EchoKit mock: network failure)');
+        if (mock.errorMode === 'timeout') return new Promise(() => { /* hangs forever */ });
+        let status = mock.status || 200;
+        if (mock.errorMode === '4xx') status = 400;
+        else if (mock.errorMode === '5xx') status = 500;
+        const headers = new Headers(mock.headers || {});
+        if (!headers.has('content-type')) headers.set('content-type', 'application/json');
+        return new Response(mock.body ?? '', { status, statusText: statusText(status), headers });
+      }
+
+      // Real call — and record on success/failure.
+      const started = Date.now();
+      let res, err;
+      try { res = await origFetch(input, init); }
+      catch (e) { err = e; }
+      if (state.recording) {
+        try {
+          if (res) {
+            const clone = res.clone();
+            const text = await clone.text().catch(() => '');
+            emit('record', {
+              hash,
+              method, url: normalizeUrl(url), requestHeaders: reqHeaders, requestBody: reqBody,
+              responseStatus: res.status,
+              responseHeaders: headersToObject(res.headers),
+              responseBody: text,
+              durationMs: Date.now() - started,
+              type: 'fetch'
+            });
+          } else if (err) {
+            emit('record', {
+              hash,
+              method, url: normalizeUrl(url), requestHeaders: reqHeaders, requestBody: reqBody,
+              responseStatus: 0, responseHeaders: {}, responseBody: String(err),
+              durationMs: Date.now() - started, type: 'fetch', failed: true
+            });
+          }
+        } catch { /* ignore logging failures */ }
+      }
+      if (err) throw err;
+      return res;
+    };
+  }
+
+  async function bodyToText(body) {
+    if (body == null) return null;
+    if (typeof body === 'string') return body;
+    if (typeof FormData !== 'undefined' && body instanceof FormData) {
+      const o = {}; for (const [k, v] of body.entries()) o[k] = typeof v === 'string' ? v : '[file]';
+      return JSON.stringify(o);
+    }
+    if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) return body.toString();
+    if (typeof Blob !== 'undefined' && body instanceof Blob) return await body.text();
+    if (body instanceof ArrayBuffer) return new TextDecoder().decode(body);
+    if (ArrayBuffer.isView(body)) return new TextDecoder().decode(body.buffer);
+    try { return JSON.stringify(body); } catch { return String(body); }
+  }
+
+  // ---------- XHR hook ----------
+  const XHR = window.XMLHttpRequest;
+  if (XHR) {
+    const origOpen = XHR.prototype.open;
+    const origSend = XHR.prototype.send;
+    const origSetHeader = XHR.prototype.setRequestHeader;
+
+    XHR.prototype.open = function (method, url, async, user, password) {
+      this.__echokit = { method: String(method || 'GET').toUpperCase(), url: String(url), headers: {}, async: async !== false };
+      return origOpen.apply(this, arguments);
+    };
+    XHR.prototype.setRequestHeader = function (k, v) {
+      if (this.__echokit) this.__echokit.headers[k] = v;
+      return origSetHeader.apply(this, arguments);
+    };
+    XHR.prototype.send = function (body) {
+      const ctx = this.__echokit || {};
+      ctx.body = body != null ? (typeof body === 'string' ? body : (body instanceof URLSearchParams ? body.toString() : '[binary]')) : null;
+      const hash = computeHash(ctx.method, ctx.url, ctx.body);
+      const mock = pickMock(hash);
+      if (mock) {
+        // Fake a response asynchronously.
+        const xhr = this;
+        setTimeout(async () => {
+          if (mock.latency) await delay(mock.latency);
+          if (mock.errorMode === 'timeout') { xhr.dispatchEvent(new Event('timeout')); return; }
+          if (mock.errorMode === 'network') {
+            xhr.dispatchEvent(new Event('error'));
+            return;
+          }
+          let status = mock.status || 200;
+          if (mock.errorMode === '4xx') status = 400;
+          else if (mock.errorMode === '5xx') status = 500;
+          const bodyStr = mock.body ?? '';
+          const headerStr = Object.entries(mock.headers || {}).map(([k, v]) => `${k}: ${v}`).join('\r\n') || 'content-type: application/json';
+          try {
+            Object.defineProperty(xhr, 'readyState', { configurable: true, get: () => 4 });
+            Object.defineProperty(xhr, 'status', { configurable: true, get: () => status });
+            Object.defineProperty(xhr, 'statusText', { configurable: true, get: () => statusText(status) });
+            Object.defineProperty(xhr, 'responseText', { configurable: true, get: () => bodyStr });
+            Object.defineProperty(xhr, 'response', { configurable: true, get: () => bodyStr });
+            Object.defineProperty(xhr, 'responseURL', { configurable: true, get: () => ctx.url });
+            xhr.getAllResponseHeaders = () => headerStr;
+            xhr.getResponseHeader = (name) => {
+              const line = headerStr.split(/\r\n/).find(l => l.toLowerCase().startsWith(name.toLowerCase() + ':'));
+              return line ? line.split(':').slice(1).join(':').trim() : null;
+            };
+          } catch { /* ignore */ }
+          xhr.dispatchEvent(new Event('readystatechange'));
+          xhr.dispatchEvent(new Event('load'));
+          xhr.dispatchEvent(new Event('loadend'));
+        }, 0);
+        return; // Do NOT call origSend — bypass network completely.
+      }
+
+      if (state.recording) {
+        const started = Date.now();
+        this.addEventListener('loadend', () => {
+          try {
+            emit('record', {
+              hash,
+              method: ctx.method, url: normalizeUrl(ctx.url), requestHeaders: ctx.headers, requestBody: ctx.body,
+              responseStatus: this.status,
+              responseHeaders: parseXhrHeaders(this.getAllResponseHeaders()),
+              responseBody: typeof this.responseText === 'string' ? this.responseText : '',
+              durationMs: Date.now() - started,
+              type: 'xhr'
+            });
+          } catch { /* ignore */ }
+        });
+      }
+      return origSend.apply(this, arguments);
+    };
+  }
+
+  function parseXhrHeaders(str) {
+    const o = {};
+    if (!str) return o;
+    for (const line of str.split(/\r\n/)) {
+      if (!line) continue;
+      const i = line.indexOf(':');
+      if (i < 0) continue;
+      o[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    }
+    return o;
+  }
+
+  function statusText(code) {
+    const map = { 200: 'OK', 201: 'Created', 204: 'No Content', 301: 'Moved Permanently', 302: 'Found', 304: 'Not Modified', 400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found', 408: 'Request Timeout', 418: "I'm a teapot", 422: 'Unprocessable Entity', 429: 'Too Many Requests', 500: 'Internal Server Error', 502: 'Bad Gateway', 503: 'Service Unavailable', 504: 'Gateway Timeout' };
+    return map[code] || '';
+  }
+})();
