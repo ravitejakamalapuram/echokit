@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Privacy · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<body>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+
+<main class="container" style="padding: 48px 24px; max-width: 760px;">
+  <h1>Privacy Policy</h1>
+  <p style="color: var(--text-dim)">Last updated: February 2026</p>
+  <p>EchoKit is a local-first developer tool. This page explains exactly what happens to your data.</p>
+
+  <h2>What we collect</h2>
+  <p>When recording is ON for a given tab, EchoKit captures each <code>fetch</code> / <code>XMLHttpRequest</code> call: URL, method, headers, body, response status, response headers, response body, timestamp, duration, and the tab URL for scoping. This data is stored exclusively in your browser's IndexedDB and never leaves your device.</p>
+
+  <h2>What we don't collect</h2>
+  <ul>
+    <li>No telemetry, analytics, crash reports, or usage pings.</li>
+    <li>No accounts, logins, cloud storage, or sync services.</li>
+    <li>No background network requests initiated by the extension itself.</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <table style="border-collapse: collapse; width: 100%;">
+    <thead><tr><th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Permission</th><th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Why we need it</th></tr></thead>
+    <tbody style="color: var(--text-muted); font-size: 14px;">
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>&lt;all_urls&gt;</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">Observe fetch/XHR on pages you record. Only active on tabs where you pressed REC.</td></tr>
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>storage</code>, <code>unlimitedStorage</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">Persist your recordings + settings locally.</td></tr>
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>tabs</code>, <code>activeTab</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">Track per-tab recording/mocking state. Display host in footer.</td></tr>
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>declarativeNetRequest</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">Implement optional CORS override + URL blocklist. Rules written only when you enable the toggle, removed when you disable.</td></tr>
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>scripting</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">localStorage copy/paste feature — read/write the active tab's <code>localStorage</code> only when you click the menu item.</td></tr>
+      <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top"><code>clipboardRead</code>, <code>clipboardWrite</code></td><td style="padding:8px 12px;border-bottom:1px solid var(--border)">Copy/paste localStorage payloads via the system clipboard.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Data retention</h2>
+  <p>Recordings live until you clear them (Menu → Clear, Settings → Wipe ALL) or uninstall the extension.</p>
+
+  <h2>Third-party services</h2>
+  <p>The UI loads two web fonts from Google Fonts (IBM Plex Sans and JetBrains Mono). This means Google can observe that the UI was opened. Prefer full isolation? Fork the repo and bundle fonts locally.</p>
+
+  <h2>Open source</h2>
+  <p>MIT-licensed. <a href="https://github.com/ravitejakamalapuram/echokit">Audit every line</a>.</p>
+
+  <h2>Contact</h2>
+  <p>Privacy questions or issues: <a href="https://github.com/ravitejakamalapuram/echokit/issues">GitHub issues</a>.</p>
+</main>
+
+<footer class="footer"><div class="container">Open source · MIT · <a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></footer>
+</body></html>

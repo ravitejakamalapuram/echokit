@@ -66,12 +66,46 @@
     const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
     const noBody = `${M}|${normalizeUrl(url)}|`;
     const pathOnly = `${M}|${stripQuery(url)}|`;
-    return {
+    const out = {
       strict: fnv1a(full) + '-' + full.length.toString(16),
       'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),
       'ignore-body': fnv1a(noBody) + '-' + noBody.length.toString(16),
       'path-wildcard': fnv1a(pathOnly) + '-' + pathOnly.length.toString(16)
     };
+    const gql = parseGraphQL(body, url);
+    if (gql) {
+      const gqlKey = `${M}|${stripQuery(url)}|gql|${gql.operationName}|${gql.query}|${stableStringify(gql.variables)}`;
+      out.graphql = fnv1a(gqlKey) + '-' + gqlKey.length.toString(16);
+      const gqlNoVars = `${M}|${stripQuery(url)}|gql|${gql.operationName}|${gql.query}|`;
+      out['graphql-op'] = fnv1a(gqlNoVars) + '-' + gqlNoVars.length.toString(16);
+    }
+    return out;
+  }
+  function parseGraphQL(body, url) {
+    if (!body) return null;
+    let parsed;
+    try { parsed = typeof body === 'string' ? JSON.parse(body) : body; } catch { return null; }
+    if (parsed && typeof parsed === 'object' && parsed.query) {
+      return {
+        operationName: parsed.operationName || extractOpName(parsed.query) || '',
+        query: String(parsed.query).replace(/\s+/g, ' ').trim(),
+        variables: parsed.variables || {}
+      };
+    }
+    try {
+      const u = new URL(url, location.href);
+      const q = u.searchParams.get('query');
+      if (q) return {
+        operationName: u.searchParams.get('operationName') || extractOpName(q) || '',
+        query: q.replace(/\s+/g, ' ').trim(),
+        variables: (() => { try { return JSON.parse(u.searchParams.get('variables') || '{}'); } catch { return {}; } })()
+      };
+    } catch {}
+    return null;
+  }
+  function extractOpName(query) {
+    const m = /\b(query|mutation|subscription)\s+(\w+)/.exec(String(query || ''));
+    return m ? m[2] : '';
   }
 
   // ---------- Messaging ----------
@@ -90,7 +124,7 @@
   emit('ready');
 
   // ---------- Mock lookup (tries each supported match mode) ----------
-  const MODES = ['strict', 'ignore-query', 'ignore-body', 'path-wildcard'];
+  const MODES = ['strict', 'ignore-query', 'ignore-body', 'path-wildcard', 'graphql', 'graphql-op'];
   function pickMock(keys) {
     if (!state.mocking) return null;
     for (const mode of MODES) {

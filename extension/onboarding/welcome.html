@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <title>Welcome to EchoKit</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <style>
+    body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+    .wrap { max-width: 720px; width: 100%; }
+    .hero { text-align: center; margin-bottom: 40px; }
+    .hero-mark { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border: 2px solid var(--amber); border-radius: 12px; background: var(--surface); font-family: var(--font-mono); font-weight: 800; font-size: 24px; color: var(--amber); margin-bottom: 16px; }
+    h1 { font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    .tagline { color: var(--text-muted); font-family: var(--font-mono); letter-spacing: 0.05em; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    @media (max-width: 640px) { .steps { grid-template-columns: 1fr; } }
+    .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+    .step-num { font-family: var(--font-mono); color: var(--amber); font-weight: 700; font-size: 12px; letter-spacing: 0.15em; margin-bottom: 8px; }
+    .step-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+    .step-body { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+    .shortcuts { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 24px; }
+    .shortcuts h2 { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 12px; }
+    .sc-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .sc-row:last-child { border-bottom: none; }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+    .cta .ek-btn { padding: 10px 18px; font-size: 13px; }
+    .foot { text-align: center; margin-top: 32px; color: var(--text-dim); font-size: 12px; }
+    .foot a { color: var(--amber); text-decoration: none; }
+    .foot a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-mark">EK</div>
+      <h1>Welcome to EchoKit</h1>
+      <div class="tagline">RECORD ONCE. MOCK RELIABLY. DEBUG FASTER.</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01 / RECORD</div>
+        <div class="step-title">Capture real traffic</div>
+        <div class="step-body">Open any tab. Click the EchoKit toolbar icon. Press <span class="ek-tag">● REC</span>. Use your app — every <code>fetch</code> and <code>XHR</code> call is captured.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02 / EDIT</div>
+        <div class="step-title">Tune your mock</div>
+        <div class="step-body">Tap any request. Edit the JSON body, change status, add latency, force errors. Pick a match mode (strict → wildcard → GraphQL).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03 / MOCK</div>
+        <div class="step-title">Replay without the backend</div>
+        <div class="step-body">Flip the master <span class="ek-tag amber">MOCK</span> switch. Reload the page — your app hits the mocks, not the network. Big amber banner means you never forget.</div>
+      </div>
+    </div>
+
+    <div class="shortcuts">
+      <h2>Keyboard shortcuts (customizable)</h2>
+      <div class="sc-row"><span>Toggle recording</span><span class="ek-kbd">Alt + Shift + R</span></div>
+      <div class="sc-row"><span>Toggle MOCK mode</span><span class="ek-kbd">Alt + Shift + M</span></div>
+      <div class="sc-row"><span>Open popup</span><span class="ek-kbd">Alt + Shift + E</span></div>
+    </div>
+
+    <div class="cta">
+      <button class="ek-btn ek-btn-primary" data-a="pin">Pin EchoKit to your toolbar</button>
+      <a class="ek-btn" href="https://github.com/ravitejakamalapuram/echokit" target="_blank" rel="noopener">Docs & source</a>
+      <a class="ek-btn ek-btn-ghost" href="https://github.com/ravitejakamalapuram/echokit/blob/main/store/privacy-policy.md" target="_blank" rel="noopener">Privacy</a>
+    </div>
+
+    <div class="foot">
+      Nothing you record ever leaves your browser. All data lives in IndexedDB. Uninstall to wipe.
+    </div>
+  </div>
+
+  <script>
+    document.querySelector('[data-a="pin"]')?.addEventListener('click', () => {
+      alert('To pin EchoKit: click the puzzle icon on the Chrome toolbar, find EchoKit, click the pin icon next to it.');
+    });
+  </script>
+</body>
+</html>

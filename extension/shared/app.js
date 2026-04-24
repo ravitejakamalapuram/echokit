@@ -9,7 +9,7 @@ let state = {
   mode: 'popup',
   tabId: null,
   tab: { recording: false, mocking: false, sessionId: null, host: '' },
-  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true },
+  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [] },
   interactions: [],
   allCount: 0,
   search: '',
@@ -18,7 +18,8 @@ let state = {
   selectedId: null,
   detailOpen: false,
   menuOpen: false,
-  listWidth: 360, // devtools only
+  listWidth: 360,
+  clipboardPreview: null,
 };
 
 let root;
@@ -194,17 +195,21 @@ function renderMenu() {
   const panel = document.createElement('div');
   panel.className = 'ek-menu-panel';
   panel.setAttribute('data-testid', 'menu-panel');
+  const pasteHint = state.clipboardPreview
+    ? `<span class="ek-subtle">${state.clipboardPreview.count} keys · ${escapeHtml(state.clipboardPreview.origin || '')}</span>`
+    : `<span class="ek-subtle">nothing in clipboard</span>`;
   panel.innerHTML = `
     <button class="ek-menu-item" data-menu="clear" data-testid="menu-clear">Clear recordings <span class="ek-subtle">${state.interactions.length}</span></button>
     <button class="ek-menu-item" data-menu="export" data-testid="menu-export">Export JSON</button>
     <button class="ek-menu-item" data-menu="import" data-testid="menu-import">Import JSON</button>
     <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors</span></button>
+    <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage <span class="ek-subtle">active tab</span></button>
+    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${pasteHint}</button>
     <div class="ek-menu-sep"></div>
+    <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · blocklist</span></button>
     <button class="ek-menu-item" data-menu="shortcuts" data-testid="menu-shortcuts">Keyboard shortcuts</button>
   `;
   document.body.appendChild(panel);
-  // Position relative to anchor
   const rect = anchor.getBoundingClientRect();
   panel.style.position = 'fixed';
   panel.style.top = `${rect.bottom + 6}px`;
@@ -216,12 +221,13 @@ function renderMenu() {
     if (which === 'clear') onClearSession();
     else if (which === 'export') onExport();
     else if (which === 'import') showImportDialog();
+    else if (which === 'ls-copy') onCopyLocalStorage();
+    else if (which === 'ls-paste') onPasteLocalStorage();
     else if (which === 'settings') showSettingsDialog();
     else if (which === 'shortcuts') showShortcutsDialog();
     document.querySelectorAll('.ek-menu-panel').forEach(n => n.remove());
   }));
 
-  // Close on outside click
   setTimeout(() => {
     const close = (ev) => {
       if (panel.contains(ev.target)) return;
@@ -232,6 +238,78 @@ function renderMenu() {
     };
     document.addEventListener('click', close, true);
   }, 0);
+}
+
+async function tryReadClipboardPreview() {
+  try {
+    const text = await navigator.clipboard.readText();
+    const j = JSON.parse(text);
+    if (j && j.__echokit === 'localStorage' && j.keys && typeof j.keys === 'object') {
+      state.clipboardPreview = { count: Object.keys(j.keys).length, origin: j.origin || '', payload: j };
+    } else {
+      state.clipboardPreview = null;
+    }
+  } catch { state.clipboardPreview = null; }
+}
+
+async function onCopyLocalStorage() {
+  if (state.tabId == null) { alert('No active tab'); return; }
+  const r = await BG({ type: 'echokit:localStorage:read', tabId: state.tabId });
+  if (!r?.ok) { alert('Failed to read localStorage: ' + (r?.error || 'unknown — tab may not be http(s)')); return; }
+  const payload = { __echokit: 'localStorage', version: 1, origin: r.origin, href: r.href, copiedAt: new Date().toISOString(), keys: r.keys };
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    await tryReadClipboardPreview();
+    render();
+    toast(`Copied ${r.count} localStorage keys from ${r.origin}`);
+  } catch (e) { alert('Clipboard write failed: ' + e.message); }
+}
+
+async function onPasteLocalStorage() {
+  await tryReadClipboardPreview();
+  if (!state.clipboardPreview) { alert('Clipboard has no EchoKit localStorage payload.\nCopy from another tab first via Menu → Copy localStorage.'); return; }
+  const { count, origin, payload } = state.clipboardPreview;
+  showPasteDialog(count, origin, payload);
+}
+
+function showPasteDialog(count, origin, payload) {
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  const preview = Object.entries(payload.keys || {}).slice(0, 10).map(([k, v]) => `<div class="ek-kv-row"><span class="ek-tag" style="font-family:var(--font-mono)">${escapeHtml(k)}</span><span class="ek-subtle" style="font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(String(v).slice(0, 80))}</span><span></span></div>`).join('');
+  const more = Object.keys(payload.keys || {}).length > 10 ? `<div class="ek-subtle">…and ${Object.keys(payload.keys).length - 10} more</div>` : '';
+  overlay.innerHTML = `
+    <div class="ek-modal" data-testid="paste-modal">
+      <div class="ek-modal-title">Paste localStorage</div>
+      <div class="ek-subtle">${count} keys · from <span class="ek-tag">${escapeHtml(origin)}</span> → into <span class="ek-tag">${escapeHtml(state.tab.host || 'active tab')}</span></div>
+      ${origin && state.tab.host && !origin.includes(state.tab.host) ? `<div class="ek-subtle" style="color:var(--amber)">⚠ Origins differ — paste will write into the current tab's origin, which may overwrite unrelated data.</div>` : ''}
+      <div style="max-height:220px;overflow:auto">${preview}${more}</div>
+      <label class="ek-row-inline" style="gap:6px;margin-top:4px">
+        <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first"/> <span>Clear existing localStorage before pasting</span>
+      </label>
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-primary" data-a="confirm" data-testid="paste-confirm">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('[data-a="confirm"]').addEventListener('click', async () => {
+    const clearFirst = overlay.querySelector('[data-a="clear-first"]').checked;
+    const r = await BG({ type: 'echokit:localStorage:write', tabId: state.tabId, keys: payload.keys, clearFirst });
+    overlay.remove();
+    if (r?.ok) toast(`Wrote ${r.written} keys to ${r.origin}. Reload the tab to apply.`);
+    else alert('Paste failed: ' + (r?.error || 'unknown'));
+  });
+}
+
+function toast(text) {
+  const t = document.createElement('div');
+  t.textContent = text;
+  t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 function renderToolbar() {
@@ -354,6 +432,8 @@ function renderDetail(i, conflicts) {
                 <option value="ignore-query" ${matchMode==='ignore-query'?'selected':''}>ignore query params</option>
                 <option value="ignore-body" ${matchMode==='ignore-body'?'selected':''}>ignore body</option>
                 <option value="path-wildcard" ${matchMode==='path-wildcard'?'selected':''}>path only (wildcard)</option>
+                <option value="graphql" ${matchMode==='graphql'?'selected':''}>graphql — op + query + vars</option>
+                <option value="graphql-op" ${matchMode==='graphql-op'?'selected':''}>graphql — op + query (any vars)</option>
               </select>
             </div>
             <div class="ek-field">
@@ -370,7 +450,7 @@ function renderDetail(i, conflicts) {
               <option value="none" ${i.mockErrorMode === 'none' || !i.mockErrorMode ? 'selected' : ''}>none</option>
               <option value="4xx" ${i.mockErrorMode === '4xx' ? 'selected' : ''}>force 4xx (400)</option>
               <option value="5xx" ${i.mockErrorMode === '5xx' ? 'selected' : ''}>force 5xx (500)</option>
-              <option value="network" ${i.mockErrorMode === 'network' ? 'selected' : ''}>network failure</option>
+              <option value="network" ${i.mockErrorMode === 'network' ? 'selected' : ''}>block / network failure</option>
               <option value="timeout" ${i.mockErrorMode === 'timeout' ? 'selected' : ''}>timeout (hang)</option>
             </select>
           </div>
@@ -485,7 +565,7 @@ function bindEvents() {
     else if (action === 'start-recording') el.addEventListener('click', onStartRecording);
     else if (action === 'stop-recording') el.addEventListener('click', onStopRecording);
     else if (action === 'toggle-mocking') el.addEventListener('change', onToggleMocking);
-    else if (action === 'toggle-menu') el.addEventListener('click', (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; renderMenu(); });
+    else if (action === 'toggle-menu') el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
     else if (action === 'toggle-cors') el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); });
     else if (action === 'cycle-scope') el.addEventListener('click', async () => {
       const order = ['domain', 'tab', 'global'];
@@ -789,6 +869,23 @@ function showSettingsDialog() {
       </div>
 
       <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">URL Blocklist</div>
+          <div class="ek-settings-hint">Block any network request whose URL matches. Uses Chrome's <span class="ek-tag">urlFilter</span> syntax (substring or <span class="ek-tag">||domain.com</span> / <span class="ek-tag">^</span> / <span class="ek-tag">*</span>).</div>
+          <div id="ek-blocklist" style="margin-top:8px" data-testid="blocklist">
+            ${(s.blocklist || []).map((b, idx) => `
+              <div class="ek-kv-row">
+                <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
+                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" aria-label="remove">×</button>
+              </div>
+            `).join('')}
+          </div>
+          <button class="ek-btn ek-btn-ghost" data-a="bl-add" style="margin-top:6px" data-testid="blocklist-add">＋ Add blocklist pattern</button>
+        </div>
+      </div>
+
+      <div class="ek-settings-row">
         <div>
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
@@ -826,6 +923,35 @@ function showSettingsDialog() {
     overlay.remove();
     state.selectedId = null; state.detailOpen = false;
     await refresh(); render();
+  });
+
+  // --- Blocklist handlers ---
+  const reopen = () => { overlay.remove(); showSettingsDialog(); };
+  overlay.querySelectorAll('[data-a="bl-pattern"]').forEach(el => el.addEventListener('change', async (e) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const bl = [...(state.settings.blocklist || [])];
+    bl[idx] = { ...(bl[idx] || {}), pattern: e.target.value };
+    await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
+    await refresh();
+  }));
+  overlay.querySelectorAll('[data-a="bl-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const bl = [...(state.settings.blocklist || [])];
+    bl[idx] = { ...(bl[idx] || {}), enabled: e.target.checked };
+    await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelectorAll('[data-a="bl-remove"]').forEach(el => el.addEventListener('click', async () => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const bl = [...(state.settings.blocklist || [])];
+    bl.splice(idx, 1);
+    await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelector('[data-a="bl-add"]')?.addEventListener('click', async () => {
+    const bl = [...(state.settings.blocklist || []), { pattern: '', enabled: true }];
+    await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
+    await refresh(); reopen();
   });
 }
 

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>EchoKit — Record & mock any API in your browser</title>
+  <meta name="description" content="Zero-setup Chrome extension. Record real fetch/XHR traffic and mock any of it back with strict matching, latency & error simulation, and a raw JSON editor. Built for frontend devs & QA."/>
+  <meta property="og:title" content="EchoKit — Record & mock any API in your browser"/>
+  <meta property="og:description" content="Record once. Mock reliably. Debug faster. A Chrome extension for frontend devs & QA."/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a>
+      <div class="nav-links">
+        <a href="./docs.html">Docs</a>
+        <a href="./faq.html">FAQ</a>
+        <a href="./changelog.html">Changelog</a>
+        <a href="./privacy.html">Privacy</a>
+        <a href="https://github.com/ravitejakamalapuram/echokit" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-tag">Record once · Mock reliably · Debug faster</div>
+      <h1>The fetch & XHR recorder-mocker that just works.</h1>
+      <p class="hero-sub">EchoKit is a zero-setup Chrome extension. Record real API traffic from any tab, then instantly mock any of it back with strict matching, latency & error simulation, and a raw JSON editor. No backend. No accounts. No telemetry.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://github.com/ravitejakamalapuram/echokit/releases">Install for Chrome</a>
+        <a class="btn" href="./docs.html">Read the docs</a>
+        <a class="btn" href="https://github.com/ravitejakamalapuram/echokit" target="_blank">View source</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <h2>Thirty seconds. That's the flow.</h2>
+      <p class="section-sub">Open any tab → hit <span class="kbd">● REC</span> → use your app → flip MOCK → edit → reload.</p>
+      <div class="steps-row">
+        <div class="step-card"><h3>Record</h3><p>EchoKit hooks <code>window.fetch</code> and <code>XMLHttpRequest</code> from a MAIN-world content script. Every call on the recording tab is captured into IndexedDB — URL, method, headers, body, status, response — all of it.</p></div>
+        <div class="step-card"><h3>Edit</h3><p>Tap any request. Rewrite the JSON body, change the status, tweak headers. Pick a match mode: strict, ignore-query, ignore-body, path-wildcard, or GraphQL.</p></div>
+        <div class="step-card"><h3>Mock</h3><p>Flip the <span class="tag" style="color:var(--amber)">MOCK</span> switch. The page hits your edits instead of the network. A huge amber banner means you never forget you're in mock mode.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Everything you expected — and a few things you didn't.</h2>
+      <div class="feature-grid">
+        <div class="feature"><div class="feature-title"><span class="feature-icon">01</span>Strict matching</div><div class="feature-body">FNV-1a hash of <code>method + normalized URL + normalized body</code>. Query params are sorted, JSON bodies are canonicalized. Never ghost-mock the wrong endpoint.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">02</span>5 match modes</div><div class="feature-body">Per-API: strict, ignore-query, ignore-body, path-wildcard, GraphQL (by operation + query fingerprint + variables).</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">03</span>Conflict resolution</div><div class="feature-body">Same request recorded twice? Latest wins by default. A "×N" badge lets you pick a specific version via dropdown.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">04</span>Latency & errors</div><div class="feature-body">Simulate slow responses (0–10s slider), force 4xx / 5xx, trigger a network failure, or just hang the request.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">05</span>URL blocklist</div><div class="feature-body">Block any request matching a Chrome <code>urlFilter</code> pattern via <code>declarativeNetRequest</code>. No mock needed.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">06</span>CORS override</div><div class="feature-body">One-click toggle. Injects permissive <code>Access-Control-Allow-*</code> headers into real responses.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">07</span>Scope system</div><div class="feature-body">Domain (default), Tab (strict), or Global. Pick what's visible per tab — no cross-project mock pollution.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">08</span>Export / Import</div><div class="feature-body">Round-trip mocks as JSON. Commit them to your repo. Import in PRs. Share reproducible bug repros.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">09</span>localStorage copy/paste</div><div class="feature-body">Copy a tab's <code>localStorage</code> to the clipboard. Paste into another tab with a one-click confirmation dialog.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">10</span>Two surfaces</div><div class="feature-body">Compact popup (480×600) + DevTools panel (resizable two-pane layout). Same data, same controls.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">11</span>Theme switch</div><div class="feature-body">Dark / Light / Auto (follows OS). IBM Plex Sans + JetBrains Mono. Zero AI-slop gradients.</div></div>
+        <div class="feature"><div class="feature-title"><span class="feature-icon">12</span>Keyboard shortcuts</div><div class="feature-body"><span class="kbd">Alt+Shift+R</span> REC · <span class="kbd">Alt+Shift+M</span> MOCK · <span class="kbd">Alt+Shift+E</span> popup. Customizable at <code>chrome://extensions/shortcuts</code>.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container" style="max-width: 720px; text-align: center;">
+      <h2>Private by default.</h2>
+      <p class="hero-sub" style="margin: 0 auto 0;">Everything you record lives in your browser's IndexedDB. No backend, no accounts, no telemetry. Uninstall to wipe. <a href="./privacy.html">Read the full privacy policy →</a></p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      Open-source under MIT. Built for devs who lost too many hours to broken staging environments.<br>
+      <a href="https://github.com/ravitejakamalapuram/echokit">github.com/ravitejakamalapuram/echokit</a>
+    </div>
+  </footer>
+</body>
+</html>

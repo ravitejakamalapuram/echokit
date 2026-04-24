@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Changelog · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<body>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+
+<main class="container" style="padding: 48px 24px; max-width: 760px;">
+  <h1>Changelog</h1>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.2.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>GraphQL match mode (operation + query fingerprint + variables).</li>
+      <li>URL blocklist via Chrome <code>urlFilter</code> patterns — blocks any matching request at the network layer.</li>
+      <li>localStorage copy/paste between tabs with smart clipboard detection.</li>
+      <li>Onboarding page opens on fresh install.</li>
+      <li>Landing page + Docs + FAQ (this site).</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.1.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>Overflow menu collapses EXPORT / IMPORT / SETTINGS / CLEAR — popup no longer overflows in 400px.</li>
+      <li>Scope system: Domain (default) / Tab / Global — recordings filtered per scope.</li>
+      <li>Per-API match modes: strict / ignore-query / ignore-body / path-wildcard.</li>
+      <li>Themes: Dark / Light / Auto.</li>
+      <li>JSON syntax highlighter (textarea + <code>&lt;pre&gt;</code> overlay).</li>
+      <li>Keyboard shortcuts via manifest commands.</li>
+      <li>Action badge: <span class="tag">REC</span> while recording, <span class="tag">MOCK</span> while mocking.</li>
+      <li>Auto-open popup on tab refresh when recording (<code>chrome.action.openPopup</code>).</li>
+      <li>Resizable DevTools panel.</li>
+      <li>Fixed: search input typing in reverse (soft-render list only).</li>
+      <li>Fixed: list + detail scroll resetting across polling re-renders (snapshot/restore).</li>
+      <li>Fixed: CLEAR now wipes all interactions in current scope.</li>
+      <li>Fixed: CORS toggle reachable via overflow menu + persistent footer indicator.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.0.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>Initial release.</li>
+      <li>Record <code>fetch</code> + <code>XMLHttpRequest</code> per tab.</li>
+      <li>Strict matching (method + URL + body hash).</li>
+      <li>Per-API mock toggle + per-tab master toggle.</li>
+      <li>Raw JSON body editor, status + headers override.</li>
+      <li>Latency slider + error simulation (4xx / 5xx / network / timeout).</li>
+      <li>Search + filter + domain grouping.</li>
+      <li>Conflict handling with version picker.</li>
+      <li>Export / Import JSON.</li>
+      <li>CORS override via <code>declarativeNetRequest</code>.</li>
+    </ul>
+  </div>
+</main>
+
+<footer class="footer"><div class="container">Open source · MIT · <a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></footer>
+</body></html>

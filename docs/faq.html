@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>FAQ · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<body>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+
+<main class="container" style="padding: 48px 24px;">
+  <h1>Frequently asked questions</h1>
+
+  <div class="qa"><div class="qa-q">Does EchoKit send my data anywhere?</div><div class="qa-a">No. Everything captured lives in your browser's IndexedDB. There is no backend, no telemetry, no analytics, no account. The only external request EchoKit itself makes is loading two Google Fonts for the UI. <a href="./privacy.html">Full privacy policy →</a></div></div>
+
+  <div class="qa"><div class="qa-q">Why does it need <code>&lt;all_urls&gt;</code>?</div><div class="qa-a">To record and mock network traffic on whatever site you're debugging. Scoped via <code>content_scripts</code>; only activated on tabs where you explicitly press REC.</div></div>
+
+  <div class="qa"><div class="qa-q">Can I mock WebSockets / Server-Sent Events?</div><div class="qa-a">Not yet. v1 covers <code>fetch</code> and <code>XMLHttpRequest</code>. WebSocket capture is planned — the interaction schema is designed to extend cleanly.</div></div>
+
+  <div class="qa"><div class="qa-q">What's the difference between EchoKit and Mirage / MSW?</div><div class="qa-a">MSW and Mirage need a <em>build-time</em> integration — you write handlers in code. EchoKit requires zero code changes: install the extension, hit record, edit, done. Great for ad-hoc debugging and bug reproduction. MSW remains the right choice for version-controlled test fixtures.</div></div>
+
+  <div class="qa"><div class="qa-q">Chrome DevTools already has "Override content" — why EchoKit?</div><div class="qa-a">Chrome's override only replaces response bodies for network requests you've loaded. EchoKit captures the <em>real</em> response first, lets you edit it, simulate latency/errors, conflict-resolve between versions, share via export, and pick match modes (wildcards, GraphQL). It's a richer loop built for iterating.</div></div>
+
+  <div class="qa"><div class="qa-q">Will mocks survive browser restart?</div><div class="qa-a">Yes. Mocks are in IndexedDB and persist. Per-tab recording state lives in <code>chrome.storage.session</code> which clears on browser close — so "was this tab recording?" resets, but your recorded data is safe.</div></div>
+
+  <div class="qa"><div class="qa-q">My mocks don't fire even though MOCK is on.</div><div class="qa-a">Three common causes: (1) Your scope is Tab-strict and you're on a different tab than the one that recorded. Switch Scope to Domain. (2) The request has a different body than recorded — strict matching. Switch the API's match mode to ignore-body or path-wildcard. (3) You're on a different origin. Recordings in EchoKit are origin-scoped by default. Export+Import to move them across origins.</div></div>
+
+  <div class="qa"><div class="qa-q">Can I mock responses for just some requests while letting others hit the real server?</div><div class="qa-a">Yes — every recorded API has its own toggle. Master MOCK must be on; individual mocks opt in via the per-row switch. Requests that don't match any enabled mock fall through to the real network.</div></div>
+
+  <div class="qa"><div class="qa-q">Does CORS override work on recorded or on real responses?</div><div class="qa-a">Both. Mocked responses always include permissive CORS headers. For real responses, the CORS Override toggle installs a <code>declarativeNetRequest</code> rule that rewrites the headers at the network layer. Toggle it off when you're done debugging.</div></div>
+
+  <div class="qa"><div class="qa-q">Can teammates import my mocks?</div><div class="qa-a">Yes. Menu → Export JSON produces a single file with every interaction and override. Teammates hit Menu → Import JSON and pick Merge or Override strategy. Commit the JSON to your repo alongside bug repro issues.</div></div>
+
+  <div class="qa"><div class="qa-q">Does the popup stay open while I navigate?</div><div class="qa-a">Chrome closes popups on focus loss — that's a platform rule. EchoKit's auto-open-on-refresh setting will pop it back open on every navigation when recording is active. Prefer a persistent surface? Use the DevTools panel: it stays put.</div></div>
+
+  <div class="qa"><div class="qa-q">Is there a roadmap?</div><div class="qa-a">See <a href="./changelog.html">Changelog</a> and <a href="https://github.com/ravitejakamalapuram/echokit/issues">GitHub issues</a>. Short list: WebSockets, team sync via gist, onboarding tour improvements, Chrome Web Store launch.</div></div>
+
+  <p style="margin-top: 40px; text-align: center;"><a href="https://github.com/ravitejakamalapuram/echokit/issues/new" class="btn btn-primary">Didn't find your question? Open an issue →</a></p>
+</main>
+
+<footer class="footer"><div class="container">Open source · MIT · <a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></footer>
+</body></html>

@@ -1,7 +1,6 @@
 // EchoKit — shared matcher.
-// Produces a stable, synchronous hash of (method, url, body) for STRICT matching.
-// Also supports relaxed match modes: ignore-query, ignore-body, path-wildcard.
-// Used by the MAIN-world injected script and the extension background.
+// Stable sync hashes for (method, url, body) across multiple match modes:
+// strict | ignore-query | ignore-body | path-wildcard | graphql
 
 export function normalizeUrl(url, base) {
   try {
@@ -12,25 +11,17 @@ export function normalizeUrl(url, base) {
     u.search = params.length ? '?' + params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
     u.hash = '';
     return u.toString();
-  } catch {
-    return String(url);
-  }
+  } catch { return String(url); }
 }
 
 export function stripQuery(url) {
-  try {
-    const u = new URL(url, 'http://local.local');
-    u.search = '';
-    u.hash = '';
-    return u.toString();
-  } catch { return String(url); }
+  try { const u = new URL(url, 'http://local.local'); u.search = ''; u.hash = ''; return u.toString(); }
+  catch { return String(url); }
 }
 
 export function normalizeBody(body) {
   if (body == null || body === '') return '';
-  if (typeof body === 'string') {
-    try { return stableStringify(JSON.parse(body)); } catch { return body; }
-  }
+  if (typeof body === 'string') { try { return stableStringify(JSON.parse(body)); } catch { return body; } }
   if (typeof FormData !== 'undefined' && body instanceof FormData) {
     const arr = []; for (const [k, v] of body.entries()) arr.push([k, typeof v === 'string' ? v : '[file]']);
     arr.sort(); return JSON.stringify(arr);
@@ -53,33 +44,64 @@ function stableStringify(v) {
 
 function fnv1a(str) {
   let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
-  }
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; }
   return h.toString(16).padStart(8, '0');
 }
 
-// Compute ALL match keys for a request — one per supported match mode.
-// We pre-compute these at RECORD time; at replay time we compute the same keys
-// for the incoming request and look up any mock whose (mode, key) pair matches.
+// Parse a GraphQL request body into { operationName, query, variables } if it looks like GQL.
+export function parseGraphQL(body, url) {
+  if (!body) return null;
+  let parsed;
+  try { parsed = typeof body === 'string' ? JSON.parse(body) : body; } catch { return null; }
+  if (parsed && typeof parsed === 'object' && parsed.query) {
+    return {
+      operationName: parsed.operationName || extractOpName(parsed.query) || '',
+      query: String(parsed.query).replace(/\s+/g, ' ').trim(),
+      variables: parsed.variables || {}
+    };
+  }
+  // Also handle GET ?query=... style
+  try {
+    const u = new URL(url, 'http://local.local');
+    const q = u.searchParams.get('query');
+    if (q) return {
+      operationName: u.searchParams.get('operationName') || extractOpName(q) || '',
+      query: q.replace(/\s+/g, ' ').trim(),
+      variables: (() => { try { return JSON.parse(u.searchParams.get('variables') || '{}'); } catch { return {}; } })()
+    };
+  } catch {}
+  return null;
+}
+function extractOpName(query) {
+  const m = /\b(query|mutation|subscription)\s+(\w+)/.exec(String(query || ''));
+  return m ? m[2] : '';
+}
+
 export function computeMatchKeys(method, url, body) {
   const M = String(method || 'GET').toUpperCase();
   const full = `${M}|${normalizeUrl(url)}|${normalizeBody(body)}`;
   const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
   const noBody = `${M}|${normalizeUrl(url)}|`;
   const pathOnly = `${M}|${stripQuery(url)}|`;
-  return {
+  const out = {
     strict: fnv1a(full) + '-' + full.length.toString(16),
     'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),
     'ignore-body': fnv1a(noBody) + '-' + noBody.length.toString(16),
     'path-wildcard': fnv1a(pathOnly) + '-' + pathOnly.length.toString(16)
   };
+  const gql = parseGraphQL(body, url);
+  if (gql) {
+    const gqlKey = `${M}|${stripQuery(url)}|gql|${gql.operationName}|${gql.query}|${stableStringify(gql.variables)}`;
+    out.graphql = fnv1a(gqlKey) + '-' + gqlKey.length.toString(16);
+    // Also a looser GQL key that ignores variables.
+    const gqlNoVars = `${M}|${stripQuery(url)}|gql|${gql.operationName}|${gql.query}|`;
+    out['graphql-op'] = fnv1a(gqlNoVars) + '-' + gqlNoVars.length.toString(16);
+  }
+  return out;
 }
 
-// Backwards-compatible — used where we only need the strict hash (storage primary key).
 export function computeHash(method, url, body) {
   return computeMatchKeys(method, url, body).strict;
 }
 
-export default { computeHash, computeMatchKeys, normalizeUrl, normalizeBody, stripQuery };
+export default { computeHash, computeMatchKeys, normalizeUrl, normalizeBody, stripQuery, parseGraphQL };

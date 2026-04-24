@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Docs · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<body>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+
+<div class="container doc-layout">
+  <aside class="doc-toc">
+    <h3>On this page</h3>
+    <ul>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#flow">Quick flow</a></li>
+      <li><a href="#matching">Match modes</a></li>
+      <li><a href="#scope">Scope system</a></li>
+      <li><a href="#errors">Error simulation</a></li>
+      <li><a href="#blocklist">URL blocklist</a></li>
+      <li><a href="#cors">CORS override</a></li>
+      <li><a href="#export">Export / Import</a></li>
+      <li><a href="#localstorage">localStorage copy/paste</a></li>
+      <li><a href="#shortcuts">Shortcuts</a></li>
+      <li><a href="#arch">Architecture</a></li>
+    </ul>
+  </aside>
+
+  <article class="doc-body">
+    <h1>EchoKit Documentation</h1>
+    <p>EchoKit is a Chrome Manifest V3 extension that records <code>fetch</code> and <code>XMLHttpRequest</code> traffic from any tab, then replays user-edited responses for those same requests. It runs entirely in your browser.</p>
+
+    <h2 id="install">Install</h2>
+    <p>Until published to the Chrome Web Store:</p>
+    <pre><code>git clone https://github.com/ravitejakamalapuram/echokit.git
+# chrome://extensions → Developer mode → Load unpacked → pick echokit/extension/</code></pre>
+
+    <h2 id="flow">The 30-second flow</h2>
+    <ol>
+      <li>Click the EchoKit toolbar icon on any page.</li>
+      <li>Press <span class="tag">● REC</span>. Use your app normally.</li>
+      <li>Hit <span class="tag">STOP</span>. Flip the master <span class="tag">MOCK</span> switch.</li>
+      <li>Click any request. Edit body / status / headers / latency / error.</li>
+      <li>Reload the page. You're hitting your mocks now. Amber banner = unmissable reminder.</li>
+    </ol>
+
+    <h2 id="matching">Match modes</h2>
+    <p>For each recorded API, pick a match mode in the detail view:</p>
+    <ul>
+      <li><strong>strict</strong> — method + normalized URL + normalized body (default). Sorted query params; JSON bodies canonicalized.</li>
+      <li><strong>ignore-query</strong> — method + path + body. Useful when your app sends cache-buster params.</li>
+      <li><strong>ignore-body</strong> — method + URL. Matches any body for this URL.</li>
+      <li><strong>path-wildcard</strong> — method + path. Matches any query, any body. Great for broad stub endpoints.</li>
+      <li><strong>graphql</strong> — method + endpoint + operationName + query fingerprint + variables. GraphQL-aware matching.</li>
+      <li><strong>graphql-op</strong> — same as above but ignoring variables.</li>
+    </ul>
+
+    <h2 id="scope">Scope system</h2>
+    <p>Settings → Scope controls what recordings are visible on the active tab and which mocks can fire:</p>
+    <ul>
+      <li><strong>Domain (default)</strong> — recordings made on <code>api.foo.com</code> are visible on any tab open on <code>api.foo.com</code>.</li>
+      <li><strong>Tab (strict)</strong> — each tab is a sandbox. Cross-tab sharing only via Export/Import.</li>
+      <li><strong>Global</strong> — all recordings visible everywhere. Best for demos; noisy in daily use.</li>
+    </ul>
+    <p>Click the <span class="tag">scope:</span> chip in the footer to cycle modes in one click.</p>
+
+    <h2 id="errors">Error simulation</h2>
+    <p>Per-API dropdown: <code>none</code>, <code>4xx</code>, <code>5xx</code>, <code>network failure</code>, <code>timeout</code>. Combined with the latency slider, you can reproduce any flaky backend scenario.</p>
+
+    <h2 id="blocklist">URL blocklist</h2>
+    <p>Settings → URL Blocklist. Add any Chrome <code>urlFilter</code> pattern (e.g. <code>||analytics.example.com^</code>, <code>*tracking*</code>, <code>/ads/</code>). Blocked requests never hit the network, never get recorded. Implemented via <code>declarativeNetRequest</code> dynamic rules.</p>
+
+    <h2 id="cors">CORS override</h2>
+    <p>Settings → CORS Override. Injects <code>Access-Control-Allow-Origin: *</code>, <code>*-Methods</code>, <code>*-Headers</code>, <code>*-Credentials: true</code> into every real response. Use only for local debugging.</p>
+
+    <h2 id="export">Export / Import mocks</h2>
+    <p>Menu → Export JSON: downloads an <code>echokit-export-*.json</code> file containing every recorded interaction + overrides + match keys. Menu → Import JSON: paste/upload. Choose <strong>Merge</strong> (replace by id) or <strong>Override</strong> (wipe existing first). Perfect for committing mock sets into your repo.</p>
+
+    <h2 id="localstorage">localStorage copy/paste</h2>
+    <p>Two menu items:</p>
+    <ul>
+      <li><strong>Copy localStorage</strong> — reads the active tab's <code>localStorage</code> and writes a tagged JSON payload to your clipboard.</li>
+      <li><strong>Paste localStorage</strong> — auto-detects an EchoKit payload on the clipboard (shown inline with key count + origin). Click to open a confirmation dialog listing up to 10 keys. Tick <em>Clear existing</em> for a clean replace.</li>
+    </ul>
+    <p>Origins differ? A warning appears before you commit. Reload the target tab after pasting.</p>
+
+    <h2 id="shortcuts">Keyboard shortcuts</h2>
+    <ul>
+      <li><span class="kbd">Alt+Shift+R</span> — toggle recording on active tab</li>
+      <li><span class="kbd">Alt+Shift+M</span> — toggle MOCK mode on active tab</li>
+      <li><span class="kbd">Alt+Shift+E</span> — open the popup</li>
+    </ul>
+    <p>Remap at <code>chrome://extensions/shortcuts</code>.</p>
+
+    <h2 id="arch">Architecture</h2>
+    <pre><code>injected.js (MAIN world)  &#8644;postMessage&#8644;  content.js (isolated)  &#8644;runtime&#8644;  background.js (SW)
+                                                                                    &#9474;
+                                                            IndexedDB + DNR rules + scripting.executeScript
+popup/popup.js  &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+                                                     shared/app.js (single UI module)
+devtools/panel.js  &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</code></pre>
+    <p>See <a href="https://github.com/ravitejakamalapuram/echokit/blob/main/extension/README.md">extension/README.md</a> for the full file map and design decisions.</p>
+  </article>
+</div>
+
+<footer class="footer"><div class="container">Open source · MIT · <a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></footer>
+</body></html>

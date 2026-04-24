@@ -215,6 +215,57 @@ def main():
             rules2 = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
             step('cors_dnr_rule_removed', not any(r.get('id')==1001 for r in (rules2 or [])), rules2)
 
+            # === NEW in v1.2: GraphQL match mode ===
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
+            time.sleep(0.3)
+            # Seed a GraphQL request
+            page.evaluate("""fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},
+                body: JSON.stringify({query:'query GetUser($id: ID!) { user(id: $id) { name } }', variables: {id: 'abc'}, operationName: 'GetUser'})})""")
+            time.sleep(0.8)
+            sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
+            all_now = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})['interactions']
+            gql_rec = next((i for i in all_now if '/api/login' in i['url'] and i.get('matchKeys',{}).get('graphql')), None)
+            step('graphql_keys_computed_on_record', gql_rec is not None, f'found={gql_rec is not None}')
+            if gql_rec:
+                sw_send(sw, {'type':'echokit:interaction:update','id':gql_rec['id'],
+                             'patch':{'mockEnabled':True, 'matchMode':'graphql-op',
+                                      'overrideBody':'{"source":"MOCK_GQL","data":{"user":{"name":"Faker"}}}'}})
+                sw_send(sw, {'type':'echokit:mocking:toggle', 'tabId':tab_id, 'enabled':True})
+                time.sleep(0.5)
+                # Same query, different variables — should still match graphql-op mode
+                m_gql = page.evaluate("""(async () => {
+                  const r = await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},
+                    body: JSON.stringify({query:'query GetUser($id: ID!) { user(id: $id) { name } }', variables: {id: 'DIFFERENT_VAR'}, operationName: 'GetUser'})});
+                  return {status:r.status, body: await r.json()};
+                })()""")
+                step('graphql_op_matches_different_vars', m_gql['body'].get('source') == 'MOCK_GQL', m_gql)
+                sw_send(sw, {'type':'echokit:mocking:toggle', 'tabId':tab_id, 'enabled':False})
+
+            # === NEW: URL blocklist via DNR ===
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'blocklist':[{'pattern':'||127.0.0.1^*blocked*','enabled':True}]}})
+            time.sleep(0.3)
+            rules_bl = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
+            step('blocklist_dnr_rule_installed', any(2000 <= r.get('id', 0) < 2100 for r in (rules_bl or [])), rules_bl)
+            # Fetch should be blocked (throws in page)
+            blocked = page.evaluate("""(async () => {
+              try { await fetch('/api/blocked/ping'); return {ok:true}; }
+              catch (e) { return {ok:false, err: String(e)}; }
+            })()""")
+            step('blocklist_blocks_matching_request', blocked.get('ok') is False, blocked)
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'blocklist':[]}})
+
+            # === NEW: localStorage read/write via scripting bridge ===
+            # Seed localStorage on the test page
+            page.evaluate("localStorage.setItem('ek_a','hello'); localStorage.setItem('ek_b','world');")
+            ls_read = sw_send(sw, {'type':'echokit:localStorage:read', 'tabId':tab_id})
+            step('localStorage_read_ok', ls_read.get('ok') and ls_read.get('count', 0) >= 2 and ls_read['keys'].get('ek_a') == 'hello', ls_read)
+            # Write new keys (clearFirst=True)
+            ls_write = sw_send(sw, {'type':'echokit:localStorage:write', 'tabId':tab_id,
+                                    'keys':{'ek_x':'one','ek_y':'two','ek_z':'three'}, 'clearFirst':True})
+            step('localStorage_write_ok', ls_write.get('ok') and ls_write.get('written') == 3, ls_write)
+            post = page.evaluate("({a:localStorage.getItem('ek_a'), x:localStorage.getItem('ek_x'), n:localStorage.length})")
+            step('localStorage_round_trip_correct', post.get('a') is None and post.get('x') == 'one' and post.get('n') == 3, post)
+
             # === Popup UI tests ===
             # In Playwright, the "popup" is a normal tab, so chrome.tabs.query({active,currentWindow})
             # returns the popup's own tab. Force scope=global so the UI is visible regardless.
