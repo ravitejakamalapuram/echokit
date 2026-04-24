@@ -1,0 +1,19 @@
+name: Test
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install Playwright + xvfb
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y xvfb xauth
+      - name: Run smoke test
+        run: xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/smoke_echokit.py

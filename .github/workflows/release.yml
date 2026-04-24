@@ -1,0 +1,50 @@
+name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync manifest version to tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "const fs=require('fs');const p='extension/manifest.json';const m=JSON.parse(fs.readFileSync(p));m.version='${VERSION}';fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n');"
+          cat extension/manifest.json | grep version
+
+      - name: Build zip
+        run: |
+          cd extension && zip -rq "../echokit-${GITHUB_REF_NAME}.zip" . -x '*.DS_Store'
+          ls -la "../echokit-${GITHUB_REF_NAME}.zip"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: echokit-${{ github.ref_name }}.zip
+          generate_release_notes: true
+
+      # Optional: auto-publish to Chrome Web Store.
+      # Add these secrets first (Repo Settings → Secrets → Actions):
+      #   CWS_EXTENSION_ID, CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN
+      # See https://developer.chrome.com/docs/webstore/using-api
+      - name: Publish to Chrome Web Store (optional)
+        if: ${{ env.CWS_EXTENSION_ID != '' }}
+        env:
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          set -e
+          TOKEN=$(curl -s "https://oauth2.googleapis.com/token" \
+            -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+          curl -s -H "Authorization: Bearer ${TOKEN}" -H "x-goog-api-version: 2" \
+            -X PUT -T "echokit-${GITHUB_REF_NAME}.zip" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}"
+          curl -s -H "Authorization: Bearer ${TOKEN}" -H "x-goog-api-version: 2" -H "Content-Length: 0" \
+            -X POST "https://www.googleapis.com/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}/publish"
