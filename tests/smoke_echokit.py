@@ -266,6 +266,54 @@ def main():
             post = page.evaluate("({a:localStorage.getItem('ek_a'), x:localStorage.getItem('ek_x'), n:localStorage.length})")
             step('localStorage_round_trip_correct', post.get('a') is None and post.get('x') == 'one' and post.get('n') == 3, post)
 
+            # === NEW in v1.3: WebSocket capture ===
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})
+            time.sleep(0.5)
+            # Start an embedded WS server on a different port
+            import asyncio, websockets
+            async def ws_handler(ws):
+                async for msg in ws:
+                    await ws.send('pong:' + msg)
+            ws_server_holder = {}
+            def run_ws():
+                loop = asyncio.new_event_loop(); asyncio.set_event_loop(loop)
+                async def go():
+                    srv = await websockets.serve(ws_handler, '127.0.0.1', 18775)
+                    ws_server_holder['srv'] = srv
+                    await asyncio.Future()
+                loop.run_until_complete(go())
+            threading.Thread(target=run_ws, daemon=True).start()
+            time.sleep(0.6)
+            try:
+                ws_result = page.evaluate("""(async () => {
+                    return await new Promise((resolve) => {
+                        const ws = new WebSocket('ws://127.0.0.1:18775');
+                        ws.onopen = () => ws.send('hello');
+                        ws.onmessage = (e) => { ws.close(); resolve({got: e.data}); };
+                        ws.onerror = (e) => resolve({error:'ws error'});
+                        setTimeout(() => resolve({timeout:true}), 3000);
+                    });
+                })()""")
+                step('websocket_round_trip', 'pong:hello' in str(ws_result), ws_result)
+                time.sleep(0.6)
+                sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
+                ws_state = sw_send(sw, {'type':'echokit:getState', 'tabId':tab_id})
+                has_ws = any(i.get('method') == 'WS' for i in ws_state['interactions'])
+                step('websocket_captured', has_ws, f"interactions={[(i.get('method'),i.get('url')) for i in ws_state['interactions']]}")
+            except Exception as e:
+                step('websocket_round_trip', False, str(e))
+
+            # === NEW in v1.3: Gist import via background (fetch from public raw URL) ===
+            # Create a fake "gist" by using the test HTTP server to serve valid payload.
+            # We piggyback on the existing HTTP server by requesting a path it doesn't know — instead,
+            # just verify the bg message handler with an invalid URL returns a sane error.
+            gist_bad = sw_send(sw, {'type':'echokit:gist:import', 'url': ''})
+            step('gist_import_validates_empty_url', gist_bad.get('ok') is False and 'missing' in (gist_bad.get('error','')), gist_bad)
+            # And upload validates token
+            gist_up_bad = sw_send(sw, {'type':'echokit:gist:upload', 'token': ''})
+            step('gist_upload_validates_empty_token', gist_up_bad.get('ok') is False, gist_up_bad)
+
             # === Popup UI tests ===
             # In Playwright, the "popup" is a normal tab, so chrome.tabs.query({active,currentWindow})
             # returns the popup's own tab. Force scope=global so the UI is visible regardless.

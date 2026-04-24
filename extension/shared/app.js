@@ -206,6 +206,9 @@ function renderMenu() {
     <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage <span class="ek-subtle">active tab</span></button>
     <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${pasteHint}</button>
     <div class="ek-menu-sep"></div>
+    <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist <span class="ek-subtle">share w/ team</span></button>
+    <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL</button>
+    <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · blocklist</span></button>
     <button class="ek-menu-item" data-menu="shortcuts" data-testid="menu-shortcuts">Keyboard shortcuts</button>
   `;
@@ -223,6 +226,8 @@ function renderMenu() {
     else if (which === 'import') showImportDialog();
     else if (which === 'ls-copy') onCopyLocalStorage();
     else if (which === 'ls-paste') onPasteLocalStorage();
+    else if (which === 'gist-upload') showGistUploadDialog();
+    else if (which === 'gist-import') showGistImportDialog();
     else if (which === 'settings') showSettingsDialog();
     else if (which === 'shortcuts') showShortcutsDialog();
     document.querySelectorAll('.ek-menu-panel').forEach(n => n.remove());
@@ -310,6 +315,81 @@ function toast(text) {
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
+}
+
+// ---------- Gist sync ----------
+function showGistUploadDialog() {
+  const lastToken = localStorage.getItem('ek_gist_token') || '';
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  overlay.innerHTML = `
+    <div class="ek-modal" data-testid="gist-upload-modal">
+      <div class="ek-modal-title">Share mocks via GitHub Gist</div>
+      <div class="ek-subtle">Uploads your full mock set as a JSON file to a new gist. Teammates can import from the URL.</div>
+      <div class="ek-field">
+        <div class="ek-label">GitHub Personal Access Token <span class="ek-subtle">(gist scope)</span></div>
+        <input class="ek-input" type="password" value="${lastToken}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off"/>
+        <div class="ek-subtle" style="margin-top:4px">Create at <span class="ek-tag">github.com/settings/tokens</span> with just <span class="ek-tag">gist</span> scope. Stored locally in this extension only.</div>
+      </div>
+      <div class="ek-field">
+        <div class="ek-label">Description</div>
+        <input class="ek-input" type="text" value="EchoKit mock set — ${state.tab.host || ''}" data-a="desc" data-testid="gist-desc"/>
+      </div>
+      <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-primary" data-a="upload" data-testid="gist-upload-confirm">Upload</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('[data-a="upload"]').addEventListener('click', async (e) => {
+    const token = overlay.querySelector('[data-a="token"]').value.trim();
+    const desc = overlay.querySelector('[data-a="desc"]').value;
+    const pub = overlay.querySelector('[data-a="public"]').checked;
+    if (!token) return alert('Paste a GitHub token with gist scope first.');
+    localStorage.setItem('ek_gist_token', token);
+    e.target.disabled = true; e.target.textContent = 'Uploading…';
+    const r = await BG({ type: 'echokit:gist:upload', token, description: desc, public: pub });
+    overlay.remove();
+    if (r?.ok) {
+      try { await navigator.clipboard.writeText(r.url); } catch {}
+      toast(`Uploaded — gist URL copied: ${r.url}`);
+    } else alert('Gist upload failed: ' + (r?.error || 'unknown'));
+  });
+}
+
+function showGistImportDialog() {
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  overlay.innerHTML = `
+    <div class="ek-modal" data-testid="gist-import-modal">
+      <div class="ek-modal-title">Import mocks from Gist</div>
+      <div class="ek-subtle">Paste a public gist URL or a raw file URL. No token needed for public gists.</div>
+      <input class="ek-input" type="text" placeholder="https://gist.github.com/user/abc123..." data-a="url" data-testid="gist-url"/>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked/> <span>Merge (replace by id)</span></label>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override"/> <span>Override (wipe existing)</span></label>
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-primary" data-a="import" data-testid="gist-import-confirm">Import</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('[data-a="import"]').addEventListener('click', async (e) => {
+    const url = overlay.querySelector('[data-a="url"]').value.trim();
+    const strategy = overlay.querySelector('input[name="ek-gst"]:checked').value;
+    if (!url) return alert('Paste a gist URL first.');
+    e.target.disabled = true; e.target.textContent = 'Importing…';
+    const r = await BG({ type: 'echokit:gist:import', url, strategy });
+    overlay.remove();
+    if (r?.ok) { await refresh(); render(); toast(`Imported ${r.imported} mocks from gist`); }
+    else alert('Gist import failed: ' + (r?.error || 'unknown'));
+  });
 }
 
 function renderToolbar() {

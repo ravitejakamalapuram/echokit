@@ -271,6 +271,7 @@ button { cursor: pointer; }
 .ek-method.PATCH { color: var(--orange); background: var(--orange-dim); border-color: rgba(251,146,60,0.25); }
 .ek-method.DELETE { color: var(--red); background: var(--red-dim); border-color: rgba(239,68,68,0.25); }
 .ek-method.OPTIONS, .ek-method.HEAD { color: var(--text-muted); background: var(--surface); border-color: var(--border); }
+.ek-method.WS, .ek-method.SSE { color: #c084fc; background: rgba(192,132,252,0.1); border-color: rgba(192,132,252,0.3); }
 
 .ek-url {
   flex: 1; min-width: 0;

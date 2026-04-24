@@ -317,6 +317,88 @@
     return o;
   }
 
+  // ---------- WebSocket hook ----------
+  const OrigWS = window.WebSocket;
+  if (OrigWS) {
+    function EchoKitWS(url, protocols) {
+      const ws = new OrigWS(url, protocols);
+      if (!state.recording && !state.mocking) return ws;
+      const ekUrl = String(url);
+      const frames = [];
+      const openedAt = Date.now();
+      const origSend = ws.send.bind(ws);
+      ws.send = function (data) {
+        frames.push({ dir: 'out', t: Date.now() - openedAt, data: tryStringify(data) });
+        if (state.recording) emit('record', {
+          matchKeys: computeMatchKeys('WS', ekUrl, ''),
+          method: 'WS', url: ekUrl,
+          requestHeaders: {}, requestBody: null,
+          responseStatus: 101,
+          responseHeaders: {},
+          responseBody: JSON.stringify({ __echokitWS: true, openedAt, frames: [...frames] }),
+          type: 'websocket'
+        });
+        return origSend(data);
+      };
+      ws.addEventListener('message', (ev) => {
+        frames.push({ dir: 'in', t: Date.now() - openedAt, data: tryStringify(ev.data) });
+        if (state.recording) emit('record', {
+          matchKeys: computeMatchKeys('WS', ekUrl, ''),
+          method: 'WS', url: ekUrl,
+          requestHeaders: {}, requestBody: null,
+          responseStatus: 101,
+          responseHeaders: {},
+          responseBody: JSON.stringify({ __echokitWS: true, openedAt, frames: [...frames] }),
+          type: 'websocket'
+        });
+      });
+      return ws;
+    }
+    EchoKitWS.prototype = OrigWS.prototype;
+    EchoKitWS.CONNECTING = OrigWS.CONNECTING;
+    EchoKitWS.OPEN = OrigWS.OPEN;
+    EchoKitWS.CLOSING = OrigWS.CLOSING;
+    EchoKitWS.CLOSED = OrigWS.CLOSED;
+    try { window.WebSocket = EchoKitWS; } catch {}
+  }
+
+  // ---------- EventSource (SSE) hook ----------
+  const OrigES = window.EventSource;
+  if (OrigES) {
+    function EchoKitES(url, init) {
+      const es = new OrigES(url, init);
+      if (!state.recording) return es;
+      const frames = [];
+      const openedAt = Date.now();
+      const ekUrl = String(url);
+      es.addEventListener('message', (ev) => {
+        frames.push({ t: Date.now() - openedAt, data: tryStringify(ev.data) });
+        emit('record', {
+          matchKeys: computeMatchKeys('SSE', ekUrl, ''),
+          method: 'SSE', url: ekUrl,
+          requestHeaders: {}, requestBody: null,
+          responseStatus: 200,
+          responseHeaders: { 'content-type': 'text/event-stream' },
+          responseBody: JSON.stringify({ __echokitSSE: true, openedAt, frames: [...frames] }),
+          type: 'sse'
+        });
+      });
+      return es;
+    }
+    EchoKitES.prototype = OrigES.prototype;
+    EchoKitES.CONNECTING = OrigES.CONNECTING;
+    EchoKitES.OPEN = OrigES.OPEN;
+    EchoKitES.CLOSED = OrigES.CLOSED;
+    try { window.EventSource = EchoKitES; } catch {}
+  }
+
+  function tryStringify(v) {
+    if (typeof v === 'string') return v;
+    if (v instanceof Blob) return `[blob:${v.size}]`;
+    if (v instanceof ArrayBuffer) return `[ab:${v.byteLength}]`;
+    try { return JSON.stringify(v); } catch { return String(v); }
+  }
+
   function statusText(code) {
     const map = { 200: 'OK', 201: 'Created', 204: 'No Content', 301: 'Moved Permanently', 302: 'Found', 304: 'Not Modified', 400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found', 408: 'Request Timeout', 418: "I'm a teapot", 422: 'Unprocessable Entity', 429: 'Too Many Requests', 500: 'Internal Server Error', 502: 'Bad Gateway', 503: 'Service Unavailable', 504: 'Gateway Timeout' };
     return map[code] || '';

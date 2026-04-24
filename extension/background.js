@@ -297,6 +297,59 @@ async function handleMessage(msg, sender) {
         return { ok: true, ...(r?.[0]?.result || {}) };
       } catch (e) { return { ok: false, error: String(e) }; }
     }
+
+    // --- Gist sync ---
+    case 'echokit:gist:upload': {
+      const { token, description, public: isPublic } = msg;
+      if (!token) return { ok: false, error: 'missing github token' };
+      const all = await getAllInteractions();
+      const payload = { version: 2, exportedAt: new Date().toISOString(), interactions: all };
+      try {
+        const res = await fetch('https://api.github.com/gists', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: description || 'EchoKit mock set',
+            public: !!isPublic,
+            files: { 'echokit-mocks.json': { content: JSON.stringify(payload, null, 2) } }
+          })
+        });
+        const j = await res.json();
+        if (!res.ok) return { ok: false, error: j.message || `HTTP ${res.status}` };
+        return { ok: true, url: j.html_url, rawUrl: j.files?.['echokit-mocks.json']?.raw_url, id: j.id };
+      } catch (e) { return { ok: false, error: String(e) }; }
+    }
+    case 'echokit:gist:import': {
+      const { url, strategy } = msg;
+      if (!url) return { ok: false, error: 'missing gist url' };
+      try {
+        let rawUrl = url.trim();
+        // Accept gist HTML URLs + extract id.
+        const m = rawUrl.match(/gist\.github\.com\/(?:[^/]+\/)?([a-f0-9]+)/i);
+        if (m) {
+          const r = await fetch(`https://api.github.com/gists/${m[1]}`);
+          if (!r.ok) return { ok: false, error: `gist fetch failed: ${r.status}` };
+          const j = await r.json();
+          const file = j.files['echokit-mocks.json'] || Object.values(j.files).find(f => f.filename.endsWith('.json'));
+          if (!file) return { ok: false, error: 'no JSON file in gist' };
+          rawUrl = file.raw_url;
+        }
+        const r = await fetch(rawUrl);
+        if (!r.ok) return { ok: false, error: `fetch failed: ${r.status}` };
+        const data = await r.json();
+        if (!Array.isArray(data?.interactions)) return { ok: false, error: 'invalid payload' };
+        if (strategy === 'override') await clearAllInteractions();
+        for (const it of data.interactions) {
+          if (!it.id || !it.hash) continue;
+          if (!it.matchKeys) it.matchKeys = computeMatchKeys(it.method, it.url, it.requestBody);
+          if (!it.matchMode) it.matchMode = 'strict';
+          await putInteraction(it);
+        }
+        await pushAllTabs();
+        return { ok: true, imported: data.interactions.length };
+      } catch (e) { return { ok: false, error: String(e) }; }
+    }
+
     case 'echokit:contentReady': { if (fromTabId != null) await pushTabMeta(fromTabId); return { ok: true }; }
     default: return { ok: false, error: `unknown message: ${msg?.type}` };
   }
