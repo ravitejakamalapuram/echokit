@@ -49,6 +49,13 @@ function visibleInContext(interaction, ctx) {
   return hostOf(interaction.tabUrl || interaction.url) === ctx.host;
 }
 
+// ---------- License key validation (Phase 1: format-only; Phase 2: Cloudflare Worker HMAC) ----------
+function validateLicenseKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  const k = key.trim().toUpperCase();
+  return k.startsWith('EK-PRO-') || k.startsWith('EK-YEAR-') || k.startsWith('EK-LTD-');
+}
+
 function buildMockIndexFor(interactions, ctx) {
   const index = { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {}, graphql: {}, 'graphql-op': {} };
   // blockedKeys: same per-mode shape but only contains keys that are unconditionally blocked.
@@ -64,6 +71,8 @@ function buildMockIndexFor(interactions, ctx) {
       b[key] = true;
     }
     if (!it.mockEnabled) continue;
+    // Skip if conditional mock has hit its limit
+    if (it.mockMaxCount != null && (it.mockCallCount || 0) >= it.mockMaxCount) continue;
     const bucket = index[mode] || (index[mode] = {});
     if (!bucket[key]) bucket[key] = [];
     bucket[key].push({
@@ -74,7 +83,11 @@ function buildMockIndexFor(interactions, ctx) {
       latency: it.mockLatency || 0,
       errorMode: it.mockErrorMode || 'none',
       timestamp: it.timestamp,
-      activeVersionId: it.activeVersionId || null
+      activeVersionId: it.activeVersionId || null,
+      method: it.method,
+      wsLoop: it.wsLoop || false,
+      mockMaxCount: it.mockMaxCount || null,
+      mockCallCount: it.mockCallCount || 0
     });
   }
   for (const m of Object.keys(index)) for (const k of Object.keys(index[m])) index[m][k].sort((a, b) => b.timestamp - a.timestamp);
@@ -162,11 +175,13 @@ async function handleMessage(msg, sender) {
       try { if (tabId != null) { const t = await chrome.tabs.get(tabId); host = hostOf(t?.url || ''); } } catch {}
       const ctx = { tabId, host, scope: settings.scope };
       const { index, blockedKeys } = buildMockIndexFor(all, ctx);
+      const licenseKey = (await chrome.storage.sync.get('echokit_license'))['echokit_license'] || '';
       return {
         tab: tabId != null ? { tabId, host, ...getTab(tabId) } : null,
         settings,
         interactions: all.filter(i => visibleInContext(i, ctx)),
         allCount: all.length,
+        isPro: validateLicenseKey(licenseKey),
         mockIndex: index,
         blockedKeys
       };
@@ -205,9 +220,13 @@ async function handleMessage(msg, sender) {
       const tabId = fromTabId;
       const st = getTab(tabId);
       if (!st.recording) return { ok: false, reason: 'not-recording' };
+      // Free tier: max 50 unique interactions. Check before recording.
+      const licenseKey = (await chrome.storage.sync.get('echokit_license'))['echokit_license'] || '';
+      const isPro = validateLicenseKey(licenseKey);
+      const all = await getAllInteractions();
+      if (!isPro && all.length >= 50) return { ok: false, reason: 'free_limit' };
       const matchKeys = data.matchKeys || computeMatchKeys(data.method, data.url, data.requestBody);
       const hash = matchKeys.strict;
-      const all = await getAllInteractions();
       const existing = all.find(i => i.hash === hash && i.tabId === tabId) || null;
       const interaction = {
         id: existing ? existing.id : `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -423,6 +442,101 @@ async function handleMessage(msg, sender) {
     }
 
     case 'echokit:contentReady': { if (fromTabId != null) await pushTabMeta(fromTabId); return { ok: true }; }
+
+    // --- License ---
+    case 'echokit:license:check': {
+      const stored = await chrome.storage.sync.get('echokit_license');
+      const key = stored['echokit_license'] || '';
+      return { ok: true, pro: validateLicenseKey(key), key };
+    }
+    case 'echokit:license:set': {
+      const { key } = msg;
+      if (!key) { await chrome.storage.sync.remove('echokit_license'); return { ok: true, pro: false }; }
+      if (!validateLicenseKey(key.trim())) return { ok: false, error: 'Invalid license key. Expected EK-PRO-…, EK-YEAR-…, or EK-LTD-…' };
+      await chrome.storage.sync.set({ echokit_license: key.trim() });
+      return { ok: true, pro: true };
+    }
+
+    // --- Conditional mock hit tracking ---
+    case 'echokit:mock:hit': {
+      const { id } = msg.data || {};
+      if (!id) return { ok: true };
+      const existing = await getInteraction(id);
+      if (!existing || existing.mockMaxCount == null) return { ok: true };
+      const newCount = (existing.mockCallCount || 0) + 1;
+      await putInteraction({ ...existing, mockCallCount: newCount });
+      if (newCount >= existing.mockMaxCount) await pushAllTabs();
+      return { ok: true };
+    }
+
+    // --- HAR import ---
+    case 'echokit:import:har': {
+      const { data, strategy } = msg;
+      if (!data?.log?.entries) return { ok: false, error: 'Invalid HAR — missing log.entries' };
+      if (strategy === 'override') await clearAllInteractions();
+      let imported = 0;
+      for (const entry of data.log.entries) {
+        try {
+          const req = entry.request, res = entry.response;
+          const method = (req.method || 'GET').toUpperCase();
+          const url = req.url || '';
+          const reqBody = req.postData?.text || null;
+          const reqHeaders = Object.fromEntries((req.headers || []).map(h => [h.name, h.value]));
+          const resStatus = res.status || 200;
+          const resHeaders = Object.fromEntries((res.headers || []).map(h => [h.name, h.value]));
+          const resBody = res.content?.text || '';
+          const mk = computeMatchKeys(method, url, reqBody);
+          await putInteraction({
+            id: `int_har_${Date.now()}_${imported}_${Math.random().toString(36).slice(2, 6)}`,
+            hash: mk.strict, matchKeys: mk, matchMode: 'strict',
+            url, method, requestHeaders: reqHeaders, requestBody: reqBody,
+            responseStatus: resStatus, responseHeaders: resHeaders, responseBody: resBody,
+            timestamp: new Date(entry.startedDateTime || Date.now()).getTime(),
+            durationMs: entry.time || 0, tabId: null, tabUrl: '', host: '',
+            mockEnabled: true, mockLatency: 0, mockErrorMode: 'none',
+            overrideStatus: null, overrideBody: null, overrideHeaders: null,
+            activeVersionId: null, notes: 'HAR import', gqlOperation: '',
+            mockMaxCount: null, mockCallCount: 0, wsLoop: false, blocked: false
+          });
+          imported++;
+        } catch {}
+      }
+      await pushAllTabs();
+      return { ok: true, imported };
+    }
+
+    // --- Postman collection export ---
+    case 'echokit:export:postman': {
+      const all = await getAllInteractions();
+      const items = all.filter(i => i.method !== 'WS' && i.method !== 'SSE').map(i => {
+        let urlObj; try { urlObj = new URL(i.url); } catch { urlObj = null; }
+        return {
+          name: `${i.method} ${urlObj?.pathname || i.url}`,
+          request: {
+            method: i.method,
+            url: {
+              raw: i.url,
+              protocol: urlObj?.protocol?.replace(':', '') || 'https',
+              host: urlObj ? urlObj.hostname.split('.') : [i.url],
+              path: urlObj ? urlObj.pathname.split('/').filter(Boolean) : [],
+              query: urlObj ? [...urlObj.searchParams.entries()].map(([k, v]) => ({ key: k, value: v })) : []
+            },
+            header: Object.entries(i.requestHeaders || {}).map(([k, v]) => ({ key: k, value: String(v) })),
+            body: i.requestBody ? { mode: 'raw', raw: typeof i.requestBody === 'string' ? i.requestBody : JSON.stringify(i.requestBody), options: { raw: { language: 'json' } } } : undefined
+          },
+          response: [{
+            name: 'Recorded Response',
+            originalRequest: { method: i.method, url: { raw: i.url } },
+            status: String(i.overrideStatus ?? i.responseStatus ?? 200),
+            code: i.overrideStatus ?? i.responseStatus ?? 200,
+            header: Object.entries(i.overrideHeaders || i.responseHeaders || {}).map(([k, v]) => ({ key: k, value: String(v) })),
+            body: i.overrideBody ?? i.responseBody ?? ''
+          }]
+        };
+      });
+      return { ok: true, data: { info: { name: `EchoKit — ${new Date().toLocaleDateString()}`, description: 'Exported from EchoKit v1.5', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' }, item: items } };
+    }
+
     default: return { ok: false, error: `unknown message: ${msg?.type}` };
   }
 }

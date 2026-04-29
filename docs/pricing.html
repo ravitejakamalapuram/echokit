@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EchoKit — Pricing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0f; --surface: #16181c; --border: #252830; --border-strong: #32363f;
+      --text: #e8e9ed; --text-dim: #8b8fa8; --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.1);
+      --green: #10b981; --font: 'Inter', system-ui, sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+    a { color: var(--amber); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    nav { display: flex; align-items: center; gap: 24px; padding: 16px 32px; border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--text); letter-spacing: -0.5px; }
+    .nav-logo span { color: var(--amber); }
+    .nav-links { display: flex; gap: 20px; margin-left: auto; }
+    .nav-links a { color: var(--text-dim); font-size: 13px; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 72px 24px 48px; }
+    .hero h1 { font-size: clamp(32px,5vw,52px); font-weight: 700; letter-spacing: -1px; margin-bottom: 16px; }
+    .hero h1 span { color: var(--amber); }
+    .hero p { color: var(--text-dim); font-size: 16px; max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+    /* Pricing grid */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px; max-width: 960px; margin: 48px auto; padding: 0 24px;
+    }
+    .plan {
+      background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px;
+      padding: 28px; display: flex; flex-direction: column; gap: 16px; position: relative;
+    }
+    .plan.featured {
+      border-color: var(--amber); box-shadow: 0 0 0 1px rgba(245,158,11,0.2), 0 8px 32px rgba(245,158,11,0.08);
+    }
+    .plan-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--amber); color: #000; font-size: 10px; font-weight: 800;
+      letter-spacing: 1.5px; padding: 3px 12px; border-radius: 20px;
+    }
+    .plan-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+    .plan-price { display: flex; align-items: baseline; gap: 4px; }
+    .plan-price .amount { font-size: 40px; font-weight: 700; }
+    .plan-price .period { color: var(--text-dim); font-size: 14px; }
+    .plan-desc { color: var(--text-dim); font-size: 13px; line-height: 1.5; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .plan-features li { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .plan-features li.dim::before { content: '–'; color: var(--text-dim); }
+    .plan-features li.dim { color: var(--text-dim); }
+    .plan-cta {
+      display: block; text-align: center; padding: 11px 20px; border-radius: 6px;
+      font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+      text-decoration: none; transition: opacity 0.15s;
+    }
+    .plan-cta:hover { opacity: 0.85; text-decoration: none; }
+    .cta-primary { background: var(--amber); color: #000; }
+    .cta-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--text); }
+
+    /* Features table */
+    .compare { max-width: 860px; margin: 16px auto 80px; padding: 0 24px; }
+    .compare h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+    .compare table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare th, .compare td { padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+    .compare th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.8px; }
+    .compare td:last-child, .compare td:nth-child(2) { text-align: center; }
+    .check { color: var(--green); font-weight: 700; font-size: 15px; }
+    .dash { color: var(--text-dim); }
+    .trow-header td { font-weight: 600; color: var(--text-dim); background: rgba(255,255,255,0.02); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; padding-top: 16px; }
+
+    /* Activate section */
+    .activate { max-width: 540px; margin: 0 auto 80px; padding: 0 24px; }
+    .activate h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .activate p { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+    .activate .form { display: flex; gap: 8px; }
+    .activate input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
+      color: var(--text); font-family: var(--mono); font-size: 12px; padding: 10px 12px; outline: none;
+    }
+    .activate input:focus { border-color: var(--amber); }
+    .activate button {
+      padding: 10px 18px; background: var(--amber); color: #000; border: none; border-radius: 6px;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    .activate-msg { font-size: 12px; margin-top: 8px; min-height: 18px; }
+    .activate-msg.ok { color: var(--green); }
+    .activate-msg.err { color: #ef4444; }
+
+    /* FAQ */
+    .faq { max-width: 640px; margin: 0 auto 80px; padding: 0 24px; }
+    .faq h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+    details { border-bottom: 1px solid var(--border); }
+    summary { padding: 14px 0; cursor: pointer; font-size: 14px; font-weight: 500; list-style: none; }
+    summary::after { content: '+'; float: right; color: var(--text-dim); }
+    details[open] summary::after { content: '–'; }
+    details p { padding: 0 0 14px; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+
+    footer { text-align: center; padding: 32px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-logo">Echo<span>Kit</span></div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/ravitejakamalapuram/echokit" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <h1>Simple, honest <span>pricing</span></h1>
+    <p>Start free. Upgrade when you need advanced mocking, team sync, and unlimited recordings.</p>
+  </div>
+
+  <div class="pricing-grid">
+    <!-- Free -->
+    <div class="plan">
+      <div class="plan-name">Free</div>
+      <div class="plan-price"><span class="amount">$0</span><span class="period">forever</span></div>
+      <div class="plan-desc">Perfect for solo devs exploring the extension.</div>
+      <ul class="plan-features">
+        <li>50 recordings per session</li>
+        <li>Strict URL matching</li>
+        <li>Status / body / headers override</li>
+        <li>Error &amp; latency simulation</li>
+        <li>CORS override toggle</li>
+        <li>Export / Import JSON</li>
+        <li class="dim">HAR &amp; Postman export</li>
+        <li class="dim">WebSocket mock replay</li>
+        <li class="dim">API blocking</li>
+        <li class="dim">Advanced match modes</li>
+        <li class="dim">GitHub Gist team sync</li>
+        <li class="dim">Cookies &amp; localStorage</li>
+      </ul>
+      <a href="https://chromewebstore.google.com/detail/echokit" class="plan-cta cta-ghost" target="_blank">Install Free</a>
+    </div>
+
+    <!-- Monthly -->
+    <div class="plan featured">
+      <div class="plan-badge">POPULAR</div>
+      <div class="plan-name">Pro Monthly</div>
+      <div class="plan-price"><span class="amount">$5</span><span class="period">/month</span></div>
+      <div class="plan-desc">Full power, billed monthly. Cancel anytime.</div>
+      <ul class="plan-features">
+        <li>Unlimited recordings</li>
+        <li>All Free features</li>
+        <li>HAR &amp; Postman export / import</li>
+        <li>WebSocket &amp; SSE mock replay</li>
+        <li>API-level request blocking</li>
+        <li>Advanced match modes (wildcard, GraphQL, ignore-query)</li>
+        <li>GitHub Gist team sync</li>
+        <li>Cookies &amp; localStorage copy/paste</li>
+        <li>Conditional mock (fire N times)</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="#" class="plan-cta cta-primary" id="btn-monthly">Get Pro Monthly →</a>
+    </div>
+
+    <!-- Lifetime -->
+    <div class="plan">
+      <div class="plan-name">Lifetime</div>
+      <div class="plan-price"><span class="amount">$199</span><span class="period">one-time</span></div>
+      <div class="plan-desc">Pay once, own it forever. All future updates included.</div>
+      <ul class="plan-features">
+        <li>Everything in Pro Monthly</li>
+        <li>All future feature updates</li>
+        <li>No recurring charges</li>
+        <li>Priority feature requests</li>
+      </ul>
+      <a href="#" class="plan-cta cta-primary" id="btn-lifetime">Get Lifetime →</a>
+    </div>
+  </div>
+
+  <!-- Annual callout -->
+  <div style="text-align:center;margin:-24px 0 48px;color:var(--text-dim);font-size:13px">
+    Prefer annual? <a href="#" id="btn-annual"><strong style="color:var(--amber)">$49/year</strong> — save 18%</a>
+  </div>
+
+  <!-- Feature comparison -->
+  <div class="compare">
+    <h2>Full comparison</h2>
+    <table>
+      <thead><tr><th style="width:55%">Feature</th><th>Free</th><th>Pro</th></tr></thead>
+      <tbody>
+        <tr class="trow-header"><td colspan="3">Recording</td></tr>
+        <tr><td>Max recordings per session</td><td class="dash">50</td><td class="check">∞</td></tr>
+        <tr><td>fetch, XHR interception</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>WebSocket &amp; SSE capture</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr class="trow-header"><td colspan="3">Mocking</td></tr>
+        <tr><td>Strict URL matching</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Advanced match modes (wildcard, ignore-query, GraphQL)</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>WebSocket / SSE mock replay</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>Conditional mock (N uses)</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>API-level request blocking</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>Status / body / headers override</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Error &amp; latency simulation</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr class="trow-header"><td colspan="3">Export &amp; Import</td></tr>
+        <tr><td>Export / Import JSON</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Export HAR (DevTools-compatible)</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>Import HAR</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>Export Postman collection</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr class="trow-header"><td colspan="3">Team &amp; DevOps</td></tr>
+        <tr><td>GitHub Gist team sync</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>Cookies copy/paste across tabs</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>localStorage copy/paste across tabs</td><td class="dash">–</td><td class="check">✓</td></tr>
+        <tr><td>CORS override</td><td class="check">✓</td><td class="check">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Activate existing key -->
+  <div class="activate" id="activate">
+    <h2>Already have a license key?</h2>
+    <p>Paste your key below to verify it, then enter it in the extension via <strong>Menu → Settings → License Key</strong>.</p>
+    <div class="form">
+      <input id="license-input" type="text" placeholder="EK-PRO-… / EK-YEAR-… / EK-LTD-…" autocomplete="off" spellcheck="false"/>
+      <button onclick="verifyKey()">Verify</button>
+    </div>
+    <div class="activate-msg" id="activate-msg"></div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq">
+    <h2>Frequently asked questions</h2>
+    <details>
+      <summary>How does the license key work?</summary>
+      <p>After payment you'll receive a license key starting with <code>EK-PRO-</code>, <code>EK-YEAR-</code>, or <code>EK-LTD-</code>. Open the extension popup → Menu → Settings → License Key, paste it in, and click Activate. That's it — all Pro features unlock immediately.</p>
+    </details>
+    <details>
+      <summary>What is the 50-recording free tier limit?</summary>
+      <p>The free tier lets you record up to 50 unique API interactions per IndexedDB session. Use "Clear recordings" from the menu to start fresh and record another 50. This is designed to be generous enough for quick debugging while encouraging Pro for heavy-use workflows.</p>
+    </details>
+    <details>
+      <summary>Can I use one license on multiple machines?</summary>
+      <p>Yes. Your license key can be activated on up to 3 devices simultaneously (browser profiles). Chrome Sync will keep the key in sync across your signed-in Chrome profile automatically.</p>
+    </details>
+    <details>
+      <summary>Is there a refund policy?</summary>
+      <p>Yes — 14-day no-questions-asked refund for all plans. Contact support via GitHub Issues.</p>
+    </details>
+    <details>
+      <summary>Does the Lifetime plan cover future updates?</summary>
+      <p>Yes. Every feature added to EchoKit is included in your Lifetime license at no extra cost.</p>
+    </details>
+  </div>
+
+  <footer>
+    &copy; 2026 EchoKit · <a href="privacy-policy.html">Privacy Policy</a> · <a href="https://github.com/ravitejakamalapuram/echokit/issues">Support</a>
+  </footer>
+
+  <script>
+    // Stripe Payment Links (placeholder — replace with real links after creating products in Stripe)
+    const LINKS = {
+      monthly: 'https://buy.stripe.com/test_monthly_placeholder',
+      annual:  'https://buy.stripe.com/test_annual_placeholder',
+      lifetime:'https://buy.stripe.com/test_lifetime_placeholder'
+    };
+    document.getElementById('btn-monthly').href = LINKS.monthly;
+    document.getElementById('btn-annual').href = LINKS.annual;
+    document.getElementById('btn-lifetime').href = LINKS.lifetime;
+
+    function verifyKey() {
+      const k = document.getElementById('license-input').value.trim().toUpperCase();
+      const msg = document.getElementById('activate-msg');
+      if (!k) { msg.textContent = 'Please enter a key.'; msg.className = 'activate-msg err'; return; }
+      const valid = k.startsWith('EK-PRO-') || k.startsWith('EK-YEAR-') || k.startsWith('EK-LTD-');
+      if (valid) {
+        msg.innerHTML = '✓ Valid key format. Open the extension → Menu → Settings → License Key and paste it there.';
+        msg.className = 'activate-msg ok';
+      } else {
+        msg.textContent = '✗ Invalid key format. Keys start with EK-PRO-, EK-YEAR-, or EK-LTD-.';
+        msg.className = 'activate-msg err';
+      }
+    }
+  </script>
+</body>
+</html>

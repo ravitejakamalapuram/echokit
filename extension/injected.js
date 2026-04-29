@@ -144,12 +144,19 @@
       if (!bucket) continue;
       const versions = bucket[keys[mode]];
       if (!versions || !versions.length) continue;
-      const active = versions[0].activeVersionId;
-      if (active) {
-        const m = versions.find(v => v.id === active);
-        if (m) return m;
+      // Filter out conditional mocks that have hit their limit (local count)
+      const available = versions.filter(v => !v.mockMaxCount || (v.mockCallCount || 0) < v.mockMaxCount);
+      if (!available.length) continue;
+      const active = available[0].activeVersionId;
+      let mock = null;
+      if (active) mock = available.find(v => v.id === active);
+      if (!mock) mock = available[0];
+      // Track conditional mock hit locally + notify background
+      if (mock.mockMaxCount != null) {
+        mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        emit('mock-hit', { id: mock.id });
       }
-      return versions[0];
+      return mock;
     }
     return null;
   }
@@ -338,12 +345,111 @@
   }
 
   // ---------- WebSocket hook ----------
+  // Fake WebSocket for mock replay
+  function createFakeMockWS(url, mock) {
+    const body = (() => { try { return JSON.parse(mock.body || '{}'); } catch { return {}; } })();
+    const inFrames = (body.frames || []).filter(f => f.dir === 'in');
+    const latency = mock.latency || 0;
+    const loop = mock.wsLoop || false;
+    let onopen = null, onmessage = null, onclose = null, onerror = null;
+    const _listeners = { open: [], message: [], close: [], error: [] };
+    let _readyState = 0, _closed = false, _loopTimer = null;
+    function dispatch(type, ev) {
+      const h = { open: onopen, message: onmessage, close: onclose, error: onerror }[type];
+      if (h) h(ev);
+      (_listeners[type] || []).forEach(fn => { try { fn(ev); } catch {} });
+    }
+    function replayFrames() {
+      inFrames.forEach(f => setTimeout(() => {
+        if (_closed) return;
+        dispatch('message', new MessageEvent('message', { data: f.data, origin: url }));
+      }, f.t));
+    }
+    const fake = {
+      get readyState() { return _readyState; }, url, protocol: '', bufferedAmount: 0, binaryType: 'blob', extensions: '',
+      CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3,
+      set onopen(v) { onopen = v; }, get onopen() { return onopen; },
+      set onmessage(v) { onmessage = v; }, get onmessage() { return onmessage; },
+      set onclose(v) { onclose = v; }, get onclose() { return onclose; },
+      set onerror(v) { onerror = v; }, get onerror() { return onerror; },
+      addEventListener(type, fn) { (_listeners[type] = _listeners[type] || []).push(fn); },
+      removeEventListener(type, fn) { _listeners[type] = (_listeners[type] || []).filter(f => f !== fn); },
+      dispatchEvent(ev) { dispatch(ev.type, ev); },
+      send() { /* accepted, no-op */ },
+      close(code) {
+        if (_closed) return;
+        _closed = true; _readyState = 3;
+        if (_loopTimer) { clearInterval(_loopTimer); _loopTimer = null; }
+        try { dispatch('close', new CloseEvent('close', { wasClean: true, code: code || 1000, reason: '' })); } catch {}
+      }
+    };
+    setTimeout(() => {
+      if (_closed) return;
+      _readyState = 1;
+      dispatch('open', new Event('open'));
+      replayFrames();
+      if (loop && inFrames.length > 0) {
+        const dur = (inFrames[inFrames.length - 1]?.t || 1000) + 1000;
+        _loopTimer = setInterval(() => { if (_closed) { clearInterval(_loopTimer); return; } replayFrames(); }, dur);
+      }
+    }, latency);
+    return fake;
+  }
+
+  // Fake EventSource for SSE mock replay
+  function createFakeMockSSE(url, mock) {
+    const body = (() => { try { return JSON.parse(mock.body || '{}'); } catch { return {}; } })();
+    const frames = body.frames || [];
+    const latency = mock.latency || 0;
+    const loop = mock.wsLoop || false;
+    let onmessage = null, onerror = null, onopen = null;
+    const _listeners = { message: [], error: [], open: [] };
+    let _closed = false, _loopTimer = null;
+    function dispatch(type, ev) {
+      const h = { message: onmessage, error: onerror, open: onopen }[type];
+      if (h) h(ev);
+      (_listeners[type] || []).forEach(fn => { try { fn(ev); } catch {} });
+    }
+    function replayFrames() {
+      frames.forEach(f => setTimeout(() => {
+        if (_closed) return;
+        dispatch('message', new MessageEvent('message', { data: f.data, origin: url }));
+      }, f.t));
+    }
+    const fake = {
+      url, CONNECTING: 0, OPEN: 1, CLOSED: 2, readyState: 0, withCredentials: false,
+      set onmessage(v) { onmessage = v; }, get onmessage() { return onmessage; },
+      set onerror(v) { onerror = v; }, get onerror() { return onerror; },
+      set onopen(v) { onopen = v; }, get onopen() { return onopen; },
+      addEventListener(type, fn) { (_listeners[type] = _listeners[type] || []).push(fn); },
+      removeEventListener(type, fn) { _listeners[type] = (_listeners[type] || []).filter(f => f !== fn); },
+      close() { _closed = true; if (_loopTimer) clearInterval(_loopTimer); }
+    };
+    setTimeout(() => {
+      if (_closed) return;
+      fake.readyState = 1;
+      dispatch('open', new Event('open'));
+      replayFrames();
+      if (loop && frames.length > 0) {
+        const dur = (frames[frames.length - 1]?.t || 1000) + 1000;
+        _loopTimer = setInterval(() => { if (_closed) { clearInterval(_loopTimer); return; } replayFrames(); }, dur);
+      }
+    }, latency);
+    return fake;
+  }
+
   const OrigWS = window.WebSocket;
   if (OrigWS) {
     function EchoKitWS(url, protocols) {
+      const ekUrl = String(url);
+      const matchKeys = computeMatchKeys('WS', ekUrl, '');
+      // Mock replay — return fake WebSocket if mocking is on and a mock exists
+      if (state.mocking) {
+        const mock = pickMock(matchKeys);
+        if (mock) return createFakeMockWS(ekUrl, mock);
+      }
       const ws = new OrigWS(url, protocols);
       if (!state.recording && !state.mocking) return ws;
-      const ekUrl = String(url);
       const frames = [];
       const openedAt = Date.now();
       const origSend = ws.send.bind(ws);
@@ -386,11 +492,17 @@
   const OrigES = window.EventSource;
   if (OrigES) {
     function EchoKitES(url, init) {
+      const ekUrl = String(url);
+      const matchKeys = computeMatchKeys('SSE', ekUrl, '');
+      // Mock replay — return fake EventSource if mocking is on and a mock exists
+      if (state.mocking) {
+        const mock = pickMock(matchKeys);
+        if (mock) return createFakeMockSSE(ekUrl, mock);
+      }
       const es = new OrigES(url, init);
       if (!state.recording) return es;
       const frames = [];
       const openedAt = Date.now();
-      const ekUrl = String(url);
       es.addEventListener('message', (ev) => {
         frames.push({ t: Date.now() - openedAt, data: tryStringify(ev.data) });
         emit('record', {

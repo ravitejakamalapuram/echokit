@@ -16,6 +16,8 @@
         .catch(() => {});
     } else if (type === 'ready') {
       chrome.runtime.sendMessage({ type: 'echokit:contentReady' }).catch(() => {});
+    } else if (type === 'mock-hit') {
+      chrome.runtime.sendMessage({ type: 'echokit:mock:hit', data: payload }).catch(() => {});
     }
   }, false);
 

@@ -12,6 +12,7 @@ let state = {
   settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [] },
   interactions: [],
   allCount: 0,
+  isPro: false,
   search: '',
   methodFilter: null,
   statusFilter: null,
@@ -71,6 +72,7 @@ async function refresh() {
   state.settings = { ...state.settings, ...(resp.settings || {}) };
   state.interactions = resp.interactions || [];
   state.allCount = resp.allCount || 0;
+  state.isPro = resp.isPro || false;
 }
 
 function applyTheme() {
@@ -203,19 +205,22 @@ function renderMenu() {
   const pasteHint = state.clipboardPreview
     ? `<span class="ek-subtle">${state.clipboardPreview.count} keys · ${escapeHtml(state.clipboardPreview.origin || '')}</span>`
     : `<span class="ek-subtle">nothing in clipboard</span>`;
+  const proTag = `<span class="ek-pro-tag">PRO</span>`;
   panel.innerHTML = `
     <button class="ek-menu-item" data-menu="clear" data-testid="menu-clear">Clear recordings <span class="ek-subtle">${state.interactions.length}</span></button>
     <button class="ek-menu-item" data-menu="export" data-testid="menu-export">Export JSON</button>
-    <button class="ek-menu-item" data-menu="export-har" data-testid="menu-export-har">Export HAR <span class="ek-subtle">DevTools-compatible</span></button>
     <button class="ek-menu-item" data-menu="import" data-testid="menu-import">Import JSON</button>
+    <button class="ek-menu-item" data-menu="import-har" data-testid="menu-import-har">Import HAR ${state.isPro ? '' : proTag}</button>
+    <button class="ek-menu-item" data-menu="export-har" data-testid="menu-export-har">Export HAR <span class="ek-subtle">DevTools-compatible</span>${state.isPro ? '' : proTag}</button>
+    <button class="ek-menu-item" data-menu="export-postman" data-testid="menu-export-postman">Export Postman Collection ${state.isPro ? '' : proTag}</button>
     <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage <span class="ek-subtle">active tab</span></button>
-    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'localStorage' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${pasteHint}</button>
-    <button class="ek-menu-item" data-menu="ck-copy" data-testid="menu-ck-copy">Copy cookies <span class="ek-subtle">active tab</span></button>
-    <button class="ek-menu-item" data-menu="ck-paste" data-testid="menu-ck-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'cookies' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste cookies</button>
+    <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage ${state.isPro ? '<span class="ek-subtle">active tab</span>' : proTag}</button>
+    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'localStorage' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${state.isPro ? pasteHint : proTag}</button>
+    <button class="ek-menu-item" data-menu="ck-copy" data-testid="menu-ck-copy">Copy cookies ${state.isPro ? '<span class="ek-subtle">active tab</span>' : proTag}</button>
+    <button class="ek-menu-item" data-menu="ck-paste" data-testid="menu-ck-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'cookies' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste cookies ${state.isPro ? '' : proTag}</button>
     <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist <span class="ek-subtle">share w/ team</span></button>
-    <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL</button>
+    <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist ${state.isPro ? '<span class="ek-subtle">share w/ team</span>' : proTag}</button>
+    <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL ${state.isPro ? '' : proTag}</button>
     <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · blocklist</span></button>
     <button class="ek-menu-item" data-menu="shortcuts" data-testid="menu-shortcuts">Keyboard shortcuts</button>
@@ -232,13 +237,15 @@ function renderMenu() {
     if (which === 'clear') onClearSession();
     else if (which === 'export') onExport();
     else if (which === 'export-har') onExportHar();
+    else if (which === 'export-postman') onExportPostman();
     else if (which === 'import') showImportDialog();
+    else if (which === 'import-har') onImportHar();
     else if (which === 'ls-copy') onCopyLocalStorage();
     else if (which === 'ls-paste') onPasteLocalStorage();
     else if (which === 'ck-copy') onCopyCookies();
     else if (which === 'ck-paste') onPasteCookies();
-    else if (which === 'gist-upload') showGistUploadDialog();
-    else if (which === 'gist-import') showGistImportDialog();
+    else if (which === 'gist-upload') { if (!state.isPro) { showProGate('GitHub Gist Sync'); } else { showGistUploadDialog(); } }
+    else if (which === 'gist-import') { if (!state.isPro) { showProGate('GitHub Gist Sync'); } else { showGistImportDialog(); } }
     else if (which === 'settings') showSettingsDialog();
     else if (which === 'shortcuts') showShortcutsDialog();
     document.querySelectorAll('.ek-menu-panel').forEach(n => n.remove());
@@ -271,6 +278,7 @@ async function tryReadClipboardPreview() {
 }
 
 async function onExportHar() {
+  if (!state.isPro) { showProGate('HAR Export'); return; }
   const res = await BG({ type: 'echokit:export:har' });
   if (!res?.ok) { alert('HAR export failed'); return; }
   const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
@@ -281,7 +289,63 @@ async function onExportHar() {
   toast('HAR file downloaded');
 }
 
+async function onExportPostman() {
+  if (!state.isPro) { showProGate('Postman Export'); return; }
+  const res = await BG({ type: 'echokit:export:postman' });
+  if (!res?.ok) { alert('Postman export failed'); return; }
+  const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `echokit-collection-${Date.now()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('Postman collection downloaded');
+}
+
+function onImportHar() {
+  if (!state.isPro) { showProGate('HAR Import'); return; }
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.har,application/json';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data?.log?.entries) { alert('Invalid HAR file — missing log.entries'); return; }
+      const strategy = confirm('Override existing recordings?\nOK = Replace all\nCancel = Merge') ? 'override' : 'merge';
+      const res = await BG({ type: 'echokit:import:har', data, strategy });
+      if (res?.ok) { toast(`Imported ${res.imported} entries from HAR`); await refresh(); render(); }
+      else alert('HAR import failed: ' + (res?.error || 'unknown'));
+    } catch (e) { alert('Failed to parse HAR: ' + e.message); }
+  };
+  input.click();
+}
+
+function showProGate(feature) {
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  overlay.innerHTML = `
+    <div class="ek-modal ek-pro-gate" data-testid="pro-gate-modal">
+      <div class="ek-pro-badge">PRO</div>
+      <div class="ek-modal-title">${escapeHtml(feature)}</div>
+      <div class="ek-subtle" style="margin:8px 0 16px">Upgrade to <strong>EchoKit Pro</strong> to unlock this feature plus unlimited recordings, WebSocket mocking, advanced matching, HAR/Postman export, GitHub Gist sync, and more.</div>
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-ghost" data-a="later">Maybe later</button>
+        <button class="ek-btn ek-btn-primary" data-a="upgrade" data-testid="pro-gate-upgrade-btn">Upgrade to Pro →</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="later"]').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('[data-a="upgrade"]').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://echokit.dev/pricing' }).catch(() => window.open('https://echokit.dev/pricing', '_blank'));
+    overlay.remove();
+  });
+}
+
 async function onCopyCookies() {
+  if (!state.isPro) { showProGate('Cookies Copy'); return; }
   if (state.tabId == null) { alert('No active tab'); return; }
   const r = await BG({ type: 'echokit:cookies:read', tabId: state.tabId });
   if (!r?.ok) { alert('Failed to read cookies: ' + (r?.error || 'unknown')); return; }
@@ -294,6 +358,7 @@ async function onCopyCookies() {
 }
 
 async function onPasteCookies() {
+  if (!state.isPro) { showProGate('Cookies Paste'); return; }
   await tryReadClipboardPreview();
   if (!state.clipboardPreview || state.clipboardPreview.kind !== 'cookies') {
     alert('Clipboard has no EchoKit cookies payload.\nCopy from another tab first via Menu → Copy cookies.');
@@ -307,6 +372,7 @@ async function onPasteCookies() {
 }
 
 async function onCopyLocalStorage() {
+  if (!state.isPro) { showProGate('LocalStorage Copy'); return; }
   if (state.tabId == null) { alert('No active tab'); return; }
   const r = await BG({ type: 'echokit:localStorage:read', tabId: state.tabId });
   if (!r?.ok) { alert('Failed to read localStorage: ' + (r?.error || 'unknown — tab may not be http(s)')); return; }
@@ -320,6 +386,7 @@ async function onCopyLocalStorage() {
 }
 
 async function onPasteLocalStorage() {
+  if (!state.isPro) { showProGate('LocalStorage Paste'); return; }
   await tryReadClipboardPreview();
   if (!state.clipboardPreview) { alert('Clipboard has no EchoKit localStorage payload.\nCopy from another tab first via Menu → Copy localStorage.'); return; }
   const { count, origin, payload } = state.clipboardPreview;
@@ -643,6 +710,49 @@ function renderDetail(i, conflicts) {
         <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn">Delete this mock</button>
         <div class="ek-row-inline-end ek-subtle">hash <span class="ek-tag">${i.hash}</span></div>
       </div>
+
+      ${(i.method === 'WS' || i.method === 'SSE') ? `
+      <div class="ek-section" data-testid="ws-frames-section">
+        <div class="ek-section-head">
+          <span>${i.method === 'WS' ? 'WebSocket Frames' : 'SSE Events'}</span>
+          <div class="ek-row-inline-end">
+            <label class="ek-switch ${i.wsLoop ? 'on' : ''}" title="Loop replay">
+              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}"/>
+              <span class="ek-switch-track"></span>
+              <span class="ek-switch-label">Loop</span>
+            </label>
+          </div>
+        </div>
+        <div class="ek-section-body">
+          ${(() => {
+            try {
+              const b = JSON.parse(i.responseBody || '{}');
+              const frames = b.frames || [];
+              if (!frames.length) return '<div class="ek-subtle">No frames recorded yet.</div>';
+              return frames.slice(0, 30).map(f => `
+                <div class="ek-ws-frame ek-ws-frame-${f.dir}">
+                  <span class="ek-ws-dir">${f.dir === 'in' ? '▼ IN' : '▲ OUT'}</span>
+                  <span class="ek-ws-t ek-subtle">+${f.t}ms</span>
+                  <span class="ek-ws-data">${escapeHtml(String(f.data || '').slice(0, 120))}${String(f.data || '').length > 120 ? '…' : ''}</span>
+                </div>
+              `).join('') + (frames.length > 30 ? `<div class="ek-subtle">…${frames.length - 30} more frames</div>` : '');
+            } catch { return '<div class="ek-subtle">Could not parse frame data.</div>'; }
+          })()}
+        </div>
+      </div>` : ''}
+
+      <div class="ek-section">
+        <div class="ek-section-head"><span>Conditional Mock</span><span class="ek-subtle" style="font-size:10px">Fire N times then pass-through</span></div>
+        <div class="ek-section-body">
+          <div class="ek-field ek-row-inline" style="gap:8px;align-items:center">
+            <div class="ek-label" style="min-width:60px">Max uses</div>
+            <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
+              value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
+            <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
+            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -652,11 +762,13 @@ function renderFooter(count) {
   const mockTag = state.tab.mocking ? `<span class="ek-tag amber">MOCK ON</span>` : '';
   const corsTag = state.settings.corsOverride ? `<span class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings">CORS</span>` : '';
   const scope = state.settings.scope || 'domain';
+  const freeLimit = !state.isPro ? `<span class="ek-subtle ${state.allCount >= 50 ? 'ek-limit-warn' : ''}" title="Free tier: 50 recordings max. Upgrade for unlimited.">${state.allCount}/50</span>` : '';
   return `
     <div class="ek-footer">
       ${recTag} ${mockTag} ${corsTag}
       <span class="ek-subtle">${count} request${count === 1 ? '' : 's'}</span>
       <span class="ek-subtle">· scope: <span class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope">${scope}</span></span>
+      ${freeLimit}
       <span class="ek-row-inline-end ek-subtle">${state.tab.host ? escapeHtml(state.tab.host) : `tab #${state.tabId ?? '—'}`}</span>
     </div>
   `;
@@ -701,6 +813,7 @@ function bindEvents() {
     });
     else if (action === 'toggle-block') el.addEventListener('click', async (e) => {
       e.stopPropagation();
+      if (!state.isPro) { showProGate('API Blocking'); return; }
       const tid = el.getAttribute('data-id');
       const current = state.interactions.find(x => x.id === tid);
       if (!current) return;
@@ -750,6 +863,7 @@ function bindEvents() {
       await refresh(); render();
     });
     else if (action === 'update-match-mode') el.addEventListener('change', async (e) => {
+      if (e.target.value !== 'strict' && !state.isPro) { showProGate('Advanced Match Modes'); e.target.value = 'strict'; return; }
       await BG({ type: 'echokit:interaction:update', id, patch: { matchMode: e.target.value } });
       await refresh(); render();
     });
@@ -784,6 +898,19 @@ function bindEvents() {
     });
     else if (action === 'reset-body') el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: null } });
+      await refresh(); render();
+    });
+    else if (action === 'update-max-count') el.addEventListener('change', async (e) => {
+      const v = e.target.value.trim();
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockMaxCount: v === '' ? null : (Number(v) || 0) } });
+      await refresh(); render();
+    });
+    else if (action === 'update-ws-loop') el.addEventListener('change', async (e) => {
+      await BG({ type: 'echokit:interaction:update', id, patch: { wsLoop: e.target.checked } });
+      await refresh(); render();
+    });
+    else if (action === 'reset-mock-count') el.addEventListener('click', async () => {
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockCallCount: 0 } });
       await refresh(); render();
     });
     else if (action === 'header-add') el.addEventListener('click', async () => {
@@ -1035,6 +1162,18 @@ function showSettingsDialog() {
         <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
       </div>
 
+      <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">License Key ${state.isPro ? '<span class="ek-pro-badge" style="font-size:9px;padding:2px 6px">PRO ACTIVE</span>' : ''}</div>
+          <div class="ek-settings-hint">Enter your EchoKit Pro key to unlock all features. Keys start with <span class="ek-tag">EK-PRO-</span>, <span class="ek-tag">EK-YEAR-</span>, or <span class="ek-tag">EK-LTD-</span>.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:200px">
+          <input class="ek-input" type="text" id="ek-license-input" placeholder="EK-PRO-…" style="font-family:var(--font-mono);font-size:11px" data-testid="license-key-input"/>
+          <button class="ek-btn ek-btn-primary" data-a="license-activate" data-testid="license-activate-btn">Activate</button>
+          ${!state.isPro ? `<a href="#" data-a="get-pro" style="font-size:11px;color:var(--amber);text-decoration:none;text-align:center">Get Pro →</a>` : `<button class="ek-btn ek-btn-ghost" data-a="license-remove" style="font-size:10px">Remove license</button>`}
+        </div>
+      </div>
+
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-primary" data-a="close">Done</button>
       </div>
@@ -1094,6 +1233,29 @@ function showSettingsDialog() {
     const bl = [...(state.settings.blocklist || []), { pattern: '', enabled: true }];
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
     await refresh(); reopen();
+  });
+  // Pre-fill license key input
+  BG({ type: 'echokit:license:check' }).then(res => {
+    const input = overlay.querySelector('#ek-license-input');
+    if (input && res?.key) input.value = res.key;
+  });
+  // License activation
+  overlay.querySelector('[data-a="license-activate"]')?.addEventListener('click', async () => {
+    const keyInput = overlay.querySelector('#ek-license-input');
+    const key = keyInput?.value?.trim() || '';
+    if (!key) { toast('Enter a license key first'); return; }
+    const res = await BG({ type: 'echokit:license:set', key });
+    if (res?.ok && res.pro) { toast('Pro license activated!'); state.isPro = true; await refresh(); render(); overlay.remove(); showSettingsDialog(); }
+    else toast('Invalid key: ' + (res?.error || 'format not recognized'), 4000);
+  });
+  overlay.querySelector('[data-a="license-remove"]')?.addEventListener('click', async () => {
+    if (!confirm('Remove your Pro license from this device?')) return;
+    await BG({ type: 'echokit:license:set', key: '' });
+    state.isPro = false; await refresh(); render(); overlay.remove(); showSettingsDialog();
+  });
+  overlay.querySelector('[data-a="get-pro"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://echokit.dev/pricing' }).catch(() => window.open('https://echokit.dev/pricing', '_blank'));
   });
 }
 

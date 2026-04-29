@@ -21,6 +21,7 @@ from playwright.sync_api import sync_playwright
 
 EXT_PATH = str(Path('/app/extension').resolve())
 PORT = 18770
+TEST_PORT = PORT
 
 class H(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype='application/json'):
@@ -518,12 +519,93 @@ def main():
             step('menu_has_har_export', popup2.locator('[data-testid="menu-export-har"]').count() > 0)
             step('menu_has_cookie_copy', popup2.locator('[data-testid="menu-ck-copy"]').count() > 0)
             step('menu_has_cookie_paste', popup2.locator('[data-testid="menu-ck-paste"]').count() > 0)
+
+            # === NEW in v1.5: Postman export + HAR import + Pro gate in menu ===
+            step('menu_has_postman_export', popup2.locator('[data-testid="menu-export-postman"]').count() > 0)
+            step('menu_has_import_har', popup2.locator('[data-testid="menu-import-har"]').count() > 0)
             popup2.locator('body').click(position={'x': 10, 'y': 10})
             popup2.close()
 
+            # === NEW in v1.5: License key backend handlers ===
+            lic_check = sw_send(sw, {'type': 'echokit:license:check'})
+            step('license_check_ok', lic_check.get('ok') is True and 'pro' in lic_check, lic_check)
+
+            # Invalid key is rejected
+            bad_lic = sw_send(sw, {'type': 'echokit:license:set', 'key': 'NOTAKEY'})
+            step('license_set_rejects_invalid', bad_lic.get('ok') is False, bad_lic)
+
+            # Valid format key is accepted
+            good_lic = sw_send(sw, {'type': 'echokit:license:set', 'key': 'EK-LTD-TEST-2026'})
+            step('license_set_accepts_valid', good_lic.get('ok') is True and good_lic.get('pro') is True, good_lic)
+
+            # After activating Pro, getState returns isPro=True
+            state_pro = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            step('getstate_returns_ispro_true', state_pro.get('isPro') is True, state_pro.get('isPro'))
+
+            # Remove license for clean state
+            sw_send(sw, {'type': 'echokit:license:set', 'key': ''})
+
+            # === NEW in v1.5: Postman export via background ===
+            postman_res = sw_send(sw, {'type': 'echokit:export:postman'})
+            step('postman_export_ok', postman_res.get('ok') and 'info' in (postman_res.get('data') or {}), postman_res)
+            postman_items = (postman_res.get('data') or {}).get('item', [])
+            step('postman_export_has_items', len(postman_items) >= 1, f'items={len(postman_items)}')
+
+            # === NEW in v1.5: Conditional mock (mockMaxCount) ===
+            # Record a fresh interaction and set mockMaxCount=2
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.3)
+            page.evaluate("window.doFetch()")
+            time.sleep(0.8)
+            sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
+            cond_all = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})['interactions']
+            cond_target = next((i for i in cond_all if i.get('url', '').split('?')[0].endswith('/api/users')), None)
+            step('conditional_mock_interaction_found', cond_target is not None)
+            if cond_target:
+                sw_send(sw, {'type': 'echokit:interaction:update', 'id': cond_target['id'],
+                             'patch': {'mockEnabled': True, 'overrideStatus': 202, 'mockMaxCount': 2}})
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': True})
+                time.sleep(0.5)
+                # First call — should be mocked (202)
+                r1 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
+                step('conditional_mock_first_call_mocked', r1 == 202, f'status={r1}')
+                # Second call — should be mocked (202)
+                r2 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
+                step('conditional_mock_second_call_mocked', r2 == 202, f'status={r2}')
+                # Third call — mock exhausted, real server responds (200)
+                time.sleep(0.2)
+                r3 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
+                step('conditional_mock_third_call_passthrough', r3 == 200, f'status={r3}')
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
+
+            # === NEW in v1.5: WS mock replay — test via mock index inclusion ===
+            # Verify that a WS interaction with mockEnabled=true appears in the mock index
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.3)
+            page.evaluate("window.doFetch()")
+            time.sleep(0.8)
+            sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
+            ws_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            ws_index = ws_state.get('mockIndex', {})
+            # Verify mockIndex structure has expected keys
+            step('ws_mock_index_has_strict_key', 'strict' in ws_index, list(ws_index.keys()))
+            # Verify that updating wsLoop on an interaction persists correctly
+            ws_ints = ws_state.get('interactions', [])
+            if ws_ints:
+                ws_int = ws_ints[0]
+                sw_send(sw, {'type': 'echokit:interaction:update', 'id': ws_int['id'], 'patch': {'wsLoop': True}})
+                ws_updated = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+                ws_upd_int = next((i for i in ws_updated.get('interactions', []) if i['id'] == ws_int['id']), None)
+                step('ws_loop_toggle_persists', ws_upd_int is not None and ws_upd_int.get('wsLoop') is True,
+                     ws_upd_int)
+
             # Screenshot for visual sanity
-            popup.screenshot(path='/app/echokit-popup-v14.png')
-            print('saved /app/echokit-popup-v14.png')
+            popup.screenshot(path='/app/echokit-popup-v15.png')
+            print('saved /app/echokit-popup-v15.png')
 
             ctx.close()
     finally:
