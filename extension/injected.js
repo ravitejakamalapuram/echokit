@@ -186,6 +186,8 @@
       } catch { return origFetch(input, init); }
 
       const matchKeys = computeMatchKeys(method, url, reqBody);
+      // Per-API block (fetch variant).
+      if (isBlocked(matchKeys)) throw new TypeError('Failed to fetch (EchoKit: blocked)');
       const mock = pickMock(matchKeys);
       if (mock) {
         if (mock.latency) await delay(mock.latency);

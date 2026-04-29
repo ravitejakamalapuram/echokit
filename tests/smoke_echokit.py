@@ -447,9 +447,83 @@ def main():
             s3 = sw_send(sw, {'type':'echokit:getState','tabId':tab_id})
             step('auto_open_setting_persists', s3['settings'].get('autoOpenOnRefresh') is False)
 
+            # === NEW in v1.4: HAR export via background message handler ===
+            har_res = sw_send(sw, {'type': 'echokit:export:har'})
+            step('har_export_ok', har_res.get('ok') and 'log' in (har_res.get('data') or {}), har_res)
+            har_entries = (har_res.get('data') or {}).get('log', {}).get('entries', [])
+            step('har_export_has_entries', len(har_entries) >= 1, f'entries={len(har_entries)}')
+            step('har_entry_has_request_response',
+                 bool(har_entries and 'request' in har_entries[0] and 'response' in har_entries[0]),
+                 har_entries[0] if har_entries else None)
+
+            # === NEW in v1.4: API-level blocking (per-interaction blocked flag) ===
+            # Clear first so we don't accidentally match `/api/users?n=...` from the scroll test.
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.3)
+            page.evaluate("window.doFetch()")  # fetches /api/users (no query params)
+            time.sleep(0.8)
+            sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
+            all_v14 = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})['interactions']
+            # Use exact URL match to avoid picking up /api/users?n=... from previous tests.
+            users_v14 = next(
+                (i for i in all_v14
+                 if i.get('url', '').split('?')[0].endswith('/api/users') and i.get('method') == 'GET'),
+                None
+            )
+            step('api_block_interaction_found', users_v14 is not None,
+                 f'urls={[i.get("url") for i in all_v14]}')
+            if users_v14:
+                # Enable blocking for this interaction
+                sw_send(sw, {'type': 'echokit:interaction:update', 'id': users_v14['id'],
+                             'patch': {'blocked': True}})
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': True})
+                time.sleep(0.5)
+                block_result = page.evaluate("""(async () => {
+                    try { await fetch('/api/users'); return {ok: true}; }
+                    catch (e) { return {ok: false, err: String(e)}; }
+                })()""")
+                step('api_block_blocks_request', block_result.get('ok') is False, block_result)
+                # Clean up
+                sw_send(sw, {'type': 'echokit:interaction:update', 'id': users_v14['id'],
+                             'patch': {'blocked': False}})
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
+
+            # === NEW in v1.4: Popup UI — CORS master toggle, block button, HAR/cookies menu ===
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
+            # Re-seed data so the popup has rows to render
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.2)
+            page.evaluate("window.doFetch()")
+            page.evaluate("window.doPost({a:1})")
+            time.sleep(0.8)
+            sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
+            popup2 = ctx.new_page()
+            popup2.goto(f'chrome-extension://{ext_id}/popup/popup.html')
+            popup2.wait_for_selector('[data-testid="echokit-app"]', timeout=5000)
+            popup2.wait_for_selector('[data-testid="api-row"]', timeout=5000)
+
+            # CORS master toggle is present in the header (standalone, not just in Settings)
+            has_cors_header = popup2.locator('[data-testid="cors-master-toggle"]').count() > 0
+            step('cors_master_toggle_in_header', has_cors_header)
+
+            # Block button (⊘) present on rows
+            has_block_btn = popup2.locator('[data-testid="block-btn"]').count() > 0
+            step('block_btn_present_on_rows', has_block_btn)
+
+            # HAR export + cookies menu items are present
+            popup2.locator('[data-testid="menu-btn"]').click()
+            popup2.wait_for_selector('[data-testid="menu-panel"]', timeout=2000)
+            step('menu_has_har_export', popup2.locator('[data-testid="menu-export-har"]').count() > 0)
+            step('menu_has_cookie_copy', popup2.locator('[data-testid="menu-ck-copy"]').count() > 0)
+            step('menu_has_cookie_paste', popup2.locator('[data-testid="menu-ck-paste"]').count() > 0)
+            popup2.locator('body').click(position={'x': 10, 'y': 10})
+            popup2.close()
+
             # Screenshot for visual sanity
-            popup.screenshot(path='/app/echokit-popup-v11.png')
-            print('saved /app/echokit-popup-v11.png')
+            popup.screenshot(path='/app/echokit-popup-v14.png')
+            print('saved /app/echokit-popup-v14.png')
 
             ctx.close()
     finally:
