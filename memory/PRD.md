@@ -21,7 +21,7 @@ Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers
 - Persist in IndexedDB (scoped by session) with per-tab state in `chrome.storage.session`.
 - Two UI surfaces sharing the same module: **Popup** (400×600) and **DevTools panel**.
 
-## What's Been Implemented (2026-04-29 — v1.4)
+## What's Been Implemented (2026 — v1.5)
 - ✅ Manifest V3 extension scaffold (`/app/extension/`)
 - ✅ MAIN-world `injected.js` hooking `fetch` + `XMLHttpRequest` (record + mock + block)
 - ✅ Isolated-world `content.js` bridging page ↔ background
@@ -33,13 +33,15 @@ Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers
 - ✅ Icons 16/48/128 generated
 - ✅ README with install + architecture + feature map
 - ✅ End-to-end Playwright smoke test (`tests/smoke_echokit.py`) — **55/55 assertions passing**
-- ✅ CORS standalone toggle in header (next to MOCK button)
-- ✅ "MOCKING ACTIVE" watermark banner removed
-- ✅ Default scope changed to `tab`
-- ✅ API-level blocking (⊘ button per row, `blocked` flag, `isBlocked()` in fetch+XHR hooks)
-- ✅ HAR export (DevTools-compatible, from overflow menu)
-- ✅ Cookies copy/paste (from overflow menu)
-- ✅ Bug fix: `injected.js` fetch hook was missing `isBlocked()` call — now fixed
+- ✅ WS/SSE mock replay (injected.js `createFakeMockWS` + `createFakeMockSSE`, frame-timed replay, loop mode)
+- ✅ Freemium/Pro gating: 50-request free limit, `isPro()` via license key, all Pro features gated with `showProGate()` modal
+- ✅ License key system: `chrome.storage.sync`, `echokit:license:check/set` handlers, activate via Settings → License Key
+- ✅ Conditional mock: `mockMaxCount` field — mock fires N times then passes through; tracked locally + in background
+- ✅ HAR import: menu item → file picker → `echokit:import:har` converts entries to interactions
+- ✅ Postman export: `echokit:export:postman` generates Postman Collection v2.1 JSON
+- ✅ Pricing page: `/app/docs/pricing.html` with all tiers ($5/mo, $49/yr, $199 LTD)
+- ✅ Chrome Web Store submission package: `/app/store/echokit-v1.5.0.zip`
+- ✅ End-to-end Playwright smoke test — **69/69 assertions passing**
 
 ### Fixed during smoke-test
 - Bug: injected.js sent relative URLs to the background; the background re-normalized them with a placeholder base (`http://local.local`) — producing a different hash than the MAIN-world matcher computed at replay time. Fix: injected.js now computes the hash at record time and passes it through; background uses it as-is, keeping record-hash ≡ replay-hash byte-for-byte.
@@ -53,16 +55,20 @@ Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers
 GraphQL / WebSocket mocking, cloud sync, AI-generated mocks, complex rule engines — intentionally deferred. Schema is extensible (hash key is the swappable abstraction point).
 
 ## Prioritized Backlog
-- **P0** — None outstanding; all PRD phases + v1.4 features shipped.
-- **P2** — WebSocket/SSE *mocking* (capture works; replay not yet built).
-- **P2** — GraphQL / WebSocket mocking, cloud sync, AI-generated mocks.
-- **P3** — Chrome Web Store submission (manual upload from `/app/store` with $5 dev account).
-- **P3** — Freemium/Stripe gating if monetization is needed.
+- **P1** — Cloudflare Worker for HMAC-signed license validation (replace current format-only check)
+- **P2** — Import from OpenAPI/Swagger spec → auto-generate mocks
+- **P2** — URL rewrite rules (redirect /api/v1 → /api/v2 transparently)
+- **P2** — Request/response transform rules (add/remove headers, mutate body on-the-fly)
+- **P2** — Mock response chaining (simulate multi-step auth flows)
+- **P2** — In-extension network waterfall visualizer
+- **P3** — CLI companion tool (`echokit-server`) + GitHub Actions CI template
+- **P3** — Chrome Web Store submission (manual upload from `/app/store`)
+- **P3** — HAR import (already done in v1.5)
 
 ## Next Action Items
-1. Side-load `/app/extension` via `chrome://extensions` → Load unpacked.
-2. Smoke-test: record a page, toggle MOCK, verify responses are mocked; test ⊘ blocking, HAR export, cookies copy/paste.
-3. Optional: Implement WebSocket mock replay (P2).
+1. **Chrome Web Store**: Upload `/app/store/echokit-v1.5.0.zip` via https://chrome.google.com/webstore/devconsole — use the listing copy from `/app/store/chrome-web-store.md`
+2. **Cloudflare Worker**: Deploy a Worker for HMAC-signed key generation + validation (free tier)
+3. **Next features**: OpenAPI import, URL rewrite, transform rules
 
 ## Architecture (summary)
 ```
