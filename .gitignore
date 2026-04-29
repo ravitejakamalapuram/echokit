@@ -4,7 +4,6 @@
 # Workspace scaffold we don't want in the repo:
 backend/
 frontend/
-scripts/
 test_reports/
 test_result.md
 yarn.lock

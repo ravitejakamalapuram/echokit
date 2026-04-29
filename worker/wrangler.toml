@@ -1,0 +1,21 @@
+# EchoKit license-validation Cloudflare Worker
+#
+# Deploy:
+#   cd /app/worker
+#   npm i -g wrangler
+#   wrangler login
+#   wrangler secret put ECHOKIT_HMAC_SECRET   # paste a 256-bit hex string
+#   wrangler deploy
+
+name = "echokit-license"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# The Worker is publicly callable; protection comes from the HMAC signature
+# baked into each license key. Every license is signed by ECHOKIT_HMAC_SECRET
+# so the Worker can verify keys without a database.
+[vars]
+ECHOKIT_PUBLIC_NAME = "EchoKit License API"
+
+# Optional: set a custom domain after deploy, e.g. license.echokit.dev
+# routes = ["license.echokit.dev/*"]

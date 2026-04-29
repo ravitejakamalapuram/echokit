@@ -1,0 +1,64 @@
+name: Tests with EchoKit mocks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Drop this file into .github/workflows/ in your project to run integration
+# tests against EchoKit-recorded API mocks. Keep your exported JSON under
+# version control (e.g. tests/fixtures/echokit-export.json).
+#
+# The job will:
+#   1. start `echokit-server` in the background on port 3001
+#   2. run your tests against http://localhost:3001
+#   3. fail if any test hits an unmocked endpoint (--ci flag)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Start EchoKit mock server
+        run: |
+          npx echokit-server tests/fixtures/echokit-export.json \
+            --port 3001 --ci --quiet > echokit.log 2>&1 &
+          echo "ECHOKIT_PID=$!" >> $GITHUB_ENV
+          # Wait for the server to be ready
+          for i in {1..20}; do
+            if curl -sf http://localhost:3001/__healthz -o /dev/null; then break; fi
+            if [ $i -eq 20 ]; then
+              echo "echokit-server didn't start in time"
+              cat echokit.log
+              exit 1
+            fi
+            sleep 0.25
+          done
+
+      - name: Run tests
+        env:
+          API_BASE_URL: http://localhost:3001
+        run: npm test
+
+      - name: Stop EchoKit
+        if: always()
+        run: |
+          if [ -n "$ECHOKIT_PID" ]; then kill $ECHOKIT_PID || true; fi
+          echo "--- echokit-server log ---"
+          cat echokit.log || true
+
+      - name: Upload echokit log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echokit-server-log
+          path: echokit.log

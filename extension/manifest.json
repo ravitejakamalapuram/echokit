@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "EchoKit — API Recorder & Mocker",
   "short_name": "EchoKit",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once. Mock reliably. Debug faster.",
   "homepage_url": "https://github.com/ravitejakamalapuram/echokit",
   "permissions": [
@@ -16,26 +16,86 @@
     "clipboardWrite",
     "cookies"
   ],
-  "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "background.js", "type": "module" },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "EchoKit — API Recorder & Mocker",
-    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
-  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "devtools_page": "devtools/devtools.html",
   "commands": {
-    "toggle-recording": { "suggested_key": { "default": "Alt+Shift+R", "mac": "Alt+Shift+R" }, "description": "EchoKit — start/stop recording" },
-    "toggle-mocking":   { "suggested_key": { "default": "Alt+Shift+M", "mac": "Alt+Shift+M" }, "description": "EchoKit — toggle MOCK mode" },
-    "_execute_action":  { "suggested_key": { "default": "Alt+Shift+E", "mac": "Alt+Shift+E" }, "description": "EchoKit — open popup" }
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Alt+Shift+R",
+        "mac": "Alt+Shift+R"
+      },
+      "description": "EchoKit — start/stop recording"
+    },
+    "toggle-mocking": {
+      "suggested_key": {
+        "default": "Alt+Shift+M",
+        "mac": "Alt+Shift+M"
+      },
+      "description": "EchoKit — toggle MOCK mode"
+    },
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+E",
+        "mac": "Alt+Shift+E"
+      },
+      "description": "EchoKit — open popup"
+    }
   },
   "content_scripts": [
-    { "matches": ["<all_urls>"], "js": ["injected.js"], "run_at": "document_start", "all_frames": true, "world": "MAIN" },
-    { "matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_start", "all_frames": true }
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "injected.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
   ],
   "web_accessible_resources": [
-    { "resources": ["shared/*", "injected.js", "icons/*", "onboarding/*"], "matches": ["<all_urls>"] }
+    {
+      "resources": [
+        "shared/*",
+        "injected.js",
+        "icons/*",
+        "onboarding/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"

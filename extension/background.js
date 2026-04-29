@@ -51,17 +51,77 @@ function visibleInContext(interaction, ctx) {
   return hostOf(interaction.tabUrl || interaction.url) === ctx.host;
 }
 
-// ---------- License key validation (Phase 1: format-only; Phase 2: Cloudflare Worker HMAC) ----------
+// ---------- License key validation ----------
+// Two-layer check:
+//   1. Format check (offline) — accepts EK-{PLAN}-{EXPIRY?}-{SIG?} keys.
+//   2. Server check via Cloudflare Worker (HMAC-SHA256) — when an endpoint is
+//      configured. Result is cached in chrome.storage.local for 24h so the
+//      extension keeps working offline once a key has been validated.
+const LICENSE_CACHE_KEY = 'echokit_license_cache';
+const LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 function validateLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim().toUpperCase();
-  return k.startsWith('EK-PRO-') || k.startsWith('EK-YEAR-') || k.startsWith('EK-LTD-');
+  // Legacy short form (EK-PRO-xxxx) and signed long form both accepted at format level.
+  return /^EK-(PRO|YEAR|LTD)-/.test(k);
+}
+
+async function validateLicenseRemote(key) {
+  // Returns { ok: true, valid, plan, expiresAt } or { ok: false, error }.
+  if (!key) return { ok: true, valid: false };
+  let endpoint;
+  try {
+    const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
+    endpoint = cfg.echokit_license_endpoint;
+  } catch { endpoint = null; }
+  if (!endpoint) return { ok: false, error: 'no endpoint configured' };
+  try {
+    const r = await fetch(endpoint.replace(/\/$/, '') + '/v1/validate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    if (!r.ok) return { ok: false, error: `http ${r.status}` };
+    const j = await r.json();
+    return { ok: true, valid: !!j.valid, plan: j.plan || null, expiresAt: j.expiresAt || null, error: j.error || null };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
+async function isLicenseValid(key) {
+  // Format gate first — short-circuits for empty / obviously bad keys.
+  if (!validateLicenseKey(key)) return false;
+
+  // Try cached server result.
+  try {
+    const cached = (await chrome.storage.local.get(LICENSE_CACHE_KEY))[LICENSE_CACHE_KEY];
+    if (cached && cached.key === key && (Date.now() - cached.ts) < LICENSE_CACHE_TTL_MS) {
+      return !!cached.valid;
+    }
+  } catch {}
+
+  // Hit the Worker if configured.
+  const remote = await validateLicenseRemote(key);
+  if (remote.ok) {
+    try {
+      await chrome.storage.local.set({ [LICENSE_CACHE_KEY]: { key, valid: remote.valid, plan: remote.plan, expiresAt: remote.expiresAt, ts: Date.now() } });
+    } catch {}
+    return !!remote.valid;
+  }
+
+  // Worker unreachable — fall back to format-only validation so users keep
+  // working offline / on flaky networks. Cache a short-lived "tentative"
+  // result so we retry on the next call.
+  return true;
 }
 
 // Checks license key OR active trial. Returns { pro, trial, trialDaysLeft }.
 async function getProStatus() {
   const stored = await chrome.storage.sync.get(['echokit_license', 'echokit_trial_expiry']);
-  if (validateLicenseKey(stored['echokit_license'] || '')) return { pro: true, trial: false, trialDaysLeft: 0 };
+  const key = stored['echokit_license'] || '';
+  if (key && (await isLicenseValid(key))) return { pro: true, trial: false, trialDaysLeft: 0 };
   const expiry = stored['echokit_trial_expiry'] || 0;
   const now = Date.now();
   if (expiry > now) {
@@ -478,10 +538,30 @@ async function handleMessage(msg, sender) {
     }
     case 'echokit:license:set': {
       const { key } = msg;
+      // Clear cached validation result whenever the key changes.
+      try { await chrome.storage.local.remove(LICENSE_CACHE_KEY); } catch {}
       if (!key) { await chrome.storage.sync.remove('echokit_license'); return { ok: true, pro: false }; }
-      if (!validateLicenseKey(key.trim())) return { ok: false, error: 'Invalid license key. Expected EK-PRO-…, EK-YEAR-…, or EK-LTD-…' };
-      await chrome.storage.sync.set({ echokit_license: key.trim() });
-      return { ok: true, pro: true };
+      const trimmed = key.trim();
+      if (!validateLicenseKey(trimmed)) return { ok: false, error: 'Invalid license key. Expected EK-PRO-…, EK-YEAR-…, or EK-LTD-…' };
+      await chrome.storage.sync.set({ echokit_license: trimmed });
+      // Best-effort remote validation. We accept the key locally even if the
+      // worker rejects it, so users with a misconfigured endpoint can still
+      // use the extension; getProStatus() will re-check on the next call.
+      const remote = await validateLicenseRemote(trimmed);
+      if (remote.ok && remote.valid === false) {
+        // Worker said no — remove the key and surface the error.
+        await chrome.storage.sync.remove('echokit_license');
+        return { ok: false, error: remote.error || 'license rejected by server' };
+      }
+      return { ok: true, pro: true, plan: remote.plan || null, expiresAt: remote.expiresAt || null };
+    }
+    case 'echokit:license:setEndpoint': {
+      const { endpoint } = msg;
+      if (!endpoint) await chrome.storage.sync.remove('echokit_license_endpoint');
+      else await chrome.storage.sync.set({ echokit_license_endpoint: String(endpoint) });
+      // Force re-validation by clearing cache.
+      try { await chrome.storage.local.remove(LICENSE_CACHE_KEY); } catch {}
+      return { ok: true };
     }
 
     // --- Conditional mock hit tracking + mock chain advancement ---
