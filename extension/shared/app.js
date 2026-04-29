@@ -1378,6 +1378,17 @@ function showSettingsDialog() {
         </div>
       </div>
 
+      <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">License Endpoint</div>
+          <div class="ek-settings-hint">Custom license validation endpoint. Leave blank to use default built-in validation.</div>
+        </div>
+        <div style="display:flex;gap:6px;min-width:200px">
+          <input class="ek-input" type="text" id="ek-license-endpoint-input" placeholder="https://license.echokit.dev" style="flex:1;font-size:11px" data-testid="license-endpoint-input"/>
+          <button class="ek-btn ek-btn-ghost" data-a="test-endpoint" data-testid="test-endpoint-btn" style="padding:0 12px;white-space:nowrap">Test</button>
+        </div>
+      </div>
+
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-primary" data-a="close">Done</button>
       </div>
@@ -1509,6 +1520,11 @@ function showSettingsDialog() {
     const input = overlay.querySelector('#ek-license-input');
     if (input && res?.key) input.value = res.key;
   });
+  // Pre-fill license endpoint input
+  chrome.storage.sync.get('echokit_license_endpoint').then(res => {
+    const input = overlay.querySelector('#ek-license-endpoint-input');
+    if (input && res?.echokit_license_endpoint) input.value = res.echokit_license_endpoint;
+  });
   // License activation
   overlay.querySelector('[data-a="license-activate"]')?.addEventListener('click', async () => {
     const keyInput = overlay.querySelector('#ek-license-input');
@@ -1526,6 +1542,27 @@ function showSettingsDialog() {
   overlay.querySelector('[data-a="get-pro"]')?.addEventListener('click', (e) => {
     e.preventDefault();
     chrome.tabs.create({ url: 'https://echokit.dev/pricing' }).catch(() => window.open('https://echokit.dev/pricing', '_blank'));
+  });
+  // License endpoint change handler
+  overlay.querySelector('#ek-license-endpoint-input')?.addEventListener('change', async (e) => {
+    const endpoint = e.target.value.trim();
+    await BG({ type: 'echokit:license:setEndpoint', endpoint });
+    toast('License endpoint updated');
+  });
+  // Test endpoint button
+  overlay.querySelector('[data-a="test-endpoint"]')?.addEventListener('click', async () => {
+    const input = overlay.querySelector('#ek-license-endpoint-input');
+    const endpoint = input?.value?.trim();
+    if (!endpoint) { toast('Enter an endpoint URL first', 3000); return; }
+    try {
+      const res = await fetch(endpoint + '/__health');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.ok) toast(`✓ Endpoint healthy: ${data.name || 'OK'}`, 3000);
+      else toast('✗ Unexpected response: ' + JSON.stringify(data), 4000);
+    } catch (e) {
+      toast('✗ Connection failed: ' + e.message, 4000);
+    }
   });
 }
 

@@ -20,6 +20,7 @@ function parseArgs(argv) {
     else if (a === '--ci') args.ci = true;
     else if (a === '--watch') args.watch = true;
     else if (a === '--report') args.reportPath = argv[++i];
+    else if (a === '--report-format') args.reportFormat = argv[++i];
     else if (a.startsWith('--')) { console.error('Unknown flag:', a); process.exit(2); }
     else args._.push(a);
   }
@@ -41,6 +42,7 @@ Options:
   --ci                same as --strict, plus dump unmatched requests on exit
   --watch             reload mocks when the file changes
   --report <path>     write a coverage JSON to this path on exit (also at /__coverage)
+  --report-format <f> format for coverage output: 'json' (default) or 'markdown'
   --quiet             suppress per-request logs
   -h, --help          show this help
 
@@ -76,7 +78,8 @@ const opts = {
   ci: !!args.ci,
   watch: !!args.watch,
   quiet: !!args.quiet,
-  reportPath: args.reportPath || process.env.ECHOKIT_REPORT || null
+  reportPath: args.reportPath || process.env.ECHOKIT_REPORT || null,
+  reportFormat: args.reportFormat || 'json'
 };
 if (opts.reportPath) opts.reportPath = path.resolve(process.cwd(), opts.reportPath);
 
