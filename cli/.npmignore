@@ -1,0 +1,6 @@
+test/
+*.test.js
+*.spec.js
+.github/
+.git/
+node_modules/

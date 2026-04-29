@@ -1,12 +1,5 @@
 #!/usr/bin/env node
 // echokit-server — headless mock server for EchoKit-exported JSON.
-//
-// Usage:
-//   echokit-server <export.json> [--port 3001] [--host 127.0.0.1]
-//                                [--latency 0] [--strict] [--quiet]
-//                                [--ci] [--watch]
-//
-// In CI, set EXIT_CODE_ON_UNMATCHED=1 to fail when an unmocked request is received.
 
 'use strict';
 
@@ -26,6 +19,7 @@ function parseArgs(argv) {
     else if (a === '--quiet') args.quiet = true;
     else if (a === '--ci') args.ci = true;
     else if (a === '--watch') args.watch = true;
+    else if (a === '--report') args.reportPath = argv[++i];
     else if (a.startsWith('--')) { console.error('Unknown flag:', a); process.exit(2); }
     else args._.push(a);
   }
@@ -46,17 +40,22 @@ Options:
   --strict            exit non-zero if a request does not match any mock
   --ci                same as --strict, plus dump unmatched requests on exit
   --watch             reload mocks when the file changes
+  --report <path>     write a coverage JSON to this path on exit (also at /__coverage)
   --quiet             suppress per-request logs
   -h, --help          show this help
+
+Endpoints (built-in):
+  /__health           liveness probe → { ok: true, mocks: <n> }
+  /__coverage         live coverage JSON
 
 Environment:
   PORT                same as --port
   ECHOKIT_EXPORT      path to export JSON (alternative to positional arg)
+  ECHOKIT_REPORT      path for coverage JSON (alternative to --report)
 `);
 }
 
 const args = parseArgs(process.argv);
-
 if (args.help) { help(); process.exit(0); }
 
 const file = args._[0] || process.env.ECHOKIT_EXPORT;
@@ -76,8 +75,10 @@ const opts = {
   strict: !!(args.strict || args.ci),
   ci: !!args.ci,
   watch: !!args.watch,
-  quiet: !!args.quiet
+  quiet: !!args.quiet,
+  reportPath: args.reportPath || process.env.ECHOKIT_REPORT || null
 };
+if (opts.reportPath) opts.reportPath = path.resolve(process.cwd(), opts.reportPath);
 
 startServer(opts).catch(err => {
   console.error('✗ failed to start:', err.message);

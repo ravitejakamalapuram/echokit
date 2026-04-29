@@ -8,15 +8,13 @@ on:
 # Drop this file into .github/workflows/ in your project to run integration
 # tests against EchoKit-recorded API mocks. Keep your exported JSON under
 # version control (e.g. tests/fixtures/echokit-export.json).
-#
-# The job will:
-#   1. start `echokit-server` in the background on port 3001
-#   2. run your tests against http://localhost:3001
-#   3. fail if any test hits an unmocked endpoint (--ci flag)
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # needed to comment the coverage report on PRs
     steps:
       - uses: actions/checkout@v4
 
@@ -31,12 +29,12 @@ jobs:
       - name: Start EchoKit mock server
         run: |
           npx echokit-server tests/fixtures/echokit-export.json \
-            --port 3001 --ci --quiet > echokit.log 2>&1 &
+            --port 3001 --ci --quiet \
+            --report ./echokit-coverage.json > echokit.log 2>&1 &
           echo "ECHOKIT_PID=$!" >> $GITHUB_ENV
-          # Wait for the server to be ready
-          for i in {1..20}; do
-            if curl -sf http://localhost:3001/__healthz -o /dev/null; then break; fi
-            if [ $i -eq 20 ]; then
+          for i in {1..40}; do
+            if curl -sf http://localhost:3001/__health -o /dev/null; then break; fi
+            if [ $i -eq 40 ]; then
               echo "echokit-server didn't start in time"
               cat echokit.log
               exit 1
@@ -49,16 +47,81 @@ jobs:
           API_BASE_URL: http://localhost:3001
         run: npm test
 
-      - name: Stop EchoKit
+      - name: Stop EchoKit (writes coverage on graceful shutdown)
         if: always()
         run: |
-          if [ -n "$ECHOKIT_PID" ]; then kill $ECHOKIT_PID || true; fi
+          if [ -n "$ECHOKIT_PID" ]; then
+            # SIGTERM triggers report write
+            kill -TERM $ECHOKIT_PID || true
+            # Give it a moment to flush
+            sleep 1
+            kill -KILL $ECHOKIT_PID 2>/dev/null || true
+          fi
           echo "--- echokit-server log ---"
           cat echokit.log || true
 
-      - name: Upload echokit log on failure
-        if: failure()
+      - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: echokit-server-log
-          path: echokit.log
+          name: echokit-coverage
+          path: |
+            echokit-coverage.json
+            echokit.log
+
+      - name: Comment coverage on PR
+        if: always() && github.event_name == 'pull_request' && hashFiles('echokit-coverage.json') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const r = JSON.parse(fs.readFileSync('echokit-coverage.json', 'utf8'));
+            const usedPct = r.coverage;
+            const top5 = r.mocks.slice(0, 5).map(m =>
+              `- \`${m.method} ${m.url}\` — **${m.hits}** hits`
+            ).join('\n') || '_no mocks hit_';
+            const unused = r.unusedMocks.slice(0, 10).map(m =>
+              `- \`${m.method} ${m.url}\``
+            ).join('\n') || '_all mocks used_';
+            const unmatched = r.unmatched.slice(0, 10).map(u =>
+              `- \`${u.method} ${u.url}\``
+            ).join('\n') || '_none_';
+            const body = [
+              `### EchoKit mock coverage`,
+              ``,
+              `**${r.usedMocks}/${r.totalMocks}** mocks used (**${usedPct}%** coverage) · **${r.matchedRequests}/${r.totalRequests}** requests matched`,
+              ``,
+              `<details><summary>Top mocks by hits</summary>`,
+              ``,
+              top5,
+              ``,
+              `</details>`,
+              ``,
+              `<details><summary>Unused mocks (${r.unusedMocks.length})</summary>`,
+              ``,
+              unused,
+              ``,
+              `</details>`,
+              ``,
+              r.unmatchedRequests > 0
+                ? `<details open><summary>⚠️ Unmatched requests (${r.unmatchedRequests})</summary>\n\n${unmatched}\n\n</details>`
+                : `✓ no unmatched requests`,
+              ``,
+              `<sub>Posted by [echokit-server](https://github.com/ravitejakamalapuram/echokit) · marker:echokit-coverage</sub>`
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const existing = comments.find(c => c.body && c.body.includes('marker:echokit-coverage'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body
+              });
+            }
