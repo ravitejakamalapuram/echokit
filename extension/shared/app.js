@@ -9,10 +9,13 @@ let state = {
   mode: 'popup',
   tabId: null,
   tab: { recording: false, mocking: false, sessionId: null, host: '' },
-  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [] },
+  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [], rewriteRules: [], transformRules: [] },
   interactions: [],
   allCount: 0,
   isPro: false,
+  trial: false,
+  trialDaysLeft: 0,
+  waterfall: false,
   search: '',
   methodFilter: null,
   statusFilter: null,
@@ -73,6 +76,8 @@ async function refresh() {
   state.interactions = resp.interactions || [];
   state.allCount = resp.allCount || 0;
   state.isPro = resp.isPro || false;
+  state.trial = resp.trial || false;
+  state.trialDaysLeft = resp.trialDaysLeft || 0;
 }
 
 function applyTheme() {
@@ -102,7 +107,9 @@ function render() {
       ${renderToolbar()}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
-          ${list.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('')}
+          ${state.waterfall
+            ? renderWaterfall(list)
+            : (list.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join(''))}
         </div>
         ${isPopup ? '' : '<div class="ek-resizer" data-action="resize" data-testid="pane-resizer"></div>'}
         <div class="ek-detail" data-testid="api-detail">
@@ -167,9 +174,12 @@ function restoreUIState(snap) {
 function renderHeader() {
   const { recording, mocking } = state.tab;
   const cors = state.settings.corsOverride;
+  const trialBadge = state.trial && state.trialDaysLeft > 0
+    ? `<span class="ek-trial-badge" title="Pro trial: ${state.trialDaysLeft} day${state.trialDaysLeft === 1 ? '' : 's'} left">${state.trialDaysLeft}d trial</span>` : '';
   return `
     <div class="ek-header">
       <div class="ek-logo"><span class="ek-logo-mark">EK</span><span>ECHOKIT</span></div>
+      ${trialBadge}
       <div class="ek-header-spacer"></div>
       ${recording
         ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
@@ -184,6 +194,10 @@ function renderHeader() {
         <span class="ek-switch-track"></span>
         <span class="ek-switch-label">CORS</span>
       </label>
+      <button class="ek-btn ek-btn-ghost ek-btn-icon ${state.waterfall ? 'active' : ''}" data-action="toggle-waterfall"
+        title="Toggle network waterfall view" data-testid="waterfall-toggle-btn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
+      </button>
       <div class="ek-menu">
         <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
@@ -213,6 +227,7 @@ function renderMenu() {
     <button class="ek-menu-item" data-menu="import-har" data-testid="menu-import-har">Import HAR ${state.isPro ? '' : proTag}</button>
     <button class="ek-menu-item" data-menu="export-har" data-testid="menu-export-har">Export HAR <span class="ek-subtle">DevTools-compatible</span>${state.isPro ? '' : proTag}</button>
     <button class="ek-menu-item" data-menu="export-postman" data-testid="menu-export-postman">Export Postman Collection ${state.isPro ? '' : proTag}</button>
+    <button class="ek-menu-item" data-menu="import-openapi" data-testid="menu-import-openapi">Import OpenAPI / Swagger JSON</button>
     <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage ${state.isPro ? '<span class="ek-subtle">active tab</span>' : proTag}</button>
     <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'localStorage' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${state.isPro ? pasteHint : proTag}</button>
@@ -240,6 +255,7 @@ function renderMenu() {
     else if (which === 'export-postman') onExportPostman();
     else if (which === 'import') showImportDialog();
     else if (which === 'import-har') onImportHar();
+    else if (which === 'import-openapi') onImportOpenAPI();
     else if (which === 'ls-copy') onCopyLocalStorage();
     else if (which === 'ls-paste') onPasteLocalStorage();
     else if (which === 'ck-copy') onCopyCookies();
@@ -317,6 +333,24 @@ function onImportHar() {
       if (res?.ok) { toast(`Imported ${res.imported} entries from HAR`); await refresh(); render(); }
       else alert('HAR import failed: ' + (res?.error || 'unknown'));
     } catch (e) { alert('Failed to parse HAR: ' + e.message); }
+  };
+  input.click();
+}
+
+function onImportOpenAPI() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json,application/json';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const baseUrl = prompt('Override base URL? (leave blank to use spec servers[])', '') || '';
+      const res = await BG({ type: 'echokit:import:openapi', data, baseUrl });
+      if (res?.ok) { toast(`Imported ${res.imported} mock${res.imported === 1 ? '' : 's'} from OpenAPI spec`); await refresh(); render(); }
+      else alert('OpenAPI import failed: ' + (res?.error || 'unknown'));
+    } catch (e) { alert('Failed to parse spec: ' + e.message); }
   };
   input.click();
 }
@@ -524,6 +558,52 @@ function renderToolbar() {
         <option value="5" ${state.statusFilter === '5' ? 'selected' : ''}>5xx</option>
         <option value="0" ${state.statusFilter === '0' ? 'selected' : ''}>failed</option>
       </select>
+    </div>
+  `;
+}
+
+function renderWaterfall(interactions) {
+  if (!interactions.length) return renderEmpty();
+  // Sort by start time
+  const rows = interactions.map(i => ({
+    ...i,
+    startAt: i.timestamp - (i.durationMs || 0)
+  })).sort((a, b) => a.startAt - b.startAt);
+  const minT = rows[0].startAt;
+  const maxT = Math.max(...rows.map(r => r.startAt + (r.durationMs || 1)));
+  const totalSpan = Math.max(maxT - minT, 1);
+  const METHOD_COLORS = { GET: '#60a5fa', POST: '#34d399', PUT: '#f59e0b', PATCH: '#a78bfa', DELETE: '#ef4444', WS: '#f97316', SSE: '#f97316' };
+  return `
+    <div class="ek-waterfall" data-testid="waterfall-view">
+      <div class="ek-waterfall-header">
+        <span class="ek-waterfall-col-method">Method</span>
+        <span class="ek-waterfall-col-path">Path</span>
+        <span class="ek-waterfall-col-status">Status</span>
+        <span class="ek-waterfall-col-bar">Timeline (${totalSpan < 1000 ? totalSpan + 'ms' : (totalSpan / 1000).toFixed(2) + 's'})</span>
+      </div>
+      ${rows.map(r => {
+        const relStart = ((r.startAt - minT) / totalSpan) * 100;
+        const relWidth = Math.max((r.durationMs || 1) / totalSpan * 100, 0.8);
+        const color = METHOD_COLORS[r.method] || '#8b8fa8';
+        const st = r.overrideStatus ?? r.responseStatus;
+        const stColor = st >= 500 ? '#ef4444' : st >= 400 ? '#f97316' : '#34d399';
+        const path = (() => { try { return new URL(r.url).pathname; } catch { return r.url; } })();
+        return `
+          <div class="ek-waterfall-row ${r.id === state.selectedId ? 'selected' : ''}"
+               data-action="select" data-id="${r.id}" data-testid="waterfall-row"
+               title="${escapeHtml(r.url)}\n${r.durationMs || 0}ms">
+            <span class="ek-waterfall-col-method">
+              <span class="ek-method-badge" style="background:${color}22;color:${color};border-color:${color}44">${r.method}</span>
+            </span>
+            <span class="ek-waterfall-col-path ek-mono">${escapeHtml(path.slice(0, 40))}</span>
+            <span class="ek-waterfall-col-status" style="color:${stColor}">${st ?? '—'}</span>
+            <span class="ek-waterfall-col-bar">
+              <span class="ek-waterfall-bar" style="left:${relStart.toFixed(1)}%;width:${relWidth.toFixed(1)}%;background:${color}"></span>
+              <span class="ek-waterfall-bar-label">${r.durationMs ? r.durationMs + 'ms' : ''}</span>
+            </span>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -810,6 +890,9 @@ function bindEvents() {
     else if (action === 'toggle-cors-master') el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:settings:update', patch: { corsOverride: e.target.checked } });
       await refresh(); render();
+    });
+    else if (action === 'toggle-waterfall') el.addEventListener('click', () => {
+      state.waterfall = !state.waterfall; render();
     });
     else if (action === 'toggle-block') el.addEventListener('click', async (e) => {
       e.stopPropagation();

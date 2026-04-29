@@ -122,11 +122,50 @@
       else { state.mockIndex = p; }
     }
     else if (d.type === 'echokit:tabState') {
-      state.recording = !!d.payload?.recording;
-      state.mocking = !!d.payload?.mocking;
+      const p = d.payload || {};
+      state.recording = !!p.recording;
+      state.mocking = !!p.mocking;
+      state.rewriteRules = p.rewriteRules || [];
+      state.transformRules = p.transformRules || [];
     }
   }, false);
   emit('ready');
+
+  // Apply URL rewrite rules to a URL (real requests only, not mocks)
+  function applyRewriteRules(url) {
+    for (const rule of (state.rewriteRules || [])) {
+      if (!rule.enabled) continue;
+      try {
+        const from = rule.from || '';
+        if (from.startsWith('/') && from.lastIndexOf('/') > 0) {
+          const flags = from.slice(from.lastIndexOf('/') + 1);
+          const pattern = from.slice(1, from.lastIndexOf('/'));
+          const re = new RegExp(pattern, flags);
+          if (re.test(url)) return url.replace(re, rule.to || '');
+        } else if (from && url.includes(from)) {
+          return url.replace(from, rule.to || '');
+        }
+      } catch {}
+    }
+    return url;
+  }
+
+  // Apply response transform rules to body/headers
+  function applyResponseTransforms(body, headers, url) {
+    const rules = (state.transformRules || []).filter(r => r.enabled && r.phase === 'response');
+    if (!rules.length) return { body, headers };
+    for (const rule of rules) {
+      try {
+        if (rule.urlPattern && !url.includes(rule.urlPattern)) continue;
+        if (rule.action === 'add-header') headers = { ...headers, [rule.key]: rule.value };
+        else if (rule.action === 'remove-header') { headers = { ...headers }; delete headers[rule.key]; }
+        else if (rule.action === 'set-body') body = rule.value;
+        else if (rule.action === 'regex-replace-body' && typeof body === 'string')
+          body = body.replace(new RegExp(rule.key, 'g'), rule.value);
+      } catch {}
+    }
+    return { body, headers };
+  }
 
   // ---------- Mock lookup (tries each supported match mode) ----------
   const MODES = ['strict', 'ignore-query', 'ignore-body', 'path-wildcard', 'graphql', 'graphql-op'];
@@ -203,14 +242,22 @@
         let status = mock.status || 200;
         if (mock.errorMode === '4xx') status = 400;
         else if (mock.errorMode === '5xx') status = 500;
-        const headers = new Headers(mock.headers || {});
+        // Apply response transforms to mock
+        const transformed = applyResponseTransforms(mock.body ?? '', mock.headers || {}, url);
+        const headers = new Headers(transformed.headers);
         if (!headers.has('content-type')) headers.set('content-type', 'application/json');
-        return new Response(mock.body ?? '', { status, statusText: statusText(status), headers });
+        return new Response(transformed.body, { status, statusText: statusText(status), headers });
       }
 
+      // Apply URL rewrite rules to real requests
+      const rewrittenUrl = applyRewriteRules(url);
       const started = Date.now();
       let res, err;
-      try { res = await origFetch(input, init); } catch (e) { err = e; }
+      try {
+        // Use rewritten URL if different
+        const fetchTarget = rewrittenUrl !== url ? rewrittenUrl : input;
+        res = await origFetch(fetchTarget, init);
+      } catch (e) { err = e; }
       if (state.recording) {
         try {
           if (res) {

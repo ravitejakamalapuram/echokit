@@ -18,7 +18,9 @@ let settings = {
   scope: 'tab',
   theme: 'dark',
   autoOpenOnRefresh: true,
-  blocklist: []
+  blocklist: [],
+  rewriteRules: [],
+  transformRules: []
 };
 
 async function hydrate() {
@@ -56,6 +58,19 @@ function validateLicenseKey(key) {
   return k.startsWith('EK-PRO-') || k.startsWith('EK-YEAR-') || k.startsWith('EK-LTD-');
 }
 
+// Checks license key OR active trial. Returns { pro, trial, trialDaysLeft }.
+async function getProStatus() {
+  const stored = await chrome.storage.sync.get(['echokit_license', 'echokit_trial_expiry']);
+  if (validateLicenseKey(stored['echokit_license'] || '')) return { pro: true, trial: false, trialDaysLeft: 0 };
+  const expiry = stored['echokit_trial_expiry'] || 0;
+  const now = Date.now();
+  if (expiry > now) {
+    const trialDaysLeft = Math.ceil((expiry - now) / 86400000);
+    return { pro: true, trial: true, trialDaysLeft };
+  }
+  return { pro: false, trial: false, trialDaysLeft: 0 };
+}
+
 function buildMockIndexFor(interactions, ctx) {
   const index = { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {}, graphql: {}, 'graphql-op': {} };
   // blockedKeys: same per-mode shape but only contains keys that are unconditionally blocked.
@@ -75,11 +90,19 @@ function buildMockIndexFor(interactions, ctx) {
     if (it.mockMaxCount != null && (it.mockCallCount || 0) >= it.mockMaxCount) continue;
     const bucket = index[mode] || (index[mode] = {});
     if (!bucket[key]) bucket[key] = [];
+    // Resolve mock chain: pick current chain step if chain is defined
+    let chainStep = null;
+    if (it.mockChain && it.mockChain.length > 0) {
+      const idx = it.mockChainLoop !== false
+        ? (it.mockChainCursor || 0) % it.mockChain.length
+        : Math.min(it.mockChainCursor || 0, it.mockChain.length - 1);
+      chainStep = it.mockChain[idx];
+    }
     bucket[key].push({
       id: it.id,
-      status: it.overrideStatus != null ? it.overrideStatus : it.responseStatus,
-      body: it.overrideBody != null ? it.overrideBody : it.responseBody,
-      headers: it.overrideHeaders || it.responseHeaders || {},
+      status: chainStep?.status ?? (it.overrideStatus != null ? it.overrideStatus : it.responseStatus),
+      body: chainStep?.body ?? (it.overrideBody != null ? it.overrideBody : it.responseBody),
+      headers: chainStep?.headers ?? (it.overrideHeaders || it.responseHeaders || {}),
       latency: it.mockLatency || 0,
       errorMode: it.mockErrorMode || 'none',
       timestamp: it.timestamp,
@@ -87,7 +110,10 @@ function buildMockIndexFor(interactions, ctx) {
       method: it.method,
       wsLoop: it.wsLoop || false,
       mockMaxCount: it.mockMaxCount || null,
-      mockCallCount: it.mockCallCount || 0
+      mockCallCount: it.mockCallCount || 0,
+      hasChain: !!(it.mockChain && it.mockChain.length > 0),
+      mockChainLen: it.mockChain ? it.mockChain.length : 0,
+      mockChainCursor: it.mockChainCursor || 0
     });
   }
   for (const m of Object.keys(index)) for (const k of Object.keys(index[m])) index[m][k].sort((a, b) => b.timestamp - a.timestamp);
@@ -103,7 +129,7 @@ async function pushTabMeta(tabId) {
   const ctx = { tabId, host: st.host, scope: settings.scope };
   const all = await getAllInteractions();
   const { index, blockedKeys } = buildMockIndexFor(all, ctx);
-  safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist } });
+  safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist, rewriteRules: settings.rewriteRules || [], transformRules: settings.transformRules || [] } });
   safeSend(tabId, { type: 'echokit:mockIndex', payload: { mocks: index, blocked: blockedKeys } });
   await updateBadge(tabId);
 }
@@ -175,13 +201,15 @@ async function handleMessage(msg, sender) {
       try { if (tabId != null) { const t = await chrome.tabs.get(tabId); host = hostOf(t?.url || ''); } } catch {}
       const ctx = { tabId, host, scope: settings.scope };
       const { index, blockedKeys } = buildMockIndexFor(all, ctx);
-      const licenseKey = (await chrome.storage.sync.get('echokit_license'))['echokit_license'] || '';
+      const proStatus = await getProStatus();
       return {
         tab: tabId != null ? { tabId, host, ...getTab(tabId) } : null,
         settings,
         interactions: all.filter(i => visibleInContext(i, ctx)),
         allCount: all.length,
-        isPro: validateLicenseKey(licenseKey),
+        isPro: proStatus.pro,
+        trial: proStatus.trial,
+        trialDaysLeft: proStatus.trialDaysLeft,
         mockIndex: index,
         blockedKeys
       };
@@ -221,10 +249,9 @@ async function handleMessage(msg, sender) {
       const st = getTab(tabId);
       if (!st.recording) return { ok: false, reason: 'not-recording' };
       // Free tier: max 50 unique interactions. Check before recording.
-      const licenseKey = (await chrome.storage.sync.get('echokit_license'))['echokit_license'] || '';
-      const isPro = validateLicenseKey(licenseKey);
+      const proStatus = await getProStatus();
       const all = await getAllInteractions();
-      if (!isPro && all.length >= 50) return { ok: false, reason: 'free_limit' };
+      if (!proStatus.pro && all.length >= 50) return { ok: false, reason: 'free_limit' };
       const matchKeys = data.matchKeys || computeMatchKeys(data.method, data.url, data.requestBody);
       const hash = matchKeys.strict;
       const existing = all.find(i => i.hash === hash && i.tabId === tabId) || null;
@@ -445,9 +472,9 @@ async function handleMessage(msg, sender) {
 
     // --- License ---
     case 'echokit:license:check': {
+      const proStatus = await getProStatus();
       const stored = await chrome.storage.sync.get('echokit_license');
-      const key = stored['echokit_license'] || '';
-      return { ok: true, pro: validateLicenseKey(key), key };
+      return { ok: true, pro: proStatus.pro, trial: proStatus.trial, trialDaysLeft: proStatus.trialDaysLeft, key: stored['echokit_license'] || '' };
     }
     case 'echokit:license:set': {
       const { key } = msg;
@@ -457,15 +484,26 @@ async function handleMessage(msg, sender) {
       return { ok: true, pro: true };
     }
 
-    // --- Conditional mock hit tracking ---
+    // --- Conditional mock hit tracking + mock chain advancement ---
     case 'echokit:mock:hit': {
       const { id } = msg.data || {};
       if (!id) return { ok: true };
       const existing = await getInteraction(id);
-      if (!existing || existing.mockMaxCount == null) return { ok: true };
-      const newCount = (existing.mockCallCount || 0) + 1;
-      await putInteraction({ ...existing, mockCallCount: newCount });
-      if (newCount >= existing.mockMaxCount) await pushAllTabs();
+      if (!existing) return { ok: true };
+      const updates = {};
+      // Conditional mock count
+      if (existing.mockMaxCount != null) {
+        const newCount = (existing.mockCallCount || 0) + 1;
+        updates.mockCallCount = newCount;
+      }
+      // Mock chain advancement
+      if (existing.mockChain && existing.mockChain.length > 0) {
+        updates.mockChainCursor = (existing.mockChainCursor || 0) + 1;
+      }
+      if (Object.keys(updates).length > 0) {
+        await putInteraction({ ...existing, ...updates });
+        await pushAllTabs();
+      }
       return { ok: true };
     }
 
@@ -500,6 +538,74 @@ async function handleMessage(msg, sender) {
           });
           imported++;
         } catch {}
+      }
+      await pushAllTabs();
+      return { ok: true, imported };
+    }
+
+    // --- OpenAPI / Swagger import ---
+    case 'echokit:import:openapi': {
+      const { data, baseUrl: customBase } = msg;
+      if (!data || (!data.openapi && !data.swagger && !data.paths)) return { ok: false, error: 'Not a valid OpenAPI / Swagger spec' };
+      const isSwagger2 = !!data.swagger;
+      // Resolve base URL
+      let base = customBase || '';
+      if (!base) {
+        if (isSwagger2) {
+          const proto = (data.schemes || ['https'])[0];
+          base = `${proto}://${data.host || 'localhost'}${data.basePath || '/'}`;
+        } else {
+          base = data.servers?.[0]?.url || 'https://localhost';
+        }
+      }
+      base = base.replace(/\/$/, '');
+      const paths = data.paths || {};
+      let imported = 0;
+      const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
+      for (const [path, pathItem] of Object.entries(paths)) {
+        for (const httpMethod of HTTP_METHODS) {
+          const op = pathItem[httpMethod];
+          if (!op) continue;
+          const method = httpMethod.toUpperCase();
+          // Build URL — replace path params with example values
+          const url = base + path.replace(/{([^}]+)}/g, (_, p) => `${p}_example`);
+          // Extract request body example
+          let reqBody = null;
+          if (isSwagger2 && op.parameters) {
+            const bodyParam = op.parameters.find(p => p.in === 'body');
+            if (bodyParam?.schema?.example) reqBody = JSON.stringify(bodyParam.schema.example);
+          } else if (op.requestBody?.content?.['application/json']?.example) {
+            reqBody = JSON.stringify(op.requestBody.content['application/json'].example);
+          }
+          // Extract response
+          const responses = op.responses || {};
+          const successCode = ['200', '201', '204'].find(c => responses[c]) || Object.keys(responses)[0] || '200';
+          const resp = responses[successCode] || {};
+          let resBody = '';
+          let resStatus = parseInt(successCode, 10) || 200;
+          if (isSwagger2) {
+            const ex = resp.examples?.['application/json'];
+            resBody = ex ? JSON.stringify(ex) : (resp.schema?.example ? JSON.stringify(resp.schema.example) : '');
+          } else {
+            const c = resp.content?.['application/json'];
+            resBody = c?.example ? JSON.stringify(c.example) : (c?.schema?.example ? JSON.stringify(c.schema.example) : '');
+          }
+          if (!resBody) resBody = `{"status":"${resp.description || 'ok'}"}`;
+          const mk = computeMatchKeys(method, url, reqBody);
+          await putInteraction({
+            id: `int_oas_${Date.now()}_${imported}_${Math.random().toString(36).slice(2, 6)}`,
+            hash: mk.strict, matchKeys: mk, matchMode: 'strict',
+            url, method, requestHeaders: {}, requestBody: reqBody,
+            responseStatus: resStatus, responseHeaders: { 'content-type': 'application/json' }, responseBody: resBody,
+            timestamp: Date.now(), durationMs: 0, tabId: null, tabUrl: '', host: '',
+            mockEnabled: true, mockLatency: 0, mockErrorMode: 'none',
+            overrideStatus: null, overrideBody: null, overrideHeaders: null,
+            activeVersionId: null, notes: `OpenAPI: ${op.summary || op.operationId || `${method} ${path}`}`, gqlOperation: '',
+            mockMaxCount: null, mockCallCount: 0, wsLoop: false, blocked: false,
+            mockChain: null, mockChainCursor: 0, mockChainLoop: true
+          });
+          imported++;
+        }
       }
       await pushAllTabs();
       return { ok: true, imported };
@@ -571,6 +677,9 @@ chrome.runtime.onInstalled.addListener(async (info) => {
   await hydrate();
   await pushAllTabs();
   if (info.reason === 'install') {
+    // Grant 7-day Pro trial automatically
+    const trialExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    await chrome.storage.sync.set({ echokit_trial_expiry: trialExpiry });
     try { await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/welcome.html') }); } catch {}
   }
 });
