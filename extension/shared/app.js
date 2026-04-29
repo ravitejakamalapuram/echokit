@@ -96,7 +96,6 @@ function render() {
 
   root.innerHTML = `
     <div class="${appCls}" data-testid="echokit-app" style="${isPopup ? '' : `--list-width:${state.listWidth}px`}">
-      ${state.tab.mocking ? `<div class="ek-banner" data-testid="mock-active-banner"><span>Mocking Active — responses may be faked</span></div>` : ''}
       ${renderHeader()}
       ${renderToolbar()}
       <div class="ek-main">
@@ -165,6 +164,7 @@ function restoreUIState(snap) {
 
 function renderHeader() {
   const { recording, mocking } = state.tab;
+  const cors = state.settings.corsOverride;
   return `
     <div class="ek-header">
       <div class="ek-logo"><span class="ek-logo-mark">EK</span><span>ECHOKIT</span></div>
@@ -176,6 +176,11 @@ function renderHeader() {
         <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
         <span class="ek-switch-track"></span>
         <span class="ek-switch-label">MOCK</span>
+      </label>
+      <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
+        <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
+        <span class="ek-switch-track"></span>
+        <span class="ek-switch-label">CORS</span>
       </label>
       <div class="ek-menu">
         <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
@@ -201,10 +206,13 @@ function renderMenu() {
   panel.innerHTML = `
     <button class="ek-menu-item" data-menu="clear" data-testid="menu-clear">Clear recordings <span class="ek-subtle">${state.interactions.length}</span></button>
     <button class="ek-menu-item" data-menu="export" data-testid="menu-export">Export JSON</button>
+    <button class="ek-menu-item" data-menu="export-har" data-testid="menu-export-har">Export HAR <span class="ek-subtle">DevTools-compatible</span></button>
     <button class="ek-menu-item" data-menu="import" data-testid="menu-import">Import JSON</button>
     <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage <span class="ek-subtle">active tab</span></button>
-    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${pasteHint}</button>
+    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'localStorage' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${pasteHint}</button>
+    <button class="ek-menu-item" data-menu="ck-copy" data-testid="menu-ck-copy">Copy cookies <span class="ek-subtle">active tab</span></button>
+    <button class="ek-menu-item" data-menu="ck-paste" data-testid="menu-ck-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'cookies' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste cookies</button>
     <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist <span class="ek-subtle">share w/ team</span></button>
     <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL</button>
@@ -223,9 +231,12 @@ function renderMenu() {
     state.menuOpen = false;
     if (which === 'clear') onClearSession();
     else if (which === 'export') onExport();
+    else if (which === 'export-har') onExportHar();
     else if (which === 'import') showImportDialog();
     else if (which === 'ls-copy') onCopyLocalStorage();
     else if (which === 'ls-paste') onPasteLocalStorage();
+    else if (which === 'ck-copy') onCopyCookies();
+    else if (which === 'ck-paste') onPasteCookies();
     else if (which === 'gist-upload') showGistUploadDialog();
     else if (which === 'gist-import') showGistImportDialog();
     else if (which === 'settings') showSettingsDialog();
@@ -250,11 +261,49 @@ async function tryReadClipboardPreview() {
     const text = await navigator.clipboard.readText();
     const j = JSON.parse(text);
     if (j && j.__echokit === 'localStorage' && j.keys && typeof j.keys === 'object') {
-      state.clipboardPreview = { count: Object.keys(j.keys).length, origin: j.origin || '', payload: j };
+      state.clipboardPreview = { kind: 'localStorage', count: Object.keys(j.keys).length, origin: j.origin || '', payload: j };
+    } else if (j && j.__echokit === 'cookies' && Array.isArray(j.cookies)) {
+      state.clipboardPreview = { kind: 'cookies', count: j.cookies.length, origin: j.origin || '', payload: j };
     } else {
       state.clipboardPreview = null;
     }
   } catch { state.clipboardPreview = null; }
+}
+
+async function onExportHar() {
+  const res = await BG({ type: 'echokit:export:har' });
+  if (!res?.ok) { alert('HAR export failed'); return; }
+  const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `echokit-${Date.now()}.har`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('HAR file downloaded');
+}
+
+async function onCopyCookies() {
+  if (state.tabId == null) { alert('No active tab'); return; }
+  const r = await BG({ type: 'echokit:cookies:read', tabId: state.tabId });
+  if (!r?.ok) { alert('Failed to read cookies: ' + (r?.error || 'unknown')); return; }
+  const payload = { __echokit: 'cookies', version: 1, origin: r.origin, copiedAt: new Date().toISOString(), cookies: r.cookies };
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    await tryReadClipboardPreview(); render();
+    toast(`Copied ${r.count} cookies from ${r.origin}`);
+  } catch (e) { alert('Clipboard write failed: ' + e.message); }
+}
+
+async function onPasteCookies() {
+  await tryReadClipboardPreview();
+  if (!state.clipboardPreview || state.clipboardPreview.kind !== 'cookies') {
+    alert('Clipboard has no EchoKit cookies payload.\nCopy from another tab first via Menu → Copy cookies.');
+    return;
+  }
+  const { count, origin, payload } = state.clipboardPreview;
+  if (!confirm(`Write ${count} cookies from ${origin} into ${state.tab.host || 'active tab'}?`)) return;
+  const r = await BG({ type: 'echokit:cookies:write', tabId: state.tabId, cookies: payload.cookies });
+  if (r?.ok) toast(`Wrote ${r.written} cookies. Reload the tab.`);
+  else alert('Paste failed: ' + (r?.error || 'unknown'));
 }
 
 async function onCopyLocalStorage() {
@@ -448,6 +497,7 @@ function renderRow(i) {
       ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions">×${versionCount}</span>` : ''}
       <span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>
       <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle"></button>
+      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn">⊘</button>
     </div>
   `;
 }
@@ -645,6 +695,18 @@ function bindEvents() {
     else if (action === 'start-recording') el.addEventListener('click', onStartRecording);
     else if (action === 'stop-recording') el.addEventListener('click', onStopRecording);
     else if (action === 'toggle-mocking') el.addEventListener('change', onToggleMocking);
+    else if (action === 'toggle-cors-master') el.addEventListener('change', async (e) => {
+      await BG({ type: 'echokit:settings:update', patch: { corsOverride: e.target.checked } });
+      await refresh(); render();
+    });
+    else if (action === 'toggle-block') el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const tid = el.getAttribute('data-id');
+      const current = state.interactions.find(x => x.id === tid);
+      if (!current) return;
+      await BG({ type: 'echokit:interaction:update', id: tid, patch: { blocked: !current.blocked } });
+      await refresh(); render();
+    });
     else if (action === 'toggle-menu') el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
     else if (action === 'toggle-cors') el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); });
     else if (action === 'cycle-scope') el.addEventListener('click', async () => {

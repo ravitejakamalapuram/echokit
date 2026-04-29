@@ -115,7 +115,12 @@
   window.addEventListener('message', (ev) => {
     const d = ev.data;
     if (!d || d.source !== SRC_CONTENT) return;
-    if (d.type === 'echokit:mockIndex') state.mockIndex = d.payload || state.mockIndex;
+    if (d.type === 'echokit:mockIndex') {
+      // payload may be { mocks, blocked } (new) or the bare index (legacy)
+      const p = d.payload || {};
+      if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
+      else { state.mockIndex = p; }
+    }
     else if (d.type === 'echokit:tabState') {
       state.recording = !!d.payload?.recording;
       state.mocking = !!d.payload?.mocking;
@@ -125,6 +130,13 @@
 
   // ---------- Mock lookup (tries each supported match mode) ----------
   const MODES = ['strict', 'ignore-query', 'ignore-body', 'path-wildcard', 'graphql', 'graphql-op'];
+  function isBlocked(keys) {
+    for (const mode of MODES) {
+      const bucket = state.blockedKeys?.[mode];
+      if (bucket && bucket[keys[mode]]) return true;
+    }
+    return false;
+  }
   function pickMock(keys) {
     if (!state.mocking) return null;
     for (const mode of MODES) {
@@ -254,6 +266,12 @@
       const ctx = this.__echokit || {};
       ctx.body = body != null ? (typeof body === 'string' ? body : (body instanceof URLSearchParams ? body.toString() : '[binary]')) : null;
       const matchKeys = computeMatchKeys(ctx.method, ctx.url, ctx.body);
+      // Per-API block (XHR variant).
+      if (isBlocked(matchKeys)) {
+        const xhr = this;
+        setTimeout(() => xhr.dispatchEvent(new Event('error')), 0);
+        return;
+      }
       const mock = pickMock(matchKeys);
       if (mock) {
         const xhr = this;

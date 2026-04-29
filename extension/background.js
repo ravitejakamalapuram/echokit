@@ -15,10 +15,10 @@ const BLOCKLIST_RULESET_BASE = 2000; // rules 2000..2099 reserved for blocklist
 const tabState = new Map();
 let settings = {
   corsOverride: false,
-  scope: 'domain',
+  scope: 'tab',
   theme: 'dark',
   autoOpenOnRefresh: true,
-  blocklist: [] // array of { pattern: "regex-or-substring", enabled: true }
+  blocklist: []
 };
 
 async function hydrate() {
@@ -51,13 +51,19 @@ function visibleInContext(interaction, ctx) {
 
 function buildMockIndexFor(interactions, ctx) {
   const index = { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {}, graphql: {}, 'graphql-op': {} };
+  // blockedKeys: same per-mode shape but only contains keys that are unconditionally blocked.
+  const blockedKeys = { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {}, graphql: {}, 'graphql-op': {} };
   for (const it of interactions) {
-    if (!it.mockEnabled) continue;
     if (!visibleInContext(it, ctx)) continue;
     const mode = it.matchMode || 'strict';
     const keys = it.matchKeys || { strict: it.hash };
     const key = keys[mode] || keys.strict;
     if (!key) continue;
+    if (it.blocked) {
+      const b = blockedKeys[mode] || (blockedKeys[mode] = {});
+      b[key] = true;
+    }
+    if (!it.mockEnabled) continue;
     const bucket = index[mode] || (index[mode] = {});
     if (!bucket[key]) bucket[key] = [];
     bucket[key].push({
@@ -72,7 +78,7 @@ function buildMockIndexFor(interactions, ctx) {
     });
   }
   for (const m of Object.keys(index)) for (const k of Object.keys(index[m])) index[m][k].sort((a, b) => b.timestamp - a.timestamp);
-  return index;
+  return { index, blockedKeys };
 }
 
 async function pushTabMeta(tabId) {
@@ -83,9 +89,9 @@ async function pushTabMeta(tabId) {
   st.host = hostOf(tab.url || '');
   const ctx = { tabId, host: st.host, scope: settings.scope };
   const all = await getAllInteractions();
-  const mockIndex = buildMockIndexFor(all, ctx);
+  const { index, blockedKeys } = buildMockIndexFor(all, ctx);
   safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist } });
-  safeSend(tabId, { type: 'echokit:mockIndex', payload: mockIndex });
+  safeSend(tabId, { type: 'echokit:mockIndex', payload: { mocks: index, blocked: blockedKeys } });
   await updateBadge(tabId);
 }
 
@@ -155,12 +161,14 @@ async function handleMessage(msg, sender) {
       let host = '';
       try { if (tabId != null) { const t = await chrome.tabs.get(tabId); host = hostOf(t?.url || ''); } } catch {}
       const ctx = { tabId, host, scope: settings.scope };
+      const { index, blockedKeys } = buildMockIndexFor(all, ctx);
       return {
         tab: tabId != null ? { tabId, host, ...getTab(tabId) } : null,
         settings,
         interactions: all.filter(i => visibleInContext(i, ctx)),
         allCount: all.length,
-        mockIndex: buildMockIndexFor(all, ctx)
+        mockIndex: index,
+        blockedKeys
       };
     }
     case 'echokit:recording:start': {
@@ -245,6 +253,34 @@ async function handleMessage(msg, sender) {
       return { ok: true };
     }
     case 'echokit:export': { return { ok: true, data: { version: 2, exportedAt: new Date().toISOString(), interactions: await getAllInteractions() } }; }
+    case 'echokit:export:har': {
+      const all = await getAllInteractions();
+      const har = {
+        log: {
+          version: '1.2',
+          creator: { name: 'EchoKit', version: '1.4.0' },
+          entries: all.filter(i => i.method && i.method !== 'WS' && i.method !== 'SSE').map(i => ({
+            startedDateTime: new Date(i.timestamp).toISOString(),
+            time: i.durationMs || 0,
+            request: {
+              method: i.method, url: i.url, httpVersion: 'HTTP/1.1',
+              headers: Object.entries(i.requestHeaders || {}).map(([k, v]) => ({ name: k, value: String(v) })),
+              queryString: [], cookies: [],
+              headersSize: -1, bodySize: i.requestBody ? i.requestBody.length : 0,
+              postData: i.requestBody ? { mimeType: 'application/json', text: typeof i.requestBody === 'string' ? i.requestBody : JSON.stringify(i.requestBody) } : undefined
+            },
+            response: {
+              status: i.responseStatus || 0, statusText: '', httpVersion: 'HTTP/1.1',
+              headers: Object.entries(i.responseHeaders || {}).map(([k, v]) => ({ name: k, value: String(v) })),
+              cookies: [], content: { size: (i.responseBody || '').length, mimeType: 'application/json', text: i.responseBody || '' },
+              redirectURL: '', headersSize: -1, bodySize: (i.responseBody || '').length
+            },
+            cache: {}, timings: { send: 0, wait: i.durationMs || 0, receive: 0 }
+          }))
+        }
+      };
+      return { ok: true, data: har };
+    }
     case 'echokit:import': {
       const { data, strategy } = msg;
       if (!data || !Array.isArray(data.interactions)) return { ok: false, error: 'invalid payload' };
@@ -266,6 +302,42 @@ async function handleMessage(msg, sender) {
       await pushAllTabs();
       return { ok: true, settings };
     }
+    // --- Cookies copy/paste ---
+    case 'echokit:cookies:read': {
+      const tabId = msg.tabId;
+      try {
+        const t = await chrome.tabs.get(tabId);
+        const cookies = await chrome.cookies.getAll({ url: t.url });
+        return { ok: true, cookies, origin: new URL(t.url).origin, count: cookies.length };
+      } catch (e) { return { ok: false, error: String(e) }; }
+    }
+    case 'echokit:cookies:write': {
+      const tabId = msg.tabId; const cookies = msg.cookies || [];
+      try {
+        const t = await chrome.tabs.get(tabId);
+        const url = new URL(t.url);
+        let written = 0;
+        for (const c of cookies) {
+          try {
+            const set = {
+              url: t.url,
+              name: c.name,
+              value: c.value || '',
+              path: c.path || '/',
+              secure: !!c.secure,
+              httpOnly: !!c.httpOnly,
+              sameSite: c.sameSite || 'lax'
+            };
+            if (c.expirationDate) set.expirationDate = c.expirationDate;
+            if (c.domain && c.domain.includes(url.hostname)) set.domain = c.domain;
+            await chrome.cookies.set(set);
+            written++;
+          } catch {}
+        }
+        return { ok: true, written, origin: url.origin };
+      } catch (e) { return { ok: false, error: String(e) }; }
+    }
+
     // --- localStorage copy/paste bridge ---
     case 'echokit:localStorage:read': {
       const tabId = msg.tabId;
