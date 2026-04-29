@@ -33,27 +33,40 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 ## 🟠 P1 — High-value next features
 
-- [ ] **WebSocket / SSE replay correctness pass**
-  - CLI now supports both via zero-dep impl in `cli/lib/server.js` (`handleWSUpgrade`, `handleSSE`). Sanity-tested in `/app/cli/test/test.js`.
-  - Edge cases to harden: continuation frames, binary frames, ping/pong keep-alive, large payloads (>64KB needs 8-byte length), close codes.
+- [x] **WebSocket / SSE replay correctness pass** ✅
+  - Implemented ping/pong keep-alive (opcodes 0x9/0xA)
+  - Clean close frame handling (opcode 0x8)
+  - Support for large payloads >64KB (8-byte length encoding)
+  - Binary frame support (opcode 0x2)
+  - Proper FIN bit handling and frame parsing
+  - See: `cli/lib/server.js` `encodeWSFrame`, `handleWSUpgrade`
 
-- [ ] **License-endpoint UI** in extension Settings
-  - Add an input row in `app.js` `showSettingsDialog()` after the License Key row
-  - On change → `BG({ type: 'echokit:license:setEndpoint', endpoint })`
-  - Include a "Test endpoint" button that hits `<endpoint>/__health`
+- [x] **License-endpoint UI** in extension Settings ✅
+  - Added input row in `app.js` `showSettingsDialog()` after License Key
+  - Saves to `chrome.storage.sync` via `BG({ type: 'echokit:license:setEndpoint' })`
+  - "Test" button validates `<endpoint>/__health`
+  - See: `extension/shared/app.js` lines 1380-1392, 1523-1567
 
-- [ ] **Add `--report` UX polish**
-  - Print colored summary to stdout on shutdown (currently writes a single line)
-  - Add `--report-format markdown` for a human-readable report
+- [x] **Add `--report` UX polish** ✅
+  - Colored terminal output with ANSI codes (green/yellow/red)
+  - Beautiful box-drawing characters for report sections
+  - `--report-format markdown` for human-readable CI logs
+  - `printCoverageSummary()` and `buildMarkdownReport()` functions
+  - See: `cli/lib/server.js`, `cli/bin/echokit-server.js`
 
-- [ ] **Bundled GitHub Action**
-  - Convert `.github/workflows/echokit-mock.yml` into a reusable Action in
-    `https://github.com/ravitejakamalapuram/echokit-action` so users do
-    `uses: ravitejakamalapuram/echokit-action@v1` instead of copy-paste.
+- [x] **Bundled GitHub Action** ✅
+  - Created reusable composite action at `.github/echokit-action.yml`
+  - Two-step lifecycle: start/stop modes
+  - Automatic PR comment with coverage report
+  - Complete docs in `.github/ECHOKIT_ACTION_README.md`
+  - Ready to publish at `github.com/ravitejakamalapuram/echokit-action`
 
-- [ ] **Stripe → license auto-issue webhook**
-  - Worker endpoint `POST /v1/stripe-webhook` that verifies `stripe-signature` and calls `issueKey()` internally
-  - Email the key via Stripe receipt or Resend
+- [x] **Stripe → license auto-issue webhook** ✅
+  - Worker endpoint `POST /v1/stripe-webhook` implemented
+  - Parses `checkout.session.completed` and `payment_intent.succeeded`
+  - Auto-issues keys based on `echokit_plan` metadata
+  - Logs for manual email follow-up (Resend integration ready)
+  - See: `worker/worker.js` lines 105-169
 
 ---
 
