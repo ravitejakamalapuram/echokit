@@ -1,6 +1,6 @@
 # EchoKit — Product Requirements Document (Living)
 
-## What's Been Implemented (Feb 2026 — v1.6)
+## What's Been Implemented (Feb 2026 — v1.6 + companion infra)
 - ✅ All v1.5 features (see CHANGELOG below)
 - ✅ **OpenAPI / Swagger 2 import** → menu item + `echokit:import:openapi` handler that walks `paths` × `methods`, extracts examples, creates interactions with `mockEnabled=true`
 - ✅ **URL rewrite rules** (Settings → URL Rewrite Rules) — substring or `/regex/flags`, applied in `injected.js` to outgoing real fetches
@@ -8,7 +8,13 @@
 - ✅ **Mock chaining** (Detail panel → Mock Chain) — define N response steps, cursor advances on each hit, optional loop, reset cursor; chain step resolved server-side in `buildMockIndexFor`, advanced via `echokit:mock:hit`
 - ✅ **Network waterfall visualizer** — header toggle button switches list to a timeline view (method, path, status, time bar)
 - ✅ **7-day Pro trial on install** — `chrome.runtime.onInstalled` grants `echokit_trial_expiry`; `getProStatus()` returns `{pro, trial, trialDaysLeft}`; trial badge in header
-- ✅ End-to-end Playwright smoke test — **87/87 assertions passing** (69 from v1.5 + 18 new for v1.6)
+- ✅ **`scripts/build-store-zip.sh`** — one-shot Chrome Web Store builder, lints + validates manifest + zips, supports `--bump`
+- ✅ **`cli/echokit-server`** — zero-dep Node.js headless mock server. Replays exported JSON with strict/ignore-query/ignore-body/path-wildcard/graphql/graphql-op match modes + mock chain support. `--ci` mode fails on unmatched requests. 7/7 tests passing.
+- ✅ **`.github/workflows/echokit-mock.yml`** — drop-in CI template that runs tests against echokit-server
+- ✅ **`worker/`** — Cloudflare Worker for HMAC-SHA256 license validation. Self-signed key format `EK-{PLAN}-{EXPIRY}-{SIG}`, stateless (no DB). Admin endpoint to mint keys. 8/8 tests passing.
+- ✅ **Extension license validation refactor** — `background.js` now hits the Worker with 24h cache; falls back to format-only validation when offline; new `echokit:license:setEndpoint` message
+- ✅ **`store/echokit-api-recorder-mocker-v1.6.0.zip`** — pre-built upload bundle (56K)
+- ✅ End-to-end Playwright smoke test — **87/87 assertions passing**
 
 ## Original Problem Statement
 Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers to record real API interactions (fetch + XHR) from a browser session, instantly mock them with strict matching, edit responses, simulate latency / errors, handle conflicts, export/import mock sets, and toggle a CORS override.
@@ -65,17 +71,19 @@ Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers
 GraphQL / WebSocket mocking, cloud sync, AI-generated mocks, complex rule engines — intentionally deferred. Schema is extensible (hash key is the swappable abstraction point).
 
 ## Prioritized Backlog
-- **P1** — CLI companion tool (`echokit-server`) — Node.js headless mock server that reads exported JSON
-- **P1** — GitHub Actions CI Mode (alongside CLI) — serve mocks on localhost:3001 in CI pipelines
-- **P1** — Cloudflare Worker for HMAC-signed license validation (replace current format-only check)
+- **P1** — Publish `echokit-server` to npm (currently lives in `/app/cli/`)
+- **P1** — Deploy the license Worker to Cloudflare (`cd /app/worker && wrangler deploy`)
+- **P1** — Wire a Settings UI input for `echokit_license_endpoint` so users can point the extension at the deployed worker
 - **P2** — Refactor `app.js` (1500+ lines) into smaller modules (header / menu / settings / detail / waterfall)
-- **P3** — Chrome Web Store submission (manual upload from `/app/store`)
+- **P2** — `echokit-server` WebSocket / SSE replay (currently only fetch/XHR)
+- **P2** — Add `/__healthz` endpoint to `echokit-server` so the GitHub Actions template's wait-loop matches reality
+- **P3** — Chrome Web Store submission (manual upload from `/app/store/echokit-api-recorder-mocker-v1.6.0.zip`)
 
 ## Next Action Items
-1. **CLI companion** (`echokit-server`): Node CLI that loads exported JSON and serves the recorded responses via http.Server — single binary via `pkg`
-2. **GitHub Actions template**: ship `.github/workflows/echokit-mock.yml` example so users can drop EchoKit into CI
-3. **Cloudflare Worker**: Deploy a Worker for HMAC-signed key generation + validation (free tier)
-4. **Chrome Web Store**: Upload `/app/store/echokit-v1.5.0.zip` via the dev console
+1. **Publish CLI**: `cd /app/cli && npm publish --access=public` (after npm-login as the package owner)
+2. **Deploy Worker**: `cd /app/worker && wrangler login && wrangler secret put ECHOKIT_HMAC_SECRET && wrangler deploy`. Save the deployed URL — users will paste it into the extension Settings.
+3. **Add license-endpoint UI**: small input in Settings that calls `BG({ type: 'echokit:license:setEndpoint', endpoint })`
+4. **Chrome Web Store**: upload `/app/store/echokit-api-recorder-mocker-v1.6.0.zip`
 
 ## Architecture (summary)
 ```
