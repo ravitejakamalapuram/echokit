@@ -603,6 +603,123 @@ def main():
                 step('ws_loop_toggle_persists', ws_upd_int is not None and ws_upd_int.get('wsLoop') is True,
                      ws_upd_int)
 
+            # === NEW in v1.6: 7-day trial state in getState ===
+            trial_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            step('v16_trial_field_present', 'trial' in trial_state and 'trialDaysLeft' in trial_state, list(trial_state.keys())[:10])
+
+            # === NEW in v1.6: Rewrite rules CRUD via settings:update ===
+            sw_send(sw, {'type': 'echokit:settings:update',
+                         'patch': {'rewriteRules': [{'from': '/api/old', 'to': '/api/new', 'enabled': True}]}})
+            rw_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            rw_rules = rw_state.get('settings', {}).get('rewriteRules', [])
+            step('v16_rewrite_rule_persists',
+                 len(rw_rules) == 1 and rw_rules[0].get('from') == '/api/old' and rw_rules[0].get('enabled') is True,
+                 rw_rules)
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'rewriteRules': []}})
+
+            # === NEW in v1.6: Transform rules CRUD via settings:update ===
+            sw_send(sw, {'type': 'echokit:settings:update',
+                         'patch': {'transformRules': [
+                             {'phase': 'response', 'urlPattern': '/api/users',
+                              'action': 'add-header', 'key': 'X-Mocked-By', 'value': 'EchoKit',
+                              'enabled': True}
+                         ]}})
+            tr_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            tr_rules = tr_state.get('settings', {}).get('transformRules', [])
+            step('v16_transform_rule_persists',
+                 len(tr_rules) == 1 and tr_rules[0].get('action') == 'add-header' and tr_rules[0].get('key') == 'X-Mocked-By',
+                 tr_rules)
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'transformRules': []}})
+
+            # === NEW in v1.6: OpenAPI / Swagger import ===
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            openapi_spec = {
+                'openapi': '3.0.0',
+                'info': {'title': 'Demo', 'version': '1.0.0'},
+                'servers': [{'url': 'https://api.example.com'}],
+                'paths': {
+                    '/users': {
+                        'get': {
+                            'summary': 'List users',
+                            'responses': {
+                                '200': {'description': 'ok',
+                                        'content': {'application/json': {'example': {'users': [{'id': 1}]}}}}}}},
+                    '/users/{id}': {
+                        'get': {
+                            'summary': 'Get user',
+                            'responses': {'200': {'description': 'ok',
+                                                  'content': {'application/json': {'example': {'id': 'u1'}}}}}}}
+                }
+            }
+            oas_res = sw_send(sw, {'type': 'echokit:import:openapi', 'data': openapi_spec, 'baseUrl': ''})
+            step('v16_openapi_import_returns_count', oas_res.get('ok') and oas_res.get('imported') == 2, oas_res)
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
+            oas_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            oas_ints = oas_state.get('interactions', [])
+            oas_methods = sorted([(i.get('method'), i.get('url')) for i in oas_ints])
+            step('v16_openapi_creates_interactions',
+                 len(oas_ints) == 2 and any('users' in url for _, url in oas_methods), oas_methods)
+            step('v16_openapi_marks_mockEnabled', all(i.get('mockEnabled') is True for i in oas_ints), oas_ints)
+            sw_send(sw, {'type': 'echokit:import:openapi', 'data': {'foo': 'bar'}, 'baseUrl': ''})
+            bad_oas = sw_send(sw, {'type': 'echokit:import:openapi', 'data': {'foo': 'bar'}, 'baseUrl': ''})
+            step('v16_openapi_invalid_spec_rejected', bad_oas.get('ok') is False, bad_oas)
+
+            # === NEW in v1.6: Mock chain advancement ===
+            sw_send(sw, {'type': 'echokit:interactions:clearAll'})
+            sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
+            time.sleep(0.2)
+            page.evaluate("window.doFetch()")
+            time.sleep(0.6)
+            sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
+            ch_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            ch_target = next((i for i in ch_state['interactions'] if '/api/users' in i.get('url', '')), None)
+            step('v16_chain_target_recorded', ch_target is not None)
+            if ch_target:
+                # Set up a 2-step chain
+                sw_send(sw, {'type': 'echokit:interaction:update', 'id': ch_target['id'],
+                             'patch': {'mockEnabled': True,
+                                       'mockChain': [{'status': 201, 'body': '{"chain":1}', 'headers': {}},
+                                                     {'status': 202, 'body': '{"chain":2}', 'headers': {}}],
+                                       'mockChainCursor': 0,
+                                       'mockChainLoop': True}})
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': True})
+                time.sleep(0.2)
+                # Hit it 3 times -> expect cursor advances and loop returns step 1 on hit 3
+                statuses = []
+                bodies = []
+                for _ in range(3):
+                    r = page.evaluate("window.doFetch()")
+                    statuses.append(r.get('status'))
+                    bodies.append(r.get('body'))
+                    time.sleep(0.25)
+                step('v16_chain_step1_first_hit', statuses[0] == 201, f'statuses={statuses}')
+                step('v16_chain_step2_second_hit', statuses[1] == 202, f'statuses={statuses}')
+                step('v16_chain_loops_back_to_step1', statuses[2] == 201, f'statuses={statuses}')
+                ch_after = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+                ch_int_after = next((i for i in ch_after['interactions'] if i['id'] == ch_target['id']), None)
+                step('v16_chain_cursor_advanced', (ch_int_after or {}).get('mockChainCursor', 0) >= 3,
+                     ch_int_after.get('mockChainCursor') if ch_int_after else None)
+                sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
+
+            # === NEW in v1.6: Popup UI checks for v1.6 features ===
+            popup3 = ctx.new_page()
+            popup3.goto(f"chrome-extension://{ext_id}/popup/popup.html")
+            popup3.wait_for_selector('[data-testid="echokit-app"]', timeout=5000)
+            time.sleep(0.4)
+            step('v16_waterfall_toggle_in_header',
+                 popup3.locator('[data-testid="waterfall-toggle-btn"]').count() > 0)
+            popup3.locator('[data-testid="menu-btn"]').click()
+            time.sleep(0.2)
+            step('v16_menu_has_import_openapi',
+                 popup3.locator('[data-testid="menu-import-openapi"]').count() > 0)
+            popup3.locator('[data-testid="menu-settings"]').click()
+            popup3.wait_for_selector('[data-testid="settings-modal"]', timeout=3000)
+            step('v16_settings_has_rewritelist', popup3.locator('[data-testid="rewritelist"]').count() > 0)
+            step('v16_settings_has_transformlist', popup3.locator('[data-testid="transformlist"]').count() > 0)
+            step('v16_settings_has_rewrite_add', popup3.locator('[data-testid="rewrite-add"]').count() > 0)
+            step('v16_settings_has_transform_add', popup3.locator('[data-testid="transform-add"]').count() > 0)
+            popup3.close()
+
             # Screenshot for visual sanity
             popup.screenshot(path='/app/echokit-popup-v15.png')
             print('saved /app/echokit-popup-v15.png')

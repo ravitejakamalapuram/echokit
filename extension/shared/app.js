@@ -833,6 +833,39 @@ function renderDetail(i, conflicts) {
           </div>
         </div>
       </div>
+
+      <div class="ek-section" data-testid="mock-chain-section">
+        <div class="ek-section-head">
+          <span>Mock Chain</span>
+          <span class="ek-subtle" style="font-size:10px">Cycle through responses on each call</span>
+          <div class="ek-row-inline-end">
+            ${(i.mockChain && i.mockChain.length > 0) ? `
+              <span class="ek-subtle" data-testid="mock-chain-cursor">step ${((i.mockChainCursor || 0) % i.mockChain.length) + 1}/${i.mockChain.length}</span>
+              <label class="ek-row-inline" style="gap:4px;margin-left:8px">
+                <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
+                <span class="ek-subtle">loop</span>
+              </label>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
+            ` : ''}
+          </div>
+        </div>
+        <div class="ek-section-body">
+          ${(i.mockChain && i.mockChain.length > 0) ? i.mockChain.map((step, sIdx) => {
+            const active = (((i.mockChainCursor || 0) % i.mockChain.length) === sIdx);
+            return `
+              <div style="border:1px solid ${active ? 'var(--amber)' : 'var(--border)'};border-radius:6px;padding:6px;margin-bottom:6px" data-testid="chain-step-${sIdx}">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
+                  <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
+                  <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
+                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" aria-label="remove">×</button>
+                </div>
+                <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
+              </div>
+            `;
+          }).join('') : '<div class="ek-subtle">No chain steps. Add one to cycle responses on each call.</div>'}
+          <button class="ek-btn ek-btn-ghost" data-action="chain-add" data-id="${i.id}" style="margin-top:4px" data-testid="chain-add-btn">＋ Add chain step</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -994,6 +1027,45 @@ function bindEvents() {
     });
     else if (action === 'reset-mock-count') el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockCallCount: 0 } });
+      await refresh(); render();
+    });
+    else if (action === 'chain-add') el.addEventListener('click', async () => {
+      const curr = state.interactions.find(x => x.id === id);
+      const chain = [...(curr?.mockChain || []), { status: 200, body: '', headers: {} }];
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
+      await refresh(); render();
+    });
+    else if (action === 'chain-remove') el.addEventListener('click', async () => {
+      const sIdx = Number(el.getAttribute('data-step'));
+      const curr = state.interactions.find(x => x.id === id);
+      const chain = [...(curr?.mockChain || [])];
+      chain.splice(sIdx, 1);
+      const cursor = chain.length ? Math.min(curr.mockChainCursor || 0, chain.length - 1) : 0;
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain.length ? chain : null, mockChainCursor: cursor } });
+      await refresh(); render();
+    });
+    else if (action === 'chain-status') el.addEventListener('change', async (e) => {
+      const sIdx = Number(el.getAttribute('data-step'));
+      const curr = state.interactions.find(x => x.id === id);
+      const chain = [...(curr?.mockChain || [])];
+      chain[sIdx] = { ...(chain[sIdx] || {}), status: Number(e.target.value) || 200 };
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
+      await refresh();
+    });
+    else if (action === 'chain-body') el.addEventListener('change', async (e) => {
+      const sIdx = Number(el.getAttribute('data-step'));
+      const curr = state.interactions.find(x => x.id === id);
+      const chain = [...(curr?.mockChain || [])];
+      chain[sIdx] = { ...(chain[sIdx] || {}), body: e.target.value };
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
+      await refresh();
+    });
+    else if (action === 'update-chain-loop') el.addEventListener('change', async (e) => {
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChainLoop: e.target.checked } });
+      await refresh(); render();
+    });
+    else if (action === 'reset-chain-cursor') el.addEventListener('click', async () => {
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockChainCursor: 0 } });
       await refresh(); render();
     });
     else if (action === 'header-add') el.addEventListener('click', async () => {
@@ -1238,6 +1310,55 @@ function showSettingsDialog() {
       </div>
 
       <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">URL Rewrite Rules</div>
+          <div class="ek-settings-hint">Rewrite outgoing URLs before they hit the network. <span class="ek-tag">From</span> can be a substring or a JS regex like <span class="ek-tag">/api\\/v1/g</span>.</div>
+          <div id="ek-rewritelist" style="margin-top:8px" data-testid="rewritelist">
+            ${(s.rewriteRules || []).map((r, idx) => `
+              <div class="ek-kv-row" data-testid="rewrite-row">
+                <input class="ek-input" value="${escapeHtml(r.from || '')}" data-a="rw-from" data-idx="${idx}" placeholder="from (substring or /regex/flags)" data-testid="rewrite-from-${idx}"/>
+                <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" aria-label="remove">×</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="ek-btn ek-btn-ghost" data-a="rw-add" style="margin-top:6px" data-testid="rewrite-add">＋ Add rewrite rule</button>
+        </div>
+      </div>
+
+      <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">Response Transform Rules</div>
+          <div class="ek-settings-hint">Mutate mocked responses on the fly: add/remove headers, replace body, or run a regex over the body.</div>
+          <div id="ek-transformlist" style="margin-top:8px" data-testid="transformlist">
+            ${(s.transformRules || []).map((r, idx) => `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px" data-testid="transform-row">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
+                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="tr-url" data-idx="${idx}" placeholder="url contains… (blank = all)" style="flex:1" data-testid="transform-url-${idx}"/>
+                  <select class="ek-select" data-a="tr-action" data-idx="${idx}" style="max-width:160px" data-testid="transform-action-${idx}">
+                    <option value="add-header" ${r.action==='add-header'?'selected':''}>add header</option>
+                    <option value="remove-header" ${r.action==='remove-header'?'selected':''}>remove header</option>
+                    <option value="set-body" ${r.action==='set-body'?'selected':''}>set body</option>
+                    <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
+                  </select>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" aria-label="remove">×</button>
+                </div>
+                <div class="ek-row-inline" style="gap:6px">
+                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
+                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="tr-value" data-idx="${idx}" placeholder="${r.action === 'remove-header' ? '(unused)' : (r.action === 'set-body' ? 'new body (string/JSON)' : (r.action === 'regex-replace-body' ? 'replacement' : 'header value'))}" style="flex:2" data-testid="transform-value-${idx}"/>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="ek-btn ek-btn-ghost" data-a="tr-add" style="margin-top:6px" data-testid="transform-add">＋ Add transform rule</button>
+        </div>
+      </div>
+
+      <div class="ek-settings-row">
         <div>
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
@@ -1315,6 +1436,72 @@ function showSettingsDialog() {
   overlay.querySelector('[data-a="bl-add"]')?.addEventListener('click', async () => {
     const bl = [...(state.settings.blocklist || []), { pattern: '', enabled: true }];
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
+    await refresh(); reopen();
+  });
+
+  // --- Rewrite rules handlers ---
+  overlay.querySelectorAll('[data-a="rw-from"]').forEach(el => el.addEventListener('change', async (e) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const rules = [...(state.settings.rewriteRules || [])];
+    rules[idx] = { ...(rules[idx] || {}), from: e.target.value };
+    await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
+    await refresh();
+  }));
+  overlay.querySelectorAll('[data-a="rw-to"]').forEach(el => el.addEventListener('change', async (e) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const rules = [...(state.settings.rewriteRules || [])];
+    rules[idx] = { ...(rules[idx] || {}), to: e.target.value };
+    await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
+    await refresh();
+  }));
+  overlay.querySelectorAll('[data-a="rw-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const rules = [...(state.settings.rewriteRules || [])];
+    rules[idx] = { ...(rules[idx] || {}), enabled: e.target.checked };
+    await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelectorAll('[data-a="rw-remove"]').forEach(el => el.addEventListener('click', async () => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const rules = [...(state.settings.rewriteRules || [])];
+    rules.splice(idx, 1);
+    await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelector('[data-a="rw-add"]')?.addEventListener('click', async () => {
+    const rules = [...(state.settings.rewriteRules || []), { from: '', to: '', enabled: true }];
+    await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
+    await refresh(); reopen();
+  });
+
+  // --- Transform rules handlers ---
+  const trUpdate = async (idx, patch) => {
+    const rules = [...(state.settings.transformRules || [])];
+    rules[idx] = { phase: 'response', ...(rules[idx] || {}), ...patch };
+    await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
+    await refresh();
+  };
+  overlay.querySelectorAll('[data-a="tr-url"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { urlPattern: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-key"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { key: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-value"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { value: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-action"]').forEach(el => el.addEventListener('change', async (e) => {
+    await trUpdate(Number(el.getAttribute('data-idx')), { action: e.target.value });
+    reopen();
+  }));
+  overlay.querySelectorAll('[data-a="tr-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
+    await trUpdate(Number(el.getAttribute('data-idx')), { enabled: e.target.checked });
+    reopen();
+  }));
+  overlay.querySelectorAll('[data-a="tr-remove"]').forEach(el => el.addEventListener('click', async () => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const rules = [...(state.settings.transformRules || [])];
+    rules.splice(idx, 1);
+    await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelector('[data-a="tr-add"]')?.addEventListener('click', async () => {
+    const rules = [...(state.settings.transformRules || []), { phase: 'response', urlPattern: '', action: 'add-header', key: '', value: '', enabled: true }];
+    await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
     await refresh(); reopen();
   });
   // Pre-fill license key input

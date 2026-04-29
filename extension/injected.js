@@ -194,6 +194,9 @@
       if (mock.mockMaxCount != null) {
         mock.mockCallCount = (mock.mockCallCount || 0) + 1;
         emit('mock-hit', { id: mock.id });
+      } else if (mock.hasChain) {
+        // Mock chain: notify background to advance cursor
+        emit('mock-hit', { id: mock.id });
       }
       return mock;
     }
