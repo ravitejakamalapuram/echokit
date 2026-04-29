@@ -1,7 +1,17 @@
 # EchoKit — Product Requirements Document (Living)
 
+## What's Been Implemented (Feb 2026 — v1.6)
+- ✅ All v1.5 features (see CHANGELOG below)
+- ✅ **OpenAPI / Swagger 2 import** → menu item + `echokit:import:openapi` handler that walks `paths` × `methods`, extracts examples, creates interactions with `mockEnabled=true`
+- ✅ **URL rewrite rules** (Settings → URL Rewrite Rules) — substring or `/regex/flags`, applied in `injected.js` to outgoing real fetches
+- ✅ **Response transform rules** (Settings → Response Transform Rules) — add/remove header, set body, regex-replace body; applied to mocked responses
+- ✅ **Mock chaining** (Detail panel → Mock Chain) — define N response steps, cursor advances on each hit, optional loop, reset cursor; chain step resolved server-side in `buildMockIndexFor`, advanced via `echokit:mock:hit`
+- ✅ **Network waterfall visualizer** — header toggle button switches list to a timeline view (method, path, status, time bar)
+- ✅ **7-day Pro trial on install** — `chrome.runtime.onInstalled` grants `echokit_trial_expiry`; `getProStatus()` returns `{pro, trial, trialDaysLeft}`; trial badge in header
+- ✅ End-to-end Playwright smoke test — **87/87 assertions passing** (69 from v1.5 + 18 new for v1.6)
+
 ## Original Problem Statement
-Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers to record real API interactions (fetch + XHR) from a browser session, instantly mock them with strict matching, edit responses, simulate latency / errors, handle conflicts, export/import mock sets, and toggle a CORS override. Core promise: **"Record once. Mock reliably. Debug faster."**
+Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers to record real API interactions (fetch + XHR) from a browser session, instantly mock them with strict matching, edit responses, simulate latency / errors, handle conflicts, export/import mock sets, and toggle a CORS override.
 
 ## User Personas
 - **Frontend developer** — backend not ready / unstable; wants to build UI against realistic API shapes without waiting.
@@ -55,20 +65,17 @@ Build a zero-setup Chrome extension ("EchoKit") for frontend devs & QA engineers
 GraphQL / WebSocket mocking, cloud sync, AI-generated mocks, complex rule engines — intentionally deferred. Schema is extensible (hash key is the swappable abstraction point).
 
 ## Prioritized Backlog
+- **P1** — CLI companion tool (`echokit-server`) — Node.js headless mock server that reads exported JSON
+- **P1** — GitHub Actions CI Mode (alongside CLI) — serve mocks on localhost:3001 in CI pipelines
 - **P1** — Cloudflare Worker for HMAC-signed license validation (replace current format-only check)
-- **P2** — Import from OpenAPI/Swagger spec → auto-generate mocks
-- **P2** — URL rewrite rules (redirect /api/v1 → /api/v2 transparently)
-- **P2** — Request/response transform rules (add/remove headers, mutate body on-the-fly)
-- **P2** — Mock response chaining (simulate multi-step auth flows)
-- **P2** — In-extension network waterfall visualizer
-- **P3** — CLI companion tool (`echokit-server`) + GitHub Actions CI template
+- **P2** — Refactor `app.js` (1500+ lines) into smaller modules (header / menu / settings / detail / waterfall)
 - **P3** — Chrome Web Store submission (manual upload from `/app/store`)
-- **P3** — HAR import (already done in v1.5)
 
 ## Next Action Items
-1. **Chrome Web Store**: Upload `/app/store/echokit-v1.5.0.zip` via https://chrome.google.com/webstore/devconsole — use the listing copy from `/app/store/chrome-web-store.md`
-2. **Cloudflare Worker**: Deploy a Worker for HMAC-signed key generation + validation (free tier)
-3. **Next features**: OpenAPI import, URL rewrite, transform rules
+1. **CLI companion** (`echokit-server`): Node CLI that loads exported JSON and serves the recorded responses via http.Server — single binary via `pkg`
+2. **GitHub Actions template**: ship `.github/workflows/echokit-mock.yml` example so users can drop EchoKit into CI
+3. **Cloudflare Worker**: Deploy a Worker for HMAC-signed key generation + validation (free tier)
+4. **Chrome Web Store**: Upload `/app/store/echokit-v1.5.0.zip` via the dev console
 
 ## Architecture (summary)
 ```
