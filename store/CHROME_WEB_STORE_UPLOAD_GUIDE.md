@@ -172,8 +172,20 @@ This extension records and mocks HTTP/WebSocket API traffic for development and 
 
 **Remote Code:** No
 
-**Data Usage:**
-- Check: "This extension does NOT collect user data"
+**Data Usage & Privacy Disclosures:**
+
+When you reach the "Data Usage" section:
+
+**Section 1 - What data does your extension collect?**
+- ❌ Leave ALL checkboxes UNCHECKED (EchoKit doesn't collect any user data)
+- Don't check: Personally identifiable information, Health, Financial, Authentication, Communications, Location, Web history, User activity, or Website content
+
+**Section 2 - Certify the following disclosures:**
+- ✅ Check: "I do not sell or transfer user data to third parties, apart from the approved use cases"
+- ✅ Check: "I do not use or transfer user data for purposes that are unrelated to my item's single purpose"
+- ✅ Check: "I do not use or transfer user data to determine creditworthiness or for lending purposes"
+
+**Why:** EchoKit stores all data locally in the browser and doesn't send anything to external servers.
 
 ---
 
