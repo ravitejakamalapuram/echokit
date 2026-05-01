@@ -1,0 +1,59 @@
+# Example workflow showing how to use the echokit-action
+# Drop this into .github/workflows/ in your project
+
+name: Tests with EchoKit Action
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # needed for PR coverage comments
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      # Start EchoKit mock server
+      - name: Start EchoKit mock server
+        uses: ravitejakamalapuram/echokit-action@v1
+        with:
+          mocks-file: 'tests/fixtures/echokit-export.json'
+          port: 3001
+          strict: false  # set to true to fail on unmatched requests
+      
+      # Run your tests against the mock server
+      - name: Run integration tests
+        env:
+          API_BASE_URL: http://localhost:3001
+        run: npm test
+      
+      # Stop server and generate coverage report
+      - name: Stop EchoKit and report coverage
+        if: always()
+        uses: ravitejakamalapuram/echokit-action@v1
+        with:
+          mode: stop
+          report-path: echokit-coverage.json
+          report-format: json
+          comment-pr: true  # post coverage as PR comment
+      
+      # Optional: upload coverage artifact
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echokit-coverage
+          path: echokit-coverage.json

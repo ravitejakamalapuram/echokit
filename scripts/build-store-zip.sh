@@ -9,8 +9,10 @@
 
 set -euo pipefail
 
-EXT_DIR="/app/extension"
-STORE_DIR="/app/store"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+EXT_DIR="$REPO_ROOT/extension"
+STORE_DIR="$REPO_ROOT/store"
 MANIFEST="$EXT_DIR/manifest.json"
 
 if [[ ! -f "$MANIFEST" ]]; then

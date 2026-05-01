@@ -1,43 +1,52 @@
-// echokit-server core — replay EchoKit recordings as a real HTTP server.
+// echokit-server core — replay EchoKit recordings as a real HTTP/WS/SSE server.
 
 'use strict';
 
 const fs = require('fs');
 const http = require('http');
+const crypto = require('crypto');
 const { computeMatchKeys, MODES } = require('./match');
 
 function loadInteractions(file) {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-  // Accept either { interactions: [...] } (EchoKit v2 export) or a bare array.
   const items = Array.isArray(raw) ? raw : (raw.interactions || []);
   return items.filter(i => i && i.method && i.url);
 }
 
 function buildIndex(interactions) {
-  const index = {};
+  const httpIndex = {};
+  const wsIndex = {};   // method:WS → keyed by path-wildcard
+  const sseIndex = {};  // method:SSE → keyed by path-wildcard
   for (const it of interactions) {
     if (it.mockEnabled === false) continue;
-    if (it.method === 'WS' || it.method === 'SSE') continue; // no socket replay yet
     const mode = it.matchMode || 'strict';
     const keys = it.matchKeys || computeMatchKeys(it.method, it.url, it.requestBody);
     const key = keys[mode] || keys.strict;
     if (!key) continue;
-    const bucket = index[mode] || (index[mode] = {});
-    if (!bucket[key]) bucket[key] = [];
-    bucket[key].push(it);
+    if (it.method === 'WS') {
+      const k = keys['path-wildcard'] || key;
+      (wsIndex[k] || (wsIndex[k] = [])).push(it);
+      continue;
+    }
+    if (it.method === 'SSE') {
+      const k = keys['path-wildcard'] || key;
+      (sseIndex[k] || (sseIndex[k] = [])).push(it);
+      continue;
+    }
+    const bucket = httpIndex[mode] || (httpIndex[mode] = {});
+    (bucket[key] || (bucket[key] = [])).push(it);
   }
-  for (const m of Object.keys(index)) {
-    for (const k of Object.keys(index[m])) {
-      index[m][k].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  for (const m of Object.keys(httpIndex)) {
+    for (const k of Object.keys(httpIndex[m])) {
+      httpIndex[m][k].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     }
   }
-  return index;
+  return { httpIndex, wsIndex, sseIndex };
 }
 
-// In-memory cursors for mock chains: { [interactionId]: cursor }
-function pickMock(index, keys, cursors) {
+function pickHttpMock(httpIndex, keys, cursors, hits) {
   for (const mode of MODES) {
-    const bucket = index[mode];
+    const bucket = httpIndex[mode];
     if (!bucket) continue;
     const versions = bucket[keys[mode]];
     if (!versions || !versions.length) continue;
@@ -46,7 +55,6 @@ function pickMock(index, keys, cursors) {
     if (active) pick = versions.find(v => v.id === active);
     if (!pick) pick = versions[0];
 
-    // Resolve mock chain step (advance cursor on hit)
     let step = null;
     if (pick.mockChain && pick.mockChain.length > 0) {
       const cur = cursors[pick.id] || 0;
@@ -56,6 +64,7 @@ function pickMock(index, keys, cursors) {
       step = pick.mockChain[idx];
       cursors[pick.id] = cur + 1;
     }
+    hits[pick.id] = (hits[pick.id] || 0) + 1;
     return {
       id: pick.id,
       method: pick.method,
@@ -68,6 +77,24 @@ function pickMock(index, keys, cursors) {
     };
   }
   return null;
+}
+
+function pickWSMock(wsIndex, keys, hits) {
+  const k = keys['path-wildcard'] || keys.strict;
+  const versions = wsIndex[k];
+  if (!versions || !versions.length) return null;
+  const pick = versions[0];
+  hits[pick.id] = (hits[pick.id] || 0) + 1;
+  return pick;
+}
+
+function pickSSEMock(sseIndex, keys, hits) {
+  const k = keys['path-wildcard'] || keys.strict;
+  const versions = sseIndex[k];
+  if (!versions || !versions.length) return null;
+  const pick = versions[0];
+  hits[pick.id] = (hits[pick.id] || 0) + 1;
+  return pick;
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, Math.max(0, ms | 0))); }
@@ -90,19 +117,308 @@ function corsHeaders() {
   };
 }
 
+// ---------- WebSocket handling (zero-dep) ----------
+const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+function wsAcceptKey(clientKey) {
+  return crypto.createHash('sha1').update(clientKey + WS_GUID).digest('base64');
+}
+
+function encodeWSFrame(payloadStr, opcode = 0x1, isFinal = true) {
+  const payload = Buffer.from(String(payloadStr), 'utf8');
+  const len = payload.length;
+  let header;
+  const finBit = isFinal ? 0x80 : 0x00;
+
+  if (len < 126) {
+    header = Buffer.alloc(2);
+    header[0] = finBit | opcode;
+    header[1] = len;
+  } else if (len < 65536) {
+    header = Buffer.alloc(4);
+    header[0] = finBit | opcode;
+    header[1] = 126;
+    header.writeUInt16BE(len, 2);
+  } else {
+    header = Buffer.alloc(10);
+    header[0] = finBit | opcode;
+    header[1] = 127;
+    header.writeBigUInt64BE(BigInt(len), 2);
+  }
+  return Buffer.concat([header, payload]);
+}
+
+// Send ping frame for keep-alive
+function sendPing(socket) {
+  try {
+    socket.write(encodeWSFrame('', 0x9)); // Opcode 0x9 = ping
+  } catch {}
+}
+
+function handleWSUpgrade(req, socket, mock, opts) {
+  const clientKey = req.headers['sec-websocket-key'];
+  if (!clientKey) { socket.destroy(); return; }
+  const accept = wsAcceptKey(clientKey);
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n' +
+    'Upgrade: websocket\r\n' +
+    'Connection: Upgrade\r\n' +
+    `Sec-WebSocket-Accept: ${accept}\r\n` +
+    '\r\n'
+  );
+
+  let stopped = false;
+
+  // Parse incoming frames to respond to ping/pong
+  let frameBuffer = Buffer.alloc(0);
+  socket.on('data', (chunk) => {
+    frameBuffer = Buffer.concat([frameBuffer, chunk]);
+    while (frameBuffer.length >= 2) {
+      const opcode = frameBuffer[0] & 0x0f;
+      let len = frameBuffer[1] & 0x7f;
+      let offset = 2;
+
+      if (len === 126) {
+        if (frameBuffer.length < 4) break;
+        len = frameBuffer.readUInt16BE(2);
+        offset = 4;
+      } else if (len === 127) {
+        if (frameBuffer.length < 10) break;
+        len = Number(frameBuffer.readBigUInt64BE(2));
+        offset = 10;
+      }
+
+      // Check if masked (client frames must be masked)
+      const masked = (frameBuffer[1] & 0x80) !== 0;
+      if (masked) offset += 4; // mask key
+
+      if (frameBuffer.length < offset + len) break;
+
+      // Respond to ping with pong
+      if (opcode === 0x9) {
+        socket.write(encodeWSFrame('', 0xA)); // Opcode 0xA = pong
+      }
+      // Client close frame
+      if (opcode === 0x8) {
+        stopped = true;
+        socket.end();
+        return;
+      }
+
+      frameBuffer = frameBuffer.slice(offset + len);
+    }
+  });
+  socket.on('error', () => { stopped = true; });
+
+  let frames;
+  try { frames = (JSON.parse(mock.responseBody || '{}').frames || []).filter(f => f.dir === 'in'); }
+  catch { frames = []; }
+  if (!frames.length) return;
+
+  const loop = !!mock.wsLoop;
+  socket.on('close', () => { stopped = true; });
+
+  const replay = async () => {
+    do {
+      let lastT = 0;
+      for (const f of frames) {
+        if (stopped) return;
+        const wait = Math.max(0, (f.t || 0) - lastT);
+        if (wait) await delay(wait);
+        lastT = f.t || lastT;
+        if (stopped) return;
+        try { socket.write(encodeWSFrame(typeof f.data === 'string' ? f.data : JSON.stringify(f.data))); }
+        catch { return; }
+      }
+      if (loop) await delay(50);
+    } while (loop && !stopped);
+    // Close cleanly
+    try { socket.write(encodeWSFrame('', 0x8)); } catch {}
+    try { socket.end(); } catch {}
+  };
+  replay().catch(() => {});
+}
+
+// ---------- SSE handling ----------
+function handleSSE(res, mock) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    ...corsHeaders()
+  });
+  let frames;
+  try { frames = (JSON.parse(mock.responseBody || '{}').frames || []).filter(f => f.dir === 'in'); }
+  catch { frames = []; }
+  if (!frames.length) { res.end(); return; }
+
+  let stopped = false;
+  res.on('close', () => { stopped = true; });
+
+  const replay = async () => {
+    let lastT = 0;
+    for (const f of frames) {
+      if (stopped) return;
+      const wait = Math.max(0, (f.t || 0) - lastT);
+      if (wait) await delay(wait);
+      lastT = f.t || lastT;
+      const data = typeof f.data === 'string' ? f.data : JSON.stringify(f.data);
+      // Each SSE message: data: <line>\n\n. Split on newlines so multi-line data is encoded properly.
+      const out = data.split(/\r?\n/).map(l => `data: ${l}`).join('\n') + '\n\n';
+      try { res.write(out); } catch { return; }
+    }
+    res.end();
+  };
+  replay().catch(() => {});
+}
+
+// ---------- Coverage report ----------
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  red: '\x1b[31m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m'
+};
+
+function printCoverageSummary(report) {
+  const { totalMocks, usedMocks, unusedMocks, totalRequests, matchedRequests, unmatchedRequests, coverage } = report;
+  const coverageColor = coverage >= 80 ? colors.green : coverage >= 50 ? colors.yellow : colors.red;
+
+  console.log('\n' + colors.bright + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset);
+  console.log(colors.bright + '  EchoKit Mock Coverage Report' + colors.reset);
+  console.log(colors.bright + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset);
+  console.log('');
+  console.log(`  ${colors.bright}Coverage:${colors.reset} ${coverageColor}${coverage}%${colors.reset} (${usedMocks}/${totalMocks} mocks used)`);
+  console.log(`  ${colors.bright}Requests:${colors.reset} ${matchedRequests} matched, ${unmatchedRequests > 0 ? colors.red : colors.green}${unmatchedRequests}${colors.reset} unmatched`);
+  console.log(`  ${colors.bright}Duration:${colors.reset} ${(report.durationMs / 1000).toFixed(2)}s`);
+
+  if (unusedMocks.length > 0 && unusedMocks.length <= 5) {
+    console.log('');
+    console.log(colors.dim + '  Unused mocks:' + colors.reset);
+    unusedMocks.slice(0, 5).forEach(m => {
+      console.log(colors.gray + `    • ${m.method} ${m.url}` + colors.reset);
+    });
+  } else if (unusedMocks.length > 5) {
+    console.log('');
+    console.log(colors.dim + `  ${unusedMocks.length} unused mocks (see JSON report for details)` + colors.reset);
+  }
+
+  if (unmatchedRequests > 0) {
+    console.log('');
+    console.log(colors.red + '  ⚠ Unmatched requests:' + colors.reset);
+    report.unmatched.slice(0, 5).forEach(u => {
+      console.log(colors.red + `    ✗ ${u.method} ${u.url}` + colors.reset);
+    });
+    if (unmatchedRequests > 5) {
+      console.log(colors.gray + `    ... and ${unmatchedRequests - 5} more` + colors.reset);
+    }
+  }
+
+  console.log('');
+  console.log(colors.bright + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset);
+  console.log('');
+}
+
+function buildMarkdownReport(report) {
+  const { totalMocks, usedMocks, unusedMocks, totalRequests, matchedRequests, unmatchedRequests, coverage, mocks, unmatched } = report;
+  const coverageEmoji = coverage >= 80 ? '🟢' : coverage >= 50 ? '🟡' : '🔴';
+
+  let md = `# EchoKit Mock Coverage Report\n\n`;
+  md += `**Generated:** ${new Date(report.generatedAt).toLocaleString()}  \n`;
+  md += `**Duration:** ${(report.durationMs / 1000).toFixed(2)}s\n\n`;
+  md += `## Summary\n\n`;
+  md += `${coverageEmoji} **Coverage:** ${coverage}% (${usedMocks}/${totalMocks} mocks used)  \n`;
+  md += `📊 **Requests:** ${matchedRequests} matched, ${unmatchedRequests} unmatched  \n`;
+  md += `⏱️ **Total Requests:** ${totalRequests}\n\n`;
+
+  if (mocks.length > 0) {
+    md += `## Top Mocks by Hits\n\n`;
+    md += `| Method | URL | Hits |\n`;
+    md += `|--------|-----|------|\n`;
+    mocks.slice(0, 10).forEach(m => {
+      md += `| \`${m.method}\` | ${m.url} | ${m.hits} |\n`;
+    });
+    md += `\n`;
+  }
+
+  if (unusedMocks.length > 0) {
+    md += `## Unused Mocks (${unusedMocks.length})\n\n`;
+    md += `| Method | URL |\n`;
+    md += `|--------|-----|\n`;
+    unusedMocks.slice(0, 20).forEach(m => {
+      md += `| \`${m.method}\` | ${m.url} |\n`;
+    });
+    if (unusedMocks.length > 20) {
+      md += `\n_...and ${unusedMocks.length - 20} more_\n`;
+    }
+    md += `\n`;
+  }
+
+  if (unmatchedRequests > 0) {
+    md += `## ⚠️ Unmatched Requests (${unmatchedRequests})\n\n`;
+    md += `| Method | URL |\n`;
+    md += `|--------|-----|\n`;
+    unmatched.slice(0, 20).forEach(u => {
+      md += `| \`${u.method}\` | ${u.url} |\n`;
+    });
+    if (unmatchedRequests > 20) {
+      md += `\n_...and ${unmatchedRequests - 20} more_\n`;
+    }
+    md += `\n`;
+  }
+
+  return md;
+}
+
+function buildReport({ interactions, hits, unmatched, startedAt }) {
+  const mocks = interactions.map(it => ({
+    id: it.id,
+    method: it.method,
+    url: it.url,
+    hash: it.hash,
+    matchMode: it.matchMode || 'strict',
+    hits: hits[it.id] || 0
+  }));
+  const totalRequests = mocks.reduce((s, m) => s + m.hits, 0) + unmatched.length;
+  const matchedRequests = totalRequests - unmatched.length;
+  const usedMocks = mocks.filter(m => m.hits > 0).length;
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    durationMs: Date.now() - startedAt,
+    totalMocks: mocks.length,
+    usedMocks,
+    unusedMocks: mocks.filter(m => m.hits === 0),
+    totalRequests,
+    matchedRequests,
+    unmatchedRequests: unmatched.length,
+    coverage: mocks.length === 0 ? 0 : Math.round((usedMocks / mocks.length) * 1000) / 10,
+    mocks: mocks.sort((a, b) => b.hits - a.hits),
+    unmatched
+  };
+}
+
 async function startServer(opts) {
-  const { file, port, host, defaultLatency, strict, ci, watch, quiet } = opts;
+  const {
+    file, port, host, defaultLatency, strict, ci, watch, quiet, reportPath, reportFormat
+  } = opts;
 
   let interactions = loadInteractions(file);
-  let index = buildIndex(interactions);
+  let { httpIndex, wsIndex, sseIndex } = buildIndex(interactions);
   const cursors = {};
+  const hits = {};
   const unmatched = [];
+  const startedAt = Date.now();
 
   if (watch) {
     fs.watchFile(file, { interval: 500 }, () => {
       try {
         interactions = loadInteractions(file);
-        index = buildIndex(interactions);
+        ({ httpIndex, wsIndex, sseIndex } = buildIndex(interactions));
         Object.keys(cursors).forEach(k => delete cursors[k]);
         if (!quiet) console.log(`↻ reloaded ${interactions.length} mocks from ${file}`);
       } catch (e) {
@@ -112,16 +428,30 @@ async function startServer(opts) {
   }
 
   const server = http.createServer(async (req, res) => {
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, corsHeaders());
-      return res.end();
+    if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders()); return res.end(); }
+
+    if (req.url === '/__health' || req.url === '/__healthz') {
+      res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
+      return res.end(JSON.stringify({ ok: true, mocks: interactions.length }));
     }
+    if (req.url === '/__coverage') {
+      res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
+      return res.end(JSON.stringify(buildReport({ interactions, hits, unmatched, startedAt }), null, 2));
+    }
+
     const body = await readBody(req);
-    // Reconstruct a URL the matcher understands. Drop the host header so
-    // callers can use either http://localhost:3001/api/x or any base.
     const url = req.url;
+    const accept = req.headers['accept'] || '';
+
+    // SSE detection: matched interaction has method=SSE OR client requested text/event-stream
+    if (accept.includes('text/event-stream')) {
+      const sseKeys = computeMatchKeys('SSE', url, '');
+      const sseMock = pickSSEMock(sseIndex, sseKeys, hits);
+      if (sseMock) return handleSSE(res, sseMock);
+    }
+
     const keys = computeMatchKeys(req.method, url, body);
-    const m = pickMock(index, keys, cursors);
+    const m = pickHttpMock(httpIndex, keys, cursors, hits);
 
     if (!m) {
       unmatched.push({ method: req.method, url, ts: Date.now() });
@@ -139,7 +469,7 @@ async function startServer(opts) {
     if (m.latency) await delay(m.latency);
 
     if (m.errorMode === 'network') { req.destroy(); return; }
-    if (m.errorMode === 'timeout') { /* hang forever */ return; }
+    if (m.errorMode === 'timeout') { return; }
 
     let status = m.status;
     if (m.errorMode === '4xx') status = 400;
@@ -160,6 +490,21 @@ async function startServer(opts) {
     res.end(bodyOut);
   });
 
+  // WebSocket upgrade
+  server.on('upgrade', (req, socket) => {
+    const wsKeys = computeMatchKeys('WS', req.url, '');
+    const mock = pickWSMock(wsIndex, wsKeys, hits);
+    if (!mock) {
+      unmatched.push({ method: 'WS', url: req.url, ts: Date.now() });
+      if (!quiet) console.log(`  ✗ WS ${req.url}  → no mock`);
+      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    if (!quiet) console.log(`  ✓ WS ${req.url}  → mocked`);
+    handleWSUpgrade(req, socket, mock, opts);
+  });
+
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, resolve);
@@ -170,9 +515,26 @@ async function startServer(opts) {
   if (defaultLatency) console.log(`  +${defaultLatency}ms latency`);
   if (strict) console.log(`  strict mode: will exit non-zero if any unmatched requests`);
   if (watch) console.log(`  watching ${file} for changes`);
+  if (reportPath) console.log(`  coverage report → ${reportPath}`);
 
-  // Strict / CI mode: fail process on unmatched
+  const writeReport = () => {
+    if (!reportPath) return;
+    try {
+      const report = buildReport({ interactions, hits, unmatched, startedAt });
+      const format = (reportFormat || 'json').toLowerCase();
+      if (format === 'markdown' || format === 'md') {
+        const md = buildMarkdownReport(report);
+        fs.writeFileSync(reportPath, md);
+        console.log(`✓ wrote markdown coverage report to ${reportPath}`);
+      } else {
+        fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+      }
+      printCoverageSummary(report);
+    } catch (e) { console.error('✗ failed to write coverage report:', e.message); }
+  };
+
   const onExit = (code) => {
+    writeReport();
     if (ci && unmatched.length) {
       console.error(`\n✗ ${unmatched.length} unmatched request(s):`);
       for (const u of unmatched) console.error(`  ${u.method} ${u.url}`);
@@ -181,8 +543,14 @@ async function startServer(opts) {
   };
   process.on('SIGINT', () => { console.log('\n↓ shutting down'); onExit(0); process.exit(0); });
   process.on('SIGTERM', () => { onExit(0); process.exit(0); });
+  process.on('beforeExit', () => writeReport());
 
-  return { server, getUnmatched: () => unmatched.slice() };
+  return {
+    server,
+    getUnmatched: () => unmatched.slice(),
+    getReport: () => buildReport({ interactions, hits, unmatched, startedAt }),
+    writeReport
+  };
 }
 
-module.exports = { startServer, loadInteractions, buildIndex };
+module.exports = { startServer, loadInteractions, buildIndex, buildReport, buildMarkdownReport };

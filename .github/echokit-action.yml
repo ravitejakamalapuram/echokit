@@ -1,0 +1,174 @@
+name: 'EchoKit Mock Server'
+description: 'Start EchoKit mock server for API integration tests with coverage tracking'
+author: 'ravitejakamalapuram'
+
+branding:
+  icon: 'server'
+  color: 'purple'
+
+inputs:
+  mocks-file:
+    description: 'Path to the EchoKit JSON export file (e.g., tests/fixtures/echokit-export.json)'
+    required: true
+  
+  port:
+    description: 'Port to run the mock server on'
+    required: false
+    default: '3001'
+  
+  mode:
+    description: 'Lifecycle mode: "start" to launch server, "stop" to shutdown and generate report'
+    required: false
+    default: 'start'
+  
+  report-path:
+    description: 'Path to write coverage report JSON'
+    required: false
+    default: 'echokit-coverage.json'
+  
+  report-format:
+    description: 'Report format: "json" or "markdown"'
+    required: false
+    default: 'json'
+  
+  strict:
+    description: 'Exit non-zero if any request is unmatched'
+    required: false
+    default: 'false'
+  
+  comment-pr:
+    description: 'Post coverage report as PR comment (requires pull-requests: write permission)'
+    required: false
+    default: 'true'
+
+outputs:
+  server-url:
+    description: 'URL of the started mock server'
+    value: ${{ steps.start.outputs.url }}
+  
+  coverage:
+    description: 'Coverage percentage'
+    value: ${{ steps.report.outputs.coverage }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start EchoKit mock server
+      if: inputs.mode == 'start'
+      id: start
+      shell: bash
+      run: |
+        echo "Starting echokit-server on port ${{ inputs.port }}..."
+        npx echokit-server "${{ inputs.mocks-file }}" \
+          --port ${{ inputs.port }} \
+          --ci \
+          --quiet \
+          ${{ inputs.strict == 'true' && '--strict' || '' }} \
+          --report "${{ inputs.report-path }}" \
+          --report-format "${{ inputs.report-format }}" \
+          > echokit-server.log 2>&1 &
+        
+        echo "ECHOKIT_PID=$!" >> $GITHUB_ENV
+        echo "url=http://localhost:${{ inputs.port }}" >> $GITHUB_OUTPUT
+        
+        # Wait for server to be ready
+        for i in {1..40}; do
+          if curl -sf http://localhost:${{ inputs.port }}/__health -o /dev/null; then
+            echo "✓ EchoKit server ready at http://localhost:${{ inputs.port }}"
+            exit 0
+          fi
+          if [ $i -eq 40 ]; then
+            echo "✗ EchoKit server failed to start within 10s"
+            cat echokit-server.log
+            exit 1
+          fi
+          sleep 0.25
+        done
+    
+    - name: Stop EchoKit and generate report
+      if: always() && inputs.mode == 'stop'
+      id: stop
+      shell: bash
+      run: |
+        if [ -n "$ECHOKIT_PID" ]; then
+          echo "Stopping EchoKit server (PID $ECHOKIT_PID)..."
+          kill -TERM $ECHOKIT_PID || true
+          sleep 1
+          kill -KILL $ECHOKIT_PID 2>/dev/null || true
+          echo "✓ Server stopped"
+        fi
+        
+        echo "--- EchoKit server log ---"
+        cat echokit-server.log || true
+    
+    - name: Parse coverage report
+      if: always() && inputs.mode == 'stop' && hashFiles(inputs.report-path) != ''
+      id: report
+      shell: bash
+      run: |
+        COVERAGE=$(jq -r '.coverage' "${{ inputs.report-path }}" || echo "0")
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Coverage: $COVERAGE%"
+    
+    - name: Comment coverage on PR
+      if: |
+        always() && 
+        inputs.mode == 'stop' && 
+        inputs.comment-pr == 'true' && 
+        github.event_name == 'pull_request' && 
+        hashFiles(inputs.report-path) != ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const r = JSON.parse(fs.readFileSync('${{ inputs.report-path }}', 'utf8'));
+          const usedPct = r.coverage;
+          const emoji = usedPct >= 80 ? '🟢' : usedPct >= 50 ? '🟡' : '🔴';
+          const top5 = r.mocks.slice(0, 5).map(m =>
+            `- \`${m.method} ${m.url}\` — **${m.hits}** hits`
+          ).join('\n') || '_no mocks hit_';
+          const unused = r.unusedMocks.slice(0, 10).map(m =>
+            `- \`${m.method} ${m.url}\``
+          ).join('\n') || '_all mocks used_';
+          const unmatched = r.unmatched.slice(0, 10).map(u =>
+            `- \`${u.method} ${u.url}\``
+          ).join('\n') || '_none_';
+          const body = [
+            `### ${emoji} EchoKit Mock Coverage`,
+            ``,
+            `**${r.usedMocks}/${r.totalMocks}** mocks used (**${usedPct}%** coverage) · **${r.matchedRequests}/${r.totalRequests}** requests matched`,
+            ``,
+            `<details><summary>Top mocks by hits</summary>`,
+            ``,
+            top5,
+            ``,
+            `</details>`,
+            ``,
+            `<details><summary>Unused mocks (${r.unusedMocks.length})</summary>`,
+            ``,
+            unused,
+            ``,
+            `</details>`,
+            ``,
+            r.unmatchedRequests > 0
+              ? `<details open><summary>⚠️ Unmatched requests (${r.unmatchedRequests})</summary>\n\n${unmatched}\n\n</details>`
+              : `✓ no unmatched requests`,
+            ``,
+            `<sub>Posted by [echokit-server](https://github.com/ravitejakamalapuram/echokit) · marker:echokit-coverage</sub>`
+          ].join('\n');
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner, repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+          const existing = comments.find(c => c.body && c.body.includes('marker:echokit-coverage'));
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: existing.id, body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number, body
+            });
+          }
