@@ -10,6 +10,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Validate required secrets are present
+      - name: Validate Chrome Web Store secrets
+        run: |
+          MISSING=""
+          [[ -z "${{ secrets.CWS_EXTENSION_ID }}" ]] && MISSING="${MISSING}CWS_EXTENSION_ID "
+          [[ -z "${{ secrets.CWS_CLIENT_ID }}" ]] && MISSING="${MISSING}CWS_CLIENT_ID "
+          [[ -z "${{ secrets.CWS_CLIENT_SECRET }}" ]] && MISSING="${MISSING}CWS_CLIENT_SECRET "
+          [[ -z "${{ secrets.CWS_REFRESH_TOKEN }}" ]] && MISSING="${MISSING}CWS_REFRESH_TOKEN "
+
+          if [[ -n "$MISSING" ]]; then
+            echo "❌ ERROR: Missing required GitHub Secrets: $MISSING"
+            echo ""
+            echo "To set up fully automated Chrome Web Store publishing:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret' and add each of the following:"
+            echo "   - CWS_EXTENSION_ID (your Chrome extension ID)"
+            echo "   - CWS_CLIENT_ID (OAuth client ID)"
+            echo "   - CWS_CLIENT_SECRET (OAuth client secret)"
+            echo "   - CWS_REFRESH_TOKEN (OAuth refresh token)"
+            echo ""
+            echo "📖 See .github/CHROME_WEB_STORE_SETUP.md for detailed instructions"
+            exit 1
+          fi
+          echo "✅ All Chrome Web Store secrets present"
+
       - name: Sync manifest version to tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -27,12 +52,8 @@ jobs:
           files: echokit-${{ github.ref_name }}.zip
           generate_release_notes: true
 
-      # Optional: auto-publish to Chrome Web Store.
-      # Add these secrets first (Repo Settings → Secrets → Actions):
-      #   CWS_EXTENSION_ID, CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN
-      # See https://developer.chrome.com/docs/webstore/using-api
-      - name: Publish to Chrome Web Store (optional)
-        if: ${{ env.CWS_EXTENSION_ID != '' }}
+      # Fully automated Chrome Web Store publishing
+      - name: Publish to Chrome Web Store
         env:
           CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
           CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
@@ -40,11 +61,44 @@ jobs:
           CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
         run: |
           set -e
+          echo "🔑 Fetching OAuth access token..."
           TOKEN=$(curl -s "https://oauth2.googleapis.com/token" \
             -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token" \
             | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-          curl -s -H "Authorization: Bearer ${TOKEN}" -H "x-goog-api-version: 2" \
+
+          echo "📤 Uploading extension to Chrome Web Store..."
+          UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "x-goog-api-version: 2" \
             -X PUT -T "echokit-${GITHUB_REF_NAME}.zip" \
-            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}"
-          curl -s -H "Authorization: Bearer ${TOKEN}" -H "x-goog-api-version: 2" -H "Content-Length: 0" \
-            -X POST "https://www.googleapis.com/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}/publish"
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}")
+
+          HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
+
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "❌ Upload failed with HTTP $HTTP_CODE"
+            echo "$RESPONSE_BODY"
+            exit 1
+          fi
+          echo "✅ Upload successful"
+
+          echo "🚀 Publishing extension..."
+          PUBLISH_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" \
+            -X POST "https://www.googleapis.com/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}/publish")
+
+          HTTP_CODE=$(echo "$PUBLISH_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$PUBLISH_RESPONSE" | sed '$d')
+
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "❌ Publish failed with HTTP $HTTP_CODE"
+            echo "$RESPONSE_BODY"
+            exit 1
+          fi
+
+          echo "✅ Extension published successfully!"
+          echo "🎉 EchoKit ${GITHUB_REF_NAME} is now live on Chrome Web Store"
+          echo "📋 Note: Chrome review typically takes 1-2 days before going fully live"

@@ -1,37 +1,62 @@
-# Release pipeline
+# EchoKit CI/CD Pipeline
 
-## Test workflow (`test.yml`)
-Runs on every push / PR — installs Playwright + xvfb, runs `tests/smoke_echokit.py` end-to-end against the unpacked extension. 34+ assertions cover recording, mocking, scope, match modes, themes, JSON highlighter, clipboard, blocklist.
+## 🚀 Fully Automated Release Pipeline
 
-## Release workflow (`release.yml`)
-Triggered by pushing a tag `v1.2.0`, `v1.3.0`, etc.
+**TL;DR**: Push a version tag, everything else is automatic.
 
-1. Checks out the repo.
-2. Rewrites `extension/manifest.json` with the tag version.
-3. Zips `extension/` → `echokit-vX.Y.Z.zip`.
-4. Attaches the zip to a GitHub Release with auto-generated notes.
-5. (Optional) Publishes to the Chrome Web Store if secrets are set.
-
-### How to cut a release manually
 ```bash
-git tag v1.3.0
-git push origin v1.3.0
+git tag v1.7.0 && git push origin v1.7.0
 ```
-That's it.
 
-### Enabling auto-publish to Chrome Web Store
+The pipeline will:
+1. ✅ Validate Chrome Web Store credentials
+2. ✅ Build and package the extension
+3. ✅ Create GitHub Release with artifacts
+4. ✅ Upload to Chrome Web Store
+5. ✅ Publish for Chrome review (live in 1-2 days)
 
-You need four repo secrets (Settings → Secrets and variables → Actions):
+**📖 Detailed guides:**
+- **[Automated Release Process](AUTOMATED_RELEASE.md)** - Quick reference for releases
+- **[Chrome Web Store Setup](CHROME_WEB_STORE_SETUP.md)** - One-time credential setup (30 min)
 
-| Secret | How to get it |
-|---|---|
-| `CWS_EXTENSION_ID` | From the Chrome Web Store dashboard after first manual submission. |
-| `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` | Create an OAuth 2.0 client in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (Desktop app type). |
-| `CWS_REFRESH_TOKEN` | One-time OAuth dance — full steps at [Chrome docs](https://developer.chrome.com/docs/webstore/using-api#setup). |
+---
 
-Without these, the `Publish` step is skipped; the workflow still produces a GitHub Release.
+## Test Workflow (`test.yml`)
 
-## Conventions
-- `main` is always releasable.
-- Patch bugs → `vX.Y.Z+1` from `main`.
-- Feature work → feature branch → PR → review → merge → tag.
+Runs on every push / PR:
+- Installs Playwright + xvfb
+- Runs `tests/smoke_echokit.py` end-to-end test
+- 34+ assertions covering recording, mocking, scope, match modes, themes, JSON highlighter, clipboard, blocklist
+
+---
+
+## Release Workflow (`release.yml`)
+
+**Trigger**: Push a tag matching `v*.*.*` (e.g., `v1.6.0`, `v2.0.0`)
+
+**What it does:**
+1. Validates all required Chrome Web Store secrets are configured
+2. Syncs `extension/manifest.json` version with git tag
+3. Builds production zip file
+4. Creates GitHub Release with auto-generated notes
+5. **Uploads to Chrome Web Store** (fully automated)
+6. **Publishes immediately** (enters review queue)
+
+**Required GitHub Secrets** (one-time setup):
+- `CWS_EXTENSION_ID` - Your Chrome extension ID
+- `CWS_CLIENT_ID` - OAuth client ID
+- `CWS_CLIENT_SECRET` - OAuth client secret
+- `CWS_REFRESH_TOKEN` - OAuth refresh token
+
+⚠️ **The workflow will fail if any secrets are missing** - this ensures you never accidentally skip Chrome Web Store publishing.
+
+**First-time setup**: Follow **[CHROME_WEB_STORE_SETUP.md](CHROME_WEB_STORE_SETUP.md)** for detailed instructions.
+
+---
+
+## Development Conventions
+
+- `main` branch is always releasable
+- Bug fixes → `vX.Y.Z+1` patch release from `main`
+- New features → feature branch → PR → review → merge → tag
+- All releases are automatically published to Chrome Web Store
