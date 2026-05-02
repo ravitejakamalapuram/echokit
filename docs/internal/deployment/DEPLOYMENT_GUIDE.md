@@ -54,7 +54,7 @@ curl https://echokit-license.<YOUR_SUBDOMAIN>.workers.dev/__health
 # Should return: {"ok":true,"name":"EchoKit License API"}
 ```
 
-See: `worker/DEPLOY.md` for detailed instructions
+See: `../../../worker/DEPLOY.md` for detailed instructions
 
 ---
 
@@ -93,7 +93,7 @@ npx echokit-server --help
 - Update repo README to reference `npx echokit-server`
 - Test: `npx echokit-server <export.json>`
 
-See: `cli/PUBLISH.md` for detailed instructions
+See: `../../../cli/PUBLISH.md` for detailed instructions
 
 ---
 
@@ -103,7 +103,7 @@ See: `cli/PUBLISH.md` for detailed instructions
 
 **Prerequisites**: 
 - Chrome Web Store developer account ($5 one-time fee)
-- Screenshots (see `store/screenshot-guide.md`)
+- Screenshots (see `../../../store/screenshot-guide.md`)
 
 **Package**: `store/echokit-api-recorder-mocker-v1.6.0.zip` (ready to upload)
 
@@ -111,7 +111,7 @@ See: `cli/PUBLISH.md` for detailed instructions
 1. Go to: https://chrome.google.com/webstore/devconsole
 2. Click **New Item**
 3. Upload `store/echokit-api-recorder-mocker-v1.6.0.zip`
-4. Fill listing fields from `store/chrome-web-store.md`:
+4. Fill listing fields from `../../../store/chrome-web-store.md`:
    - Name: `EchoKit — API Recorder & Mocker`
    - Summary: (copy from chrome-web-store.md)
    - Description: (copy from chrome-web-store.md)
@@ -119,11 +119,11 @@ See: `cli/PUBLISH.md` for detailed instructions
 5. Upload icon: `extension/icons/icon128.png`
 6. Upload promo tiles: `store/promo-*.png`
 7. Upload screenshots: `store/screenshots/*.png`
-8. Privacy Policy URL: (host `store/privacy-policy.md` on GitHub Pages)
+8. Privacy Policy URL: (host `../../../store/privacy-policy.md` on GitHub Pages)
 9. Declare permissions (see chrome-web-store.md)
 10. Submit for review (1-7 days)
 
-See: `store/chrome-web-store.md` for listing copy
+See: `../../../store/chrome-web-store.md` for listing copy
 
 ---
 
@@ -193,7 +193,7 @@ After completing P0 tasks:
 - [ ] Chrome Web Store submission complete
 - [ ] Extension docs updated with npm/worker URLs
 - [ ] Test end-to-end: extension → worker → license validation
-- [ ] Update TODO.md to mark P0 tasks complete
+- [ ] Update `../../../TODO.md` to mark P0 tasks complete
 
 ---
 
@@ -228,12 +228,12 @@ curl -X POST https://echokit-license.<YOUR_SUBDOMAIN>.workers.dev/v1/validate \
 
 ## 📞 Need Help?
 
-- Cloudflare Worker: `worker/DEPLOY.md`
-- npm Publishing: `cli/PUBLISH.md`
-- Chrome Web Store: `store/chrome-web-store.md`
-- Full roadmap: `TODO.md`
+- Cloudflare Worker: `../../../worker/DEPLOY.md`
+- npm Publishing: `../../../cli/PUBLISH.md`
+- Chrome Web Store: `../../../store/chrome-web-store.md`
+- Full roadmap: `../../../TODO.md`
 
 ---
 
 **Current Status**: Ready for P0 deployment. All code complete ✅
-**Next Action**: Run `worker/deploy.sh` to deploy the license worker
+**Next Action**: Run `../../../worker/deploy.sh` to deploy the license worker

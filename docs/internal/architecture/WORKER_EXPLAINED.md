@@ -191,13 +191,13 @@ Then test it in the extension.
 **Option A: LemonSqueezy** 🌍 **(RECOMMENDED)**
 - **Why**: Handles ALL tax/VAT worldwide (you don't deal with it!)
 - **Setup time**: 15 minutes
-- **Guide**: `worker/LEMONSQUEEZY_INTEGRATION.md`
+- **Guide**: `../../../worker/LEMONSQUEEZY_INTEGRATION.md`
 - **Best for**: Global sales, indie developers
 
 **Option B: Stripe** (Already coded!)
 - **Why**: More established, webhook already implemented
 - **Setup time**: 1-2 hours (tax is complex)
-- **Guide**: `worker/PAYMENT_AUTOMATION_SETUP.md`
+- **Guide**: `../../../worker/PAYMENT_AUTOMATION_SETUP.md`
 - **Best for**: US-only or if you have accountants
 
 **Option C: Both!**

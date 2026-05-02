@@ -78,8 +78,8 @@ Added as a **P1 feature** because it's the easiest way to go global:
 **Implementation**:
 - New endpoint: `POST /v1/lemonsqueezy-webhook`
 - Similar to Stripe webhook (already implemented)
-- Guide created: `worker/LEMONSQUEEZY_INTEGRATION.md`
-- Updated in: `TODO.md` (line 76-83)
+- Guide created: `../../../worker/LEMONSQUEEZY_INTEGRATION.md`
+- Updated in: `../../../TODO.md` (line 76-83)
 
 **Recommendation**: Start with LemonSqueezy for new customers. Keep Stripe only if you already have existing customers.
 
@@ -87,19 +87,19 @@ Added as a **P1 feature** because it's the easiest way to go global:
 
 ## 📁 Files Created Today
 
-1. **`P0_STATUS_AND_NEXT_STEPS.md`**  
+1. **`../status/P0_STATUS_AND_NEXT_STEPS.md`**  
    Complete P0 status report and action items
 
-2. **`worker/verify-deployment.sh`** ⭐  
+2. **`../../../worker/verify-deployment.sh`** ⭐  
    Automated deployment verification (just ran it!)
 
-3. **`worker/issue-license.sh`** ⭐  
+3. **`../../../worker/issue-license.sh`** ⭐  
    Interactive license key issuer
 
-4. **`worker/QUICK_START_LICENSE_ISSUANCE.md`**  
+4. **`../../../worker/QUICK_START_LICENSE_ISSUANCE.md`**  
    Quick reference for manual key issuance
 
-5. **`worker/LEMONSQUEEZY_INTEGRATION.md`** 🌍  
+5. **`../../../worker/LEMONSQUEEZY_INTEGRATION.md`** 🌍  
    Complete guide for LemonSqueezy integration
 
 6. **`DEPLOYMENT_VERIFICATION_RESULTS.md`** (this file)  

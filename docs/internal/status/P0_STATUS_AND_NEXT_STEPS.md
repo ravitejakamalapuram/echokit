@@ -54,8 +54,8 @@ npx echokit-server --help
 
 **Package Ready**: 
 - File: `store/echokit-api-recorder-mocker-v1.6.0.zip`
-- Listing guide: `store/chrome-web-store.md`
-- Upload guide: `store/CHROME_WEB_STORE_UPLOAD_GUIDE.md`
+- Listing guide: `../../../store/chrome-web-store.md`
+- Upload guide: `../../../store/CHROME_WEB_STORE_UPLOAD_GUIDE.md`
 
 **Action**: 
 1. Go to https://chrome.google.com/webstore/devconsole
@@ -104,7 +104,7 @@ curl -X POST "$ECHOKIT_WORKER_URL/v1/issue" \
 
 #### **Option C: Full Automation with Stripe** (For production)
 
-See `worker/PAYMENT_AUTOMATION_SETUP.md` for complete guide.
+See `../../../worker/PAYMENT_AUTOMATION_SETUP.md` for complete guide.
 
 **Summary**:
 1. Create Stripe products (Monthly/Annual/Lifetime)
@@ -166,16 +166,16 @@ export ECHOKIT_ADMIN_TOKEN="your-admin-token"
 
 I've created these helper files for you:
 
-1. **`worker/QUICK_START_LICENSE_ISSUANCE.md`**  
+1. **`../../../worker/QUICK_START_LICENSE_ISSUANCE.md`**  
    Quick reference for manual key issuance
 
-2. **`worker/issue-license.sh`** ⭐  
+2. **`../../../worker/issue-license.sh`** ⭐  
    Interactive script to issue keys easily
 
-3. **`worker/PAYMENT_AUTOMATION_SETUP.md`** (already exists)  
+3. **`../../../worker/PAYMENT_AUTOMATION_SETUP.md`** (already exists)  
    Full Stripe + Resend automation guide
 
-4. **`worker/MANUAL_KEY_ISSUANCE.md`** (already exists)  
+4. **`../../../worker/MANUAL_KEY_ISSUANCE.md`** (already exists)  
    API reference for key issuance
 
 ---
@@ -190,4 +190,4 @@ After all 4 P0 items are done, you can move to P2 features:
 - Auto-import from Postman collections
 - Test coverage badge generator
 
-See `TODO.md` for the full roadmap.
+See `../../../TODO.md` for the full roadmap.

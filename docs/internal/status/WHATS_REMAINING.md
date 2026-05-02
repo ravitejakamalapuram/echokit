@@ -17,10 +17,10 @@
    - Link: https://www.npmjs.com/package/echokit-server
 
 3. ✅ **Documentation Created**
-   - `WORKER_EXPLAINED.md` - What the worker is and why you need it
-   - `worker/LEMONSQUEEZY_INTEGRATION.md` - Global payment integration
-   - `worker/QUICK_START_LICENSE_ISSUANCE.md` - Quick reference
-   - `P0_STATUS_AND_NEXT_STEPS.md` - Complete status report
+   - `../architecture/WORKER_EXPLAINED.md` - What the worker is and why you need it
+   - `../../../worker/LEMONSQUEEZY_INTEGRATION.md` - Global payment integration
+   - `../../../worker/QUICK_START_LICENSE_ISSUANCE.md` - Quick reference
+   - `./P0_STATUS_AND_NEXT_STEPS.md` - Complete status report
 
 4. ✅ **Helper Scripts**
    - `worker/issue-license.sh` - Interactive license key issuer
@@ -40,7 +40,7 @@
 **What to do**:
 1. Go to: https://chrome.google.com/webstore/devconsole
 2. Upload: `store/echokit-api-recorder-mocker-v1.6.0.zip`
-3. Follow guide: `store/CHROME_WEB_STORE_UPLOAD_GUIDE.md`
+3. Follow guide: `../../../store/CHROME_WEB_STORE_UPLOAD_GUIDE.md`
 
 **Estimated time**: 30 minutes (manual upload + review)
 
@@ -50,17 +50,17 @@
 **Option A: LemonSqueezy** 🌍 (RECOMMENDED)
 - **Why**: Handles all tax/VAT globally (Merchant of Record)
 - **Time**: 15 minutes
-- **Guide**: `worker/LEMONSQUEEZY_INTEGRATION.md`
+- **Guide**: `../../../worker/LEMONSQUEEZY_INTEGRATION.md`
 - **Best for**: Global sales, indie developers
 
 **Option B: Stripe** (Already coded)
 - **Why**: More established
 - **Time**: 1-2 hours (complex tax setup)
-- **Guide**: `worker/PAYMENT_AUTOMATION_SETUP.md`
+- **Guide**: `../../../worker/PAYMENT_AUTOMATION_SETUP.md`
 - **Best for**: US-only or with accountants
 
 **Option C: Manual for Now**
-- Use `worker/issue-license.sh` to manually issue keys
+- Use `../../../worker/issue-license.sh` to manually issue keys
 - Add automation later
 
 ---
@@ -87,7 +87,7 @@ All P1 features are COMPLETE! ✅
 4. Auto-import from Postman/Insomnia
 5. Test coverage badge generator
 
-**Full list**: See `TODO.md` lines 73-130
+**Full list**: See `../../../TODO.md` lines 73-130
 
 ---
 
@@ -100,7 +100,7 @@ All P1 features are COMPLETE! ✅
 - i18n scaffolding
 - DevTools coverage tab
 
-**Full list**: See `TODO.md` lines 132-160
+**Full list**: See `../../../TODO.md` lines 132-160
 
 ---
 
@@ -113,7 +113,7 @@ All P1 features are COMPLETE! ✅
 - Team sharing layer
 - Plugin API
 
-**Full list**: See `TODO.md` lines 162-193
+**Full list**: See `../../../TODO.md` lines 162-193
 
 ---
 
@@ -180,20 +180,20 @@ export ECHOKIT_ADMIN_TOKEN="<your-token>"
 ## 📁 Important Files
 
 **Deployment**:
-- `DEPLOY_NOW.md` - Simple deployment guide
-- `WORKER_EXPLAINED.md` - What the worker is
-- `P0_STATUS_AND_NEXT_STEPS.md` - Complete status
+- `../deployment/DEPLOY_NOW.md` - Simple deployment guide
+- `../architecture/WORKER_EXPLAINED.md` - What the worker is
+- `./P0_STATUS_AND_NEXT_STEPS.md` - Complete status
 
 **Payment Setup**:
-- `worker/LEMONSQUEEZY_INTEGRATION.md` - Recommended
-- `worker/PAYMENT_AUTOMATION_SETUP.md` - Stripe alternative
+- `../../../worker/LEMONSQUEEZY_INTEGRATION.md` - Recommended
+- `../../../worker/PAYMENT_AUTOMATION_SETUP.md` - Stripe alternative
 
 **License Management**:
-- `worker/issue-license.sh` - Issue keys interactively
-- `worker/QUICK_START_LICENSE_ISSUANCE.md` - Quick ref
+- `../../../worker/issue-license.sh` - Issue keys interactively
+- `../../../worker/QUICK_START_LICENSE_ISSUANCE.md` - Quick ref
 
 **Roadmap**:
-- `TODO.md` - Full backlog
+- `../../../TODO.md` - Full backlog
 
 ---
 

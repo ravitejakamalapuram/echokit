@@ -14,7 +14,7 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - Secrets configured: ECHOKIT_HMAC_SECRET and ECHOKIT_ADMIN_TOKEN
   - Health check passing: `{"ok":true}`
   - Helper scripts created: `worker/issue-license.sh`, `worker/verify-deployment.sh`
-  - Documentation: `WORKER_EXPLAINED.md`
+  - Documentation: `docs/internal/architecture/WORKER_EXPLAINED.md`
 
 - [ ] **Mint real license keys** for paying customers
   - Hit `POST <worker-url>/v1/issue` with `Authorization: Bearer <ECHOKIT_ADMIN_TOKEN>` and `{plan:"PRO"|"YEAR"|"LTD", expiresAt:<unix>}`. For LTD set `expiresAt:0`.

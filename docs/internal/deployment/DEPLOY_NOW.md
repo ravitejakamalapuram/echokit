@@ -121,7 +121,7 @@ After testing manual license issuance, set up automated payments:
 - ✅ 15-minute setup
 - ✅ Built for indie developers
 
-**Guide**: `worker/LEMONSQUEEZY_INTEGRATION.md`
+**Guide**: `../../../worker/LEMONSQUEEZY_INTEGRATION.md`
 
 ### Option B: Stripe (Already Implemented)
 
@@ -130,7 +130,7 @@ After testing manual license issuance, set up automated payments:
 - ⚠️ You handle tax compliance
 - ⚠️ Complex setup for global sales
 
-**Guide**: `worker/PAYMENT_AUTOMATION_SETUP.md`
+**Guide**: `../../../worker/PAYMENT_AUTOMATION_SETUP.md`
 
 ### Option C: Both! 
 
@@ -181,6 +181,6 @@ cd worker && ./deploy.sh
 ---
 
 **Questions?** Check:
-- `worker/DEPLOY.md` - Detailed deployment guide
-- `P0_STATUS_AND_NEXT_STEPS.md` - Complete status report
-- `DEPLOYMENT_VERIFICATION_RESULTS.md` - Verification results
+- `../../../worker/DEPLOY.md` - Detailed deployment guide
+- `../status/P0_STATUS_AND_NEXT_STEPS.md` - Complete status report
+- `./DEPLOYMENT_VERIFICATION_RESULTS.md` - Verification results
