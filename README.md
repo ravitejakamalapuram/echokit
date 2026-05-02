@@ -45,6 +45,13 @@ xvfb-run -a python3 tests/smoke_echokit.py
 
 It spins up a local HTTP server, loads the unpacked extension in headed Chromium via xvfb, drives fetch + XHR on a test page, and validates the full record → toggle → mock → edit loop.
 
+## Documentation
+
+- [`extension/README.md`](extension/README.md) — extension architecture and feature map
+- [`TODO.md`](TODO.md) — living roadmap and backlog
+- [`docs/internal/`](docs/internal/README.md) — internal project docs (deployment, status, design history, architecture)
+- [`docs/`](docs/) — public-facing website assets (HTML pages: pricing, FAQ, privacy)
+
 ## License
 
 MIT — use it however you like.

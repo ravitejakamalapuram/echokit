@@ -176,33 +176,47 @@ function renderHeader() {
   const cors = state.settings.corsOverride;
   const trialBadge = state.trial && state.trialDaysLeft > 0
     ? `<span class="ek-trial-badge" title="Pro trial: ${state.trialDaysLeft} day${state.trialDaysLeft === 1 ? '' : 's'} left">${state.trialDaysLeft}d trial</span>` : '';
+
+  // Stats bar matching design mockup
+  const statsBar = `
+    <div class="ek-stats-bar">
+      <div class="ek-stat-item">
+        <div class="ek-stat-value">${state.interactions.length}</div>
+        <div class="ek-stat-label">REQS</div>
+      </div>
+    </div>
+  `;
+
   return `
     <div class="ek-header">
-      <div class="ek-logo"><span class="ek-logo-mark">EK</span><span>ECHOKIT</span></div>
-      ${trialBadge}
-      <div class="ek-header-spacer"></div>
-      ${recording
-        ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
-        : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
-      <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
-        <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
-        <span class="ek-switch-track"></span>
-        <span class="ek-switch-label">MOCK</span>
-      </label>
-      <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
-        <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
-        <span class="ek-switch-track"></span>
-        <span class="ek-switch-label">CORS</span>
-      </label>
-      <button class="ek-btn ek-btn-ghost ek-btn-icon ${state.waterfall ? 'active' : ''}" data-action="toggle-waterfall"
-        title="Toggle network waterfall view" data-testid="waterfall-toggle-btn">
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
-      </button>
-      <div class="ek-menu">
-        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+      <div class="ek-header-top">
+        <div class="ek-logo"><span class="ek-logo-mark">EK</span><span>ECHOKIT</span></div>
+        ${trialBadge}
+        <div class="ek-header-spacer"></div>
+        ${recording
+          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
+          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
+        <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
+          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
+          <span class="ek-switch-track"></span>
+          <span class="ek-switch-label">MOCK</span>
+        </label>
+        <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
+          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
+          <span class="ek-switch-track"></span>
+          <span class="ek-switch-label">CORS</span>
+        </label>
+        <button class="ek-btn ek-btn-ghost ek-btn-icon ${state.waterfall ? 'active' : ''}" data-action="toggle-waterfall"
+          title="Toggle network waterfall view" data-testid="waterfall-toggle-btn">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
         </button>
+        <div class="ek-menu">
+          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+          </button>
+        </div>
       </div>
+      ${statsBar}
     </div>
   `;
 }
@@ -623,7 +637,11 @@ function renderEmpty() {
 
 function renderDomainGroup(g) {
   return `
-    <div class="ek-domain" data-testid="domain-group">${escapeHtml(g.domain)} <span class="ek-domain-count">· ${g.items.length}</span></div>
+    <div class="ek-domain" data-testid="domain-group">
+      <span class="ek-domain-icon"></span>
+      <span class="ek-domain-name">${escapeHtml(g.domain)}</span>
+      <span class="ek-domain-count">${g.items.length}</span>
+    </div>
     ${g.items.map(renderRow).join('')}
   `;
 }

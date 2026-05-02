@@ -9,21 +9,26 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 ## 🔴 P0 — Ship blockers / must-do next
 
-- [ ] **Deploy the Cloudflare Worker** (`/app/worker/`)
-  - Run `cd /app/worker && wrangler login`
-  - `wrangler secret put ECHOKIT_HMAC_SECRET` (use `openssl rand -hex 32`)
-  - `wrangler secret put ECHOKIT_ADMIN_TOKEN` (any random string — needed to mint keys)
-  - `wrangler deploy` → copy the `*.workers.dev` URL
-  - Optional: bind a custom domain like `license.echokit.dev` in `wrangler.toml`
+- [x] **Deploy the Cloudflare Worker** ✅
+  - Worker deployed: `https://echokit-license.echokit-rk.workers.dev`
+  - Secrets configured: ECHOKIT_HMAC_SECRET and ECHOKIT_ADMIN_TOKEN
+  - Health check passing: `{"ok":true}`
+  - Helper scripts created: `worker/issue-license.sh`, `worker/verify-deployment.sh`
+  - Documentation: `docs/internal/architecture/WORKER_EXPLAINED.md`
 
 - [ ] **Mint real license keys** for paying customers
   - Hit `POST <worker-url>/v1/issue` with `Authorization: Bearer <ECHOKIT_ADMIN_TOKEN>` and `{plan:"PRO"|"YEAR"|"LTD", expiresAt:<unix>}`. For LTD set `expiresAt:0`.
   - Hook this into the payment flow (Stripe webhook → call `/v1/issue` → email key).
+  - **NEW**: Consider LemonSqueezy integration (easier global payments, tax handling, better UX)
+    - Already has Stripe webhook implemented in `worker.js`
+    - LemonSqueezy webhook would be similar: `POST /v1/lemonsqueezy-webhook`
+    - Benefits: Merchant of Record, automatic tax/VAT, better for global SaaS
+    - See: `worker/LEMONSQUEEZY_INTEGRATION.md` (to be created)
 
-- [ ] **Publish `echokit-server` to npm**
-  - `cd /app/cli && npm whoami` (login first if needed: `npm login`)
-  - `npm publish --access=public` (the package is already MIT-licensed, has README, .npmignore, LICENSE)
-  - Update the extension docs/landing page to reference `npx echokit-server …`
+- [x] **Publish `echokit-server` to npm** ✅
+  - Published: `echokit-server@1.0.0` live on npm
+  - Link: https://www.npmjs.com/package/echokit-server
+  - Users can install: `npx echokit-server --help`
 
 - [ ] **Upload `/app/store/echokit-api-recorder-mocker-v1.6.0.zip` to Chrome Web Store**
   - Dev console: <https://chrome.google.com/webstore/devconsole>
@@ -67,6 +72,15 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - Auto-issues keys based on `echokit_plan` metadata
   - Logs for manual email follow-up (Resend integration ready)
   - See: `worker/worker.js` lines 105-169
+
+- [ ] **LemonSqueezy integration** 🌍 **RECOMMENDED for global sales**
+  - Add `POST /v1/lemonsqueezy-webhook` endpoint
+  - Easier than Stripe: Merchant of Record handles ALL tax/VAT globally
+  - No need to register in 50+ countries, no tax compliance headaches
+  - Better webhooks, simpler API, faster to production
+  - Can run alongside Stripe (dual webhooks for gradual migration)
+  - Implementation guide: `worker/LEMONSQUEEZY_INTEGRATION.md`
+  - Estimated time: 30 minutes (vs hours for Stripe tax setup)
 
 ---
 
