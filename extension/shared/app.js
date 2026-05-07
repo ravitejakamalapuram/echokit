@@ -1066,7 +1066,6 @@ function renderInteractionRow(i) {
                 data-action="toggle-mock"
                 data-id="${i.id}"
                 title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}"
-                onclick="event.stopPropagation()"
                 data-testid="mock-toggle">
           ${i.mockEnabled ? '✓' : '○'}
         </button>
@@ -1074,7 +1073,6 @@ function renderInteractionRow(i) {
                 data-action="toggle-block"
                 data-id="${i.id}"
                 title="${i.blocked ? 'Blocked' : 'Block'}"
-                onclick="event.stopPropagation()"
                 data-testid="block-btn">
           ⊘
         </button>
@@ -1496,15 +1494,7 @@ function bindEvents() {
     });
     else if (action === 'sort-by') el.addEventListener('click', () => {
       const column = el.getAttribute('data-column');
-      if (state.sortBy === column) {
-        // Toggle sort order if same column
-        state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
-      } else {
-        // New column - default to ascending
-        state.sortBy = column;
-        state.sortOrder = 'asc';
-      }
-      softRenderList();
+      applySort(column);
     });
     else if (action === 'clear-all-filters') el.addEventListener('click', () => {
       state.filters = {
@@ -1705,6 +1695,28 @@ function bindResizer(el) {
   });
 }
 
+// Default sort order per column (desc for time-based, asc for text)
+const DEFAULT_SORT_ORDER = {
+  timestamp: 'desc',  // Newest first
+  duration: 'desc',   // Slowest first
+  status: 'desc',     // 5xx first
+  method: 'asc',      // GET, POST, PUT, ...
+  url: 'asc'          // Alphabetical
+};
+
+// Helper: Apply sort and re-render
+function applySort(column) {
+  if (state.sortBy === column) {
+    // Toggle order for same column
+    state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column: use its default order
+    state.sortBy = column;
+    state.sortOrder = DEFAULT_SORT_ORDER[column] || 'desc';
+  }
+  softRenderList();
+}
+
 // Update just the list + footer without touching the toolbar/search (avoids cursor reset)
 function softRenderList() {
   const list = root.querySelector('[data-testid="api-list"]');
@@ -1728,9 +1740,10 @@ function softRenderList() {
 
   // Rebind list-level events
   list.querySelectorAll('[data-action="select"]').forEach(el => el.addEventListener('click', (e) => {
-    if (e.target.closest('[data-action="toggle-mock"]')) return;
+    if (e.target.closest('[data-action="toggle-mock"]') || e.target.closest('[data-action="toggle-block"]')) return;
     state.selectedId = el.getAttribute('data-id'); state.detailOpen = true; render();
   }));
+
   list.querySelectorAll('[data-action="toggle-mock"]').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -1742,18 +1755,25 @@ function softRenderList() {
     });
   });
 
+  // CRITICAL: Rebind toggle-block handler (fixes CodeRabbit issue)
+  list.querySelectorAll('[data-action="toggle-block"]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!state.isPro) { showProGate('API Blocking'); return; }
+      const tid = el.getAttribute('data-id');
+      const current = state.interactions.find(x => x.id === tid);
+      if (!current) return;
+      await BG({ type: 'echokit:interaction:update', id: tid, patch: { blocked: !current.blocked } });
+      await refresh(); render();
+    });
+  });
+
   // Rebind sort handlers for table view
   if (!isPopup && features.sortableColumns) {
     list.querySelectorAll('[data-action="sort-by"]').forEach(el => {
       el.addEventListener('click', () => {
         const column = el.getAttribute('data-column');
-        if (state.sortBy === column) {
-          state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
-        } else {
-          state.sortBy = column;
-          state.sortOrder = 'asc';
-        }
-        softRenderList();
+        applySort(column);
       });
     });
   }

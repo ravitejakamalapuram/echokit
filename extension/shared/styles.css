@@ -1390,7 +1390,8 @@ a {
   accent-color: var(--blue);
 }
 
-.ek-row-inline {
+/* Scoped to advanced filter panel to avoid global margin-bottom */
+.ek-advanced-filters .ek-row-inline {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
@@ -1601,8 +1602,8 @@ a {
   color: var(--text-muted);
 }
 
-.ek-method-badge.ek-method-get { background: var(--emerald-dim); color: var(--emerald); }
-.ek-method-badge.ek-method-post { background: var(--blue-dim); color: var(--blue); }
+.ek-method-badge.ek-method-get { background: var(--blue-dim); color: var(--blue); }
+.ek-method-badge.ek-method-post { background: var(--emerald-dim); color: var(--emerald); }
 .ek-method-badge.ek-method-put { background: var(--amber-dim); color: var(--amber); }
 .ek-method-badge.ek-method-patch { background: var(--amber-dim); color: var(--amber-light); }
 .ek-method-badge.ek-method-delete { background: var(--red-dim); color: var(--red); }
