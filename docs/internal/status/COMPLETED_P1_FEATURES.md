@@ -1,6 +1,6 @@
 # P1 Features Completed ✅
 
-All high-priority features from the TODO.md roadmap have been successfully implemented and tested.
+All high-priority features from the `../../../TODO.md` roadmap have been successfully implemented and tested.
 
 ## 1. License Endpoint UI (Extension)
 
@@ -121,7 +121,7 @@ All high-priority features from the TODO.md roadmap have been successfully imple
 **Deployment steps**:
 1. Create `github.com/ravitejakamalapuram/echokit-action` repository
 2. Copy `echokit-action.yml` → `action.yml`
-3. Copy `ECHOKIT_ACTION_README.md` → `README.md`
+3. Copy `../../../.github/ECHOKIT_ACTION_README.md` → `README.md`
 4. Tag v1.0.0 and publish to GitHub Marketplace
 
 **User benefit**: One-line integration for any GitHub Actions workflow. No need to copy/paste 100+ line workflows.
@@ -154,4 +154,4 @@ The following P0 tasks are ready but blocked on credentials:
 - [ ] Execute P0 deployment tasks (requires credentials)
 - [ ] Test GitHub Action in live repository
 - [ ] Add email delivery to Stripe webhook (integrate Resend)
-- [ ] Consider P2/P3 features from TODO.md
+- [ ] Consider P2/P3 features from `../../../TODO.md`

@@ -21,24 +21,24 @@ Your EchoKit Chrome extension now has **fully automated CI/CD** for Chrome Web S
 
 Created four detailed guides in `.github/`:
 
-- **[CHROME_WEB_STORE_SETUP.md](.github/CHROME_WEB_STORE_SETUP.md)** (⭐ Start here)
+- **[CHROME_WEB_STORE_SETUP.md](../../../.github/CHROME_WEB_STORE_SETUP.md)** (⭐ Start here)
   - Complete 30-minute setup guide
   - Step-by-step instructions with screenshots descriptions
   - OAuth credential generation
   - Troubleshooting section
 
-- **[AUTOMATED_RELEASE.md](.github/AUTOMATED_RELEASE.md)**
+- **[AUTOMATED_RELEASE.md](../../../.github/AUTOMATED_RELEASE.md)**
   - Quick reference for daily releases
   - One-command release process
   - Version tag examples
   - Rollback procedures
 
-- **[SETUP_CHECKLIST.md](.github/SETUP_CHECKLIST.md)**
+- **[SETUP_CHECKLIST.md](../../../.github/SETUP_CHECKLIST.md)**
   - Printable checklist format
   - All steps in order
   - Values template to fill in
 
-- **[README.md](.github/README.md)** (Updated)
+- **[README.md](../../../.github/README.md)** (Updated)
   - Pipeline overview
   - Links to all guides
   - Development conventions
@@ -53,12 +53,12 @@ You need to complete the Chrome Web Store API setup to enable auto-publishing.
 
 1. **Follow the setup guide** (30 minutes):
    ```
-   Open: .github/CHROME_WEB_STORE_SETUP.md
+   Open: ../../../.github/CHROME_WEB_STORE_SETUP.md
    ```
 
 2. **Or use the checklist** (same content, checklist format):
    ```
-   Open: .github/SETUP_CHECKLIST.md
+   Open: ../../../.github/SETUP_CHECKLIST.md
    ```
 
 ### What You'll Do
@@ -129,7 +129,7 @@ Push any git tag matching `v*.*.*` (e.g., `v1.6.1`, `v2.0.0`)
 ### Failure Output
 ```
 ❌ ERROR: Missing required GitHub Secrets: CWS_REFRESH_TOKEN
-📖 See .github/CHROME_WEB_STORE_SETUP.md for detailed instructions
+📖 See ../../../.github/CHROME_WEB_STORE_SETUP.md for detailed instructions
 ```
 
 ---
@@ -140,10 +140,10 @@ Push any git tag matching `v*.*.*` (e.g., `v1.6.1`, `v2.0.0`)
 - `.github/workflows/release.yml` - Enhanced with mandatory publishing + validation
 
 ### Created
-- `.github/CHROME_WEB_STORE_SETUP.md` - Complete setup guide
-- `.github/AUTOMATED_RELEASE.md` - Daily workflow reference
-- `.github/SETUP_CHECKLIST.md` - Setup checklist
-- `.github/README.md` - Updated pipeline overview
+- `../../../.github/CHROME_WEB_STORE_SETUP.md` - Complete setup guide
+- `../../../.github/AUTOMATED_RELEASE.md` - Daily workflow reference
+- `../../../.github/SETUP_CHECKLIST.md` - Setup checklist
+- `../../../.github/README.md` - Updated pipeline overview
 - `CHROME_PUBLISHING_CICD_SETUP.md` - This summary (can be deleted after reading)
 
 ---
@@ -197,6 +197,6 @@ You now have a **production-grade, fully automated CI/CD pipeline** for Chrome e
 **Before**: Manual upload, form filling, waiting for uploads
 **After**: `git tag v1.7.0 && git push` - done! ☕
 
-Complete the one-time setup in `.github/CHROME_WEB_STORE_SETUP.md` to activate it.
+Complete the one-time setup in `../../../.github/CHROME_WEB_STORE_SETUP.md` to activate it.
 
 **Happy shipping! 🚀**

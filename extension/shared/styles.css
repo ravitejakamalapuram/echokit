@@ -295,14 +295,14 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 2px solid var(--amber);
   border-radius: var(--radius-lg);
   background: var(--amber);
   color: #18181b;
-  font-size: 13px;
-  font-weight: var(--fw-extrabold);
+  font-size: 11px;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
@@ -712,9 +712,9 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--radius-sm);
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
   background: var(--amber);
   color: #18181b;
   font-size: 8px;
