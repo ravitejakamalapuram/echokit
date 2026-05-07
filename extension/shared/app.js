@@ -865,6 +865,47 @@ function renderFilterChips() {
     `);
   }
 
+  // Header search chips (new)
+  if (state.filters.requestHeader.name) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="request-header-name">
+        × req-header:"${escapeHtml(state.filters.requestHeader.name.slice(0, 20))}"
+      </span>
+    `);
+  }
+
+  if (state.filters.requestHeader.value) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="request-header-value">
+        × req-header-val:"${escapeHtml(state.filters.requestHeader.value.slice(0, 20))}"
+      </span>
+    `);
+  }
+
+  if (state.filters.responseHeader.name) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="response-header-name">
+        × res-header:"${escapeHtml(state.filters.responseHeader.name.slice(0, 20))}"
+      </span>
+    `);
+  }
+
+  if (state.filters.responseHeader.value) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="response-header-value">
+        × res-header-val:"${escapeHtml(state.filters.responseHeader.value.slice(0, 20))}"
+      </span>
+    `);
+  }
+
   if (chips.length === 0) return '';
 
   const count = chips.length;
@@ -1488,6 +1529,14 @@ function bindEvents() {
         state.filters.requestBodyContains = '';
       } else if (type === 'response-body') {
         state.filters.responseBodyContains = '';
+      } else if (type === 'request-header-name') {
+        state.filters.requestHeader.name = '';
+      } else if (type === 'request-header-value') {
+        state.filters.requestHeader.value = '';
+      } else if (type === 'response-header-name') {
+        state.filters.responseHeader.name = '';
+      } else if (type === 'response-header-value') {
+        state.filters.responseHeader.value = '';
       }
 
       render();
