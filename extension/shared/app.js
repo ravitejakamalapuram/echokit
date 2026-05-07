@@ -156,7 +156,7 @@ function render() {
         <div class="ek-list" data-testid="api-list">
           ${state.waterfall
             ? renderWaterfall(list)
-            : (list.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join(''))}
+            : renderListView(list, isPopup)}
         </div>
         ${isPopup ? '' : '<div class="ek-resizer" data-action="resize" data-testid="pane-resizer"></div>'}
         <div class="ek-detail" data-testid="api-detail">
@@ -970,6 +970,126 @@ function modeBadge(mode) {
   return { 'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH' }[mode] || mode;
 }
 
+// Renders list view - grouped list for popup, sortable table for devtools
+function renderListView(interactions, isPopup) {
+  if (interactions.length === 0) return renderEmpty();
+
+  const features = getFeatures();
+
+  // Popup or DevTools without sortable columns: use grouped list
+  if (isPopup || !features.sortableColumns) {
+    const grouped = groupByDomain(interactions);
+    return grouped.map(renderDomainGroup).join('');
+  }
+
+  // DevTools with sortable columns: use table view
+  return renderSortableTable(interactions);
+}
+
+// Renders sortable table view (DevTools only)
+function renderSortableTable(interactions) {
+  return `
+    ${renderSortableListHeader()}
+    <div class="ek-list-body" data-testid="list-body">
+      ${interactions.map(renderInteractionRow).join('')}
+    </div>
+  `;
+}
+
+// Renders sortable table header
+function renderSortableListHeader() {
+  const cols = [
+    { key: 'method', label: 'Method', width: '80px' },
+    { key: 'url', label: 'URL', flex: 2 },
+    { key: 'status', label: 'Status', width: '80px' },
+    { key: 'duration', label: 'Duration', width: '90px' },
+    { key: 'timestamp', label: 'Time', width: '100px' },
+    { key: 'actions', label: '', width: '80px' }
+  ];
+
+  return `
+    <div class="ek-list-header" data-testid="list-header">
+      ${cols.map(col => {
+        const active = state.sortBy === col.key;
+        const arrow = !active ? '' : state.sortOrder === 'asc' ? ' ↑' : ' ↓';
+        const style = col.flex ? `flex:${col.flex}` : `width:${col.width}`;
+        const clickable = col.key !== 'actions';
+
+        return `
+          <div class="ek-col ${active ? 'active' : ''} ${clickable ? 'clickable' : ''}"
+               style="${style}"
+               ${clickable ? `data-action="sort-by" data-column="${col.key}"` : ''}
+               data-testid="sort-${col.key}">
+            ${col.label}${arrow}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// Renders individual interaction row for table
+function renderInteractionRow(i) {
+  const st = i.overrideStatus ?? i.responseStatus;
+  const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
+  const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
+  const active = i.id === state.selectedId ? 'selected' : '';
+  const method = (i.method || 'GET').toUpperCase();
+
+  return `
+    <div class="ek-table-row ${active}"
+         data-action="select"
+         data-id="${i.id}"
+         data-testid="interaction-row">
+      <div class="ek-col" style="width:80px">
+        <span class="ek-method-badge ek-method-${method.toLowerCase()}">${method}</span>
+        ${i.mockEnabled ? '<span class="ek-mock-badge" title="Mock enabled">⚡</span>' : ''}
+      </div>
+      <div class="ek-col ek-url-col" style="flex:2" title="${escapeHtml(i.url)}">
+        ${escapeHtml(path)}
+      </div>
+      <div class="ek-col" style="width:80px;color:${stColor}">
+        ${st ?? '—'}
+      </div>
+      <div class="ek-col" style="width:90px">
+        ${i.durationMs ? i.durationMs + 'ms' : '—'}
+      </div>
+      <div class="ek-col ek-timestamp" style="width:100px">
+        ${formatTimestamp(i.timestamp)}
+      </div>
+      <div class="ek-col" style="width:80px;display:flex;gap:4px;justify-content:flex-end">
+        <button class="ek-icon-btn ${i.mockEnabled ? 'on' : ''}"
+                data-action="toggle-mock"
+                data-id="${i.id}"
+                title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}"
+                onclick="event.stopPropagation()"
+                data-testid="mock-toggle">
+          ${i.mockEnabled ? '✓' : '○'}
+        </button>
+        <button class="ek-icon-btn ${i.blocked ? 'on' : ''}"
+                data-action="toggle-block"
+                data-id="${i.id}"
+                title="${i.blocked ? 'Blocked' : 'Block'}"
+                onclick="event.stopPropagation()"
+                data-testid="block-btn">
+          ⊘
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Helper: Format timestamp for display
+function formatTimestamp(ts) {
+  const now = Date.now();
+  const diff = now - ts;
+
+  if (diff < 60000) return Math.floor(diff / 1000) + 's ago';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return new Date(ts).toLocaleDateString();
+}
+
 function renderDetailEmpty() {
   if (state.mode === 'popup' && !state.detailOpen) {
     return `<div class="ek-empty"><div class="ek-empty-hint ek-subtle">Tap a request to edit its mock.</div></div>`;
@@ -1370,6 +1490,18 @@ function bindEvents() {
 
       render();
     });
+    else if (action === 'sort-by') el.addEventListener('click', () => {
+      const column = el.getAttribute('data-column');
+      if (state.sortBy === column) {
+        // Toggle sort order if same column
+        state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        // New column - default to ascending
+        state.sortBy = column;
+        state.sortOrder = 'asc';
+      }
+      softRenderList();
+    });
     else if (action === 'clear-all-filters') el.addEventListener('click', () => {
       state.filters = {
         methods: [],
@@ -1574,11 +1706,23 @@ function softRenderList() {
   const list = root.querySelector('[data-testid="api-list"]');
   if (!list) return render();
   const items = filteredInteractions();
-  const grouped = groupByDomain(items);
   const scrollTop = list.scrollTop;
-  list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('');
+  const isPopup = state.mode === 'popup';
+  const features = getFeatures();
+
+  // Render based on view mode
+  if (isPopup || !features.sortableColumns) {
+    // Grouped list view
+    const grouped = groupByDomain(items);
+    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('');
+  } else {
+    // Table view
+    list.innerHTML = renderSortableTable(items);
+  }
+
   list.scrollTop = scrollTop;
-  // rebind list-level events
+
+  // Rebind list-level events
   list.querySelectorAll('[data-action="select"]').forEach(el => el.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="toggle-mock"]')) return;
     state.selectedId = el.getAttribute('data-id'); state.detailOpen = true; render();
@@ -1593,6 +1737,23 @@ function softRenderList() {
       await refresh(); render();
     });
   });
+
+  // Rebind sort handlers for table view
+  if (!isPopup && features.sortableColumns) {
+    list.querySelectorAll('[data-action="sort-by"]').forEach(el => {
+      el.addEventListener('click', () => {
+        const column = el.getAttribute('data-column');
+        if (state.sortBy === column) {
+          state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortBy = column;
+          state.sortOrder = 'asc';
+        }
+        softRenderList();
+      });
+    });
+  }
+
   // Update footer count
   const footer = root.querySelector('.ek-footer');
   if (footer) footer.outerHTML = renderFooter(items.length);
