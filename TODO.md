@@ -196,6 +196,13 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 ## 📦 Repo hygiene
 
+- [ ] **Chrome extension auto-deployment process**
+  - Automate the Chrome Web Store upload on version tags
+  - Use Chrome Web Store API to publish new versions automatically
+  - Consider: GitHub Action that runs on tag push → builds zip → uploads to CWS
+  - Eliminates manual upload steps from `store/CHROME_WEB_STORE_UPLOAD_GUIDE.md`
+  - Reference: Chrome Web Store Publish API docs
+
 - [ ] **CI for the repo itself**
   - GitHub Action that runs:
     - `node /app/cli/test/test.js`

@@ -1320,3 +1320,357 @@ a {
   word-break: break-all;
   color: var(--text);
 }
+
+/* =============================================================================
+   Advanced Toolbar (DevTools Only)
+   ============================================================================= */
+.ek-toolbar-advanced {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ek-toolbar-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* =============================================================================
+   Advanced Filter Panel (DevTools Only)
+   ============================================================================= */
+.ek-advanced-filters {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  border: 1px solid var(--border);
+}
+
+.ek-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ek-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.ek-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ek-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  color: var(--text-secondary);
+}
+
+.ek-checkbox:hover {
+  background: var(--surface-hover);
+}
+
+.ek-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--blue);
+}
+
+/* Scoped to advanced filter panel to avoid global margin-bottom */
+.ek-advanced-filters .ek-row-inline {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* =============================================================================
+   Filter Chips (DevTools Only)
+   ============================================================================= */
+.ek-filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.ek-filter-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.ek-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.ek-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--blue);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.ek-filter-chip:hover {
+  background: var(--blue-light);
+  transform: translateY(-1px);
+}
+
+.ek-result-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* =============================================================================
+   DevTools Link (Popup Only)
+   ============================================================================= */
+.ek-devtools-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.ek-devtools-link:hover {
+  background: var(--blue-dim);
+  text-decoration: none;
+}
+
+/* =============================================================================
+   Light Theme Overrides for New Components
+   ============================================================================= */
+[data-theme="light"] .ek-advanced-filters {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .ek-filter-chips-row {
+  background: var(--surface-2);
+}
+
+[data-theme="light"] .ek-checkbox:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme="light"] .ek-filter-chip {
+  background: var(--blue);
+  color: white;
+}
+
+[data-theme="light"] .ek-filter-chip:hover {
+  background: var(--blue-light);
+}
+
+/* =============================================================================
+   Sortable Table View (DevTools Only)
+   ============================================================================= */
+
+/* Table header */
+.ek-list-header {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 36px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.ek-list-header .ek-col {
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ek-list-header .ek-col.clickable {
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  border-radius: 4px;
+  margin: 0 -4px;
+  padding: 0 12px;
+}
+
+.ek-list-header .ek-col.clickable:hover {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.ek-list-header .ek-col.active {
+  color: var(--amber);
+}
+
+/* Table body */
+.ek-list-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Table rows */
+.ek-table-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease;
+  min-height: 44px;
+}
+
+.ek-table-row:hover {
+  background: var(--surface-hover);
+}
+
+.ek-table-row.selected {
+  background: var(--amber-dim);
+  border-left: 3px solid var(--amber);
+  padding-left: 13px;
+}
+
+.ek-table-row .ek-col {
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ek-table-row .ek-url-col {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ek-table-row .ek-timestamp {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Method badges in table */
+.ek-method-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  font-family: var(--font-mono);
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+.ek-method-badge.ek-method-get { background: var(--blue-dim); color: var(--blue); }
+.ek-method-badge.ek-method-post { background: var(--emerald-dim); color: var(--emerald); }
+.ek-method-badge.ek-method-put { background: var(--amber-dim); color: var(--amber); }
+.ek-method-badge.ek-method-patch { background: var(--amber-dim); color: var(--amber-light); }
+.ek-method-badge.ek-method-delete { background: var(--red-dim); color: var(--red); }
+
+/* Mock badge in table */
+.ek-mock-badge {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--amber);
+  filter: drop-shadow(0 0 2px var(--amber-glow));
+}
+
+/* Icon buttons in table */
+.ek-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.ek-icon-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.ek-icon-btn.on {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ek-icon-btn.on:hover {
+  background: var(--amber-glow);
+}
+
+/* Light theme overrides for table */
+[data-theme="light"] .ek-list-header {
+  background: var(--surface);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .ek-table-row {
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="light"] .ek-table-row:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme="light"] .ek-table-row.selected {
+  background: var(--amber-dim);
+}
+
+[data-theme="light"] .ek-icon-btn {
+  background: white;
+  border-color: var(--border);
+}
+
+[data-theme="light"] .ek-icon-btn:hover {
+  background: var(--surface-hover);
+}
