@@ -5,6 +5,10 @@ import { highlightJSON, isValidJSON } from './json-highlight.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
+// Constants
+const DEBOUNCE_DELAY = 300; // ms - Delay for debounced text inputs
+const SOFT_RENDER_DEBOUNCE = 80; // ms - Delay for soft rendering on search
+
 // Feature flags for dual interface strategy
 const FEATURES = {
   popup: {
@@ -1402,7 +1406,7 @@ function bindEvents() {
       el.addEventListener('input', (e) => {
         state.search = e.target.value;
         clearTimeout(t);
-        t = setTimeout(() => softRenderList(), 80);
+        t = setTimeout(() => softRenderList(), SOFT_RENDER_DEBOUNCE);
       });
     }
     else if (action === 'filter-method') el.addEventListener('click', () => {
@@ -1442,37 +1446,37 @@ function bindEvents() {
       debounceInput(el, (value) => {
         state.filters.requestBodyContains = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'filter-response-body') {
       debounceInput(el, (value) => {
         state.filters.responseBodyContains = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'filter-req-header-name') {
       debounceInput(el, (value) => {
         state.filters.requestHeader.name = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'filter-req-header-value') {
       debounceInput(el, (value) => {
         state.filters.requestHeader.value = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'filter-res-header-name') {
       debounceInput(el, (value) => {
         state.filters.responseHeader.name = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'filter-res-header-value') {
       debounceInput(el, (value) => {
         state.filters.responseHeader.value = value;
         softRenderList();
-      }, 300);
+      }, DEBOUNCE_DELAY);
     }
     else if (action === 'remove-filter') el.addEventListener('click', () => {
       const type = el.getAttribute('data-type');
