@@ -5,6 +5,35 @@ import { highlightJSON, isValidJSON } from './json-highlight.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
+// Feature flags for dual interface strategy
+const FEATURES = {
+  popup: {
+    advancedFilters: false,
+    bodySearch: false,
+    headerSearch: false,
+    sortableColumns: false,
+    waterfallView: true,  // Keep waterfall in both
+    resizablePanes: false,
+    filterChips: false,
+    multiSelect: false
+  },
+  devtools: {
+    advancedFilters: true,
+    bodySearch: true,
+    headerSearch: true,
+    sortableColumns: true,
+    waterfallView: true,
+    resizablePanes: true,
+    filterChips: true,
+    multiSelect: true
+  }
+};
+
+// Helper function to get features for current mode
+function getFeatures() {
+  return FEATURES[state.mode] || FEATURES.popup;
+}
+
 let state = {
   mode: 'popup',
   tabId: null,
@@ -17,8 +46,26 @@ let state = {
   trialDaysLeft: 0,
   waterfall: false,
   search: '',
+  // OLD filters (kept for popup backward compatibility)
   methodFilter: null,
   statusFilter: null,
+  // NEW filters (DevTools only)
+  filters: {
+    methods: [],                    // ['GET', 'POST']
+    statusCodes: [],                // ['2xx', '404', '5xx']
+    requestBodyContains: '',
+    responseBodyContains: '',
+    requestHeader: { name: '', value: '' },
+    responseHeader: { name: '', value: '' },
+    mockEnabled: null,
+    blocked: null,
+    hasNotes: null
+  },
+  // Advanced UI state
+  advancedFilterOpen: false,
+  sortBy: 'timestamp',
+  sortOrder: 'desc',
+  // Existing state
   selectedId: null,
   detailOpen: false,
   menuOpen: false,
@@ -392,6 +439,45 @@ function showProGate(feature) {
   });
 }
 
+function showDevToolsGuide() {
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  overlay.innerHTML = `
+    <div class="ek-modal" data-testid="devtools-guide-modal">
+      <div class="ek-modal-title">🔧 Advanced Tools in DevTools</div>
+      <div style="margin:16px 0">
+        <p style="margin:0 0 12px;line-height:1.6;color:var(--text-secondary)">
+          For advanced filtering, body search, and performance analysis:
+        </p>
+        <ol style="margin:0 0 16px;padding-left:24px">
+          <li style="margin:8px 0;line-height:1.6">Press <kbd style="display:inline-block;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600">F12</kbd> or <kbd style="display:inline-block;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600">Cmd+Opt+I</kbd> to open Chrome DevTools</li>
+          <li style="margin:8px 0;line-height:1.6">Click the <strong>EchoKit</strong> tab (next to Console, Network, etc.)</li>
+          <li style="margin:8px 0;line-height:1.6">Access all professional features with unlimited space!</li>
+        </ol>
+        <div style="background:var(--bg-secondary);border-radius:8px;padding:16px;margin:16px 0">
+          <strong style="display:block;margin-bottom:12px;color:var(--accent)">Available in DevTools:</strong>
+          <ul style="list-style:none;padding:0;margin:0">
+            <li style="padding:4px 0;font-size:14px">✅ Multi-select filters (method + status)</li>
+            <li style="padding:4px 0;font-size:14px">✅ Search request/response bodies</li>
+            <li style="padding:4px 0;font-size:14px">✅ Search headers</li>
+            <li style="padding:4px 0;font-size:14px">✅ Sort by URL, duration, status</li>
+            <li style="padding:4px 0;font-size:14px">✅ Filter chips & result count</li>
+          </ul>
+        </div>
+        <p style="background:rgba(96,165,250,0.1);border-left:3px solid var(--accent);padding:12px 16px;border-radius:4px;font-size:14px;margin:0">
+          <strong>💡 Tip:</strong> The DevTools panel stays open while you browse and never gets in the way!
+        </p>
+      </div>
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-primary" data-a="close">Got it!</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="close"]').addEventListener('click', () => overlay.remove());
+}
+
 async function onCopyCookies() {
   if (!state.isPro) { showProGate('Cookies Copy'); return; }
   if (state.tabId == null) { alert('No active tab'); return; }
@@ -557,21 +643,235 @@ function showGistImportDialog() {
 }
 
 function renderToolbar() {
+  const features = getFeatures();
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-  return `
-    <div class="ek-toolbar">
-      <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
-      <div class="ek-method-chips">
-        ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+
+  if (!features.advancedFilters) {
+    // POPUP: Simple toolbar (current implementation)
+    return `
+      <div class="ek-toolbar">
+        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
+        <div class="ek-method-chips">
+          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+        </div>
+        <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
+          <option value="">status: all</option>
+          <option value="2" ${state.statusFilter === '2' ? 'selected' : ''}>2xx</option>
+          <option value="3" ${state.statusFilter === '3' ? 'selected' : ''}>3xx</option>
+          <option value="4" ${state.statusFilter === '4' ? 'selected' : ''}>4xx</option>
+          <option value="5" ${state.statusFilter === '5' ? 'selected' : ''}>5xx</option>
+          <option value="0" ${state.statusFilter === '0' ? 'selected' : ''}>failed</option>
+        </select>
       </div>
-      <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
-        <option value="">status: all</option>
-        <option value="2" ${state.statusFilter === '2' ? 'selected' : ''}>2xx</option>
-        <option value="3" ${state.statusFilter === '3' ? 'selected' : ''}>3xx</option>
-        <option value="4" ${state.statusFilter === '4' ? 'selected' : ''}>4xx</option>
-        <option value="5" ${state.statusFilter === '5' ? 'selected' : ''}>5xx</option>
-        <option value="0" ${state.statusFilter === '0' ? 'selected' : ''}>failed</option>
-      </select>
+    `;
+  } else {
+    // DEVTOOLS: Advanced toolbar with filter panel
+    return renderAdvancedToolbar();
+  }
+}
+
+function renderAdvancedToolbar() {
+  const features = getFeatures();
+  const activeCount = getActiveFilterCount();
+
+  return `
+    <div class="ek-toolbar ek-toolbar-advanced">
+      <div class="ek-toolbar-row">
+        <input class="ek-search"
+               type="text"
+               placeholder="search url, method, status…"
+               value="${escapeHtml(state.search)}"
+               data-action="search"
+               data-testid="search-input"
+               autocomplete="off"
+               spellcheck="false"/>
+        <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
+                data-action="toggle-advanced-filters"
+                data-testid="toggle-advanced-filters">
+          🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
+        </button>
+        ${activeCount > 0 ? `
+          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
+            Clear All
+          </button>
+        ` : ''}
+      </div>
+
+      ${state.advancedFilterOpen ? renderAdvancedFilterPanel() : ''}
+      ${features.filterChips ? renderFilterChips() : ''}
+    </div>
+  `;
+}
+
+function getActiveFilterCount() {
+  let count = 0;
+  if (state.filters.methods.length > 0) count++;
+  if (state.filters.statusCodes.length > 0) count++;
+  if (state.filters.requestBodyContains) count++;
+  if (state.filters.responseBodyContains) count++;
+  if (state.filters.requestHeader.name || state.filters.requestHeader.value) count++;
+  if (state.filters.responseHeader.name || state.filters.responseHeader.value) count++;
+  if (state.filters.mockEnabled !== null) count++;
+  if (state.filters.blocked !== null) count++;
+  if (state.filters.hasNotes !== null) count++;
+  return count;
+}
+
+function renderAdvancedFilterPanel() {
+  const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  const statusOptions = [
+    { value: '2xx', label: '2xx (Success)' },
+    { value: '3xx', label: '3xx (Redirect)' },
+    { value: '4xx', label: '4xx (Client Error)' },
+    { value: '5xx', label: '5xx (Server Error)' },
+    { value: '0', label: 'Failed (Network/Timeout)' }
+  ];
+
+  return `
+    <div class="ek-advanced-filters" data-testid="advanced-filters">
+      <!-- Method Filter -->
+      <div class="ek-filter-section">
+        <label class="ek-filter-label">HTTP Method</label>
+        <div class="ek-checkbox-group">
+          ${methods.map(method => `
+            <label class="ek-checkbox">
+              <input type="checkbox"
+                     data-action="filter-method-toggle"
+                     data-method="${method}"
+                     ${state.filters.methods.includes(method) ? 'checked' : ''}/>
+              <span>${method}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="ek-filter-section">
+        <label class="ek-filter-label">Response Status</label>
+        <div class="ek-checkbox-group">
+          ${statusOptions.map(({ value, label }) => `
+            <label class="ek-checkbox">
+              <input type="checkbox"
+                     data-action="filter-status-toggle"
+                     data-status="${value}"
+                     ${state.filters.statusCodes.includes(value) ? 'checked' : ''}/>
+              <span>${label}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Body Search -->
+      <div class="ek-filter-section">
+        <label class="ek-filter-label">Search Body Content</label>
+        <input class="ek-input"
+               type="text"
+               placeholder="Request body contains…"
+               value="${escapeHtml(state.filters.requestBodyContains)}"
+               data-action="filter-request-body"
+               data-testid="filter-request-body"/>
+        <input class="ek-input"
+               type="text"
+               placeholder="Response body contains…"
+               value="${escapeHtml(state.filters.responseBodyContains)}"
+               data-action="filter-response-body"
+               data-testid="filter-response-body"/>
+      </div>
+
+      <!-- Header Search -->
+      <div class="ek-filter-section">
+        <label class="ek-filter-label">Search Headers</label>
+        <div class="ek-header-filters">
+          <div class="ek-row-inline">
+            <input class="ek-input"
+                   placeholder="Request header name"
+                   value="${escapeHtml(state.filters.requestHeader.name)}"
+                   data-action="filter-req-header-name"
+                   style="flex:1"/>
+            <input class="ek-input"
+                   placeholder="value"
+                   value="${escapeHtml(state.filters.requestHeader.value)}"
+                   data-action="filter-req-header-value"
+                   style="flex:1"/>
+          </div>
+          <div class="ek-row-inline">
+            <input class="ek-input"
+                   placeholder="Response header name"
+                   value="${escapeHtml(state.filters.responseHeader.name)}"
+                   data-action="filter-res-header-name"
+                   style="flex:1"/>
+            <input class="ek-input"
+                   placeholder="value"
+                   value="${escapeHtml(state.filters.responseHeader.value)}"
+                   data-action="filter-res-header-value"
+                   style="flex:1"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFilterChips() {
+  const chips = [];
+
+  // Method chips
+  state.filters.methods.forEach(m => {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="method"
+            data-value="${m}"
+            data-testid="chip-method-${m.toLowerCase()}">
+        × method:${m}
+      </span>
+    `);
+  });
+
+  // Status chips
+  state.filters.statusCodes.forEach(s => {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="status"
+            data-value="${s}">
+        × status:${s}
+      </span>
+    `);
+  });
+
+  // Body search chips
+  if (state.filters.requestBodyContains) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="request-body">
+        × request:"${escapeHtml(state.filters.requestBodyContains.slice(0, 20))}"
+      </span>
+    `);
+  }
+
+  if (state.filters.responseBodyContains) {
+    chips.push(`
+      <span class="ek-filter-chip"
+            data-action="remove-filter"
+            data-type="response-body">
+        × response:"${escapeHtml(state.filters.responseBodyContains.slice(0, 20))}"
+      </span>
+    `);
+  }
+
+  if (chips.length === 0) return '';
+
+  const count = chips.length;
+  const filteredCount = filteredInteractions().length;
+  const totalCount = state.interactions.length;
+
+  return `
+    <div class="ek-filter-chips-row" data-testid="filter-chips">
+      <span class="ek-filter-count">Filters: ${count} active</span>
+      <div class="ek-filter-chips">${chips.join('')}</div>
+      <span class="ek-result-count">Showing ${filteredCount} of ${totalCount}</span>
     </div>
   `;
 }
@@ -889,17 +1189,30 @@ function renderDetail(i, conflicts) {
 }
 
 function renderFooter(count) {
+  const isPopup = state.mode === 'popup';
   const recTag = state.tab.recording ? `<span class="ek-tag on">REC</span>` : `<span class="ek-tag">idle</span>`;
   const mockTag = state.tab.mocking ? `<span class="ek-tag amber">MOCK ON</span>` : '';
   const corsTag = state.settings.corsOverride ? `<span class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings">CORS</span>` : '';
   const scope = state.settings.scope || 'domain';
   const freeLimit = !state.isPro ? `<span class="ek-subtle ${state.allCount >= 50 ? 'ek-limit-warn' : ''}" title="Free tier: 50 recordings max. Upgrade for unlimited.">${state.allCount}/50</span>` : '';
+
+  const devToolsLink = isPopup ? `
+    <a href="#"
+       class="ek-devtools-link"
+       data-action="open-devtools-guide"
+       data-testid="devtools-link"
+       title="Access advanced features in DevTools">
+      🔧 Advanced tools in DevTools →
+    </a>
+  ` : '';
+
   return `
     <div class="ek-footer">
       ${recTag} ${mockTag} ${corsTag}
       <span class="ek-subtle">${count} request${count === 1 ? '' : 's'}</span>
       <span class="ek-subtle">· scope: <span class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope">${scope}</span></span>
       ${freeLimit}
+      ${devToolsLink}
       <span class="ek-row-inline-end ek-subtle">${state.tab.host ? escapeHtml(state.tab.host) : `tab #${state.tabId ?? '—'}`}</span>
     </div>
   `;
@@ -978,6 +1291,100 @@ function bindEvents() {
       render();
     });
     else if (action === 'filter-status') el.addEventListener('change', (e) => { state.statusFilter = e.target.value || null; render(); });
+    // Advanced filter handlers (DevTools only)
+    else if (action === 'toggle-advanced-filters') el.addEventListener('click', () => {
+      state.advancedFilterOpen = !state.advancedFilterOpen;
+      render();
+    });
+    else if (action === 'filter-method-toggle') el.addEventListener('change', (e) => {
+      const method = el.getAttribute('data-method');
+      if (e.target.checked) {
+        if (!state.filters.methods.includes(method)) {
+          state.filters.methods.push(method);
+        }
+      } else {
+        state.filters.methods = state.filters.methods.filter(m => m !== method);
+      }
+      softRenderList();
+    });
+    else if (action === 'filter-status-toggle') el.addEventListener('change', (e) => {
+      const status = el.getAttribute('data-status');
+      if (e.target.checked) {
+        if (!state.filters.statusCodes.includes(status)) {
+          state.filters.statusCodes.push(status);
+        }
+      } else {
+        state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== status);
+      }
+      softRenderList();
+    });
+    else if (action === 'filter-request-body') {
+      debounceInput(el, (value) => {
+        state.filters.requestBodyContains = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'filter-response-body') {
+      debounceInput(el, (value) => {
+        state.filters.responseBodyContains = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'filter-req-header-name') {
+      debounceInput(el, (value) => {
+        state.filters.requestHeader.name = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'filter-req-header-value') {
+      debounceInput(el, (value) => {
+        state.filters.requestHeader.value = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'filter-res-header-name') {
+      debounceInput(el, (value) => {
+        state.filters.responseHeader.name = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'filter-res-header-value') {
+      debounceInput(el, (value) => {
+        state.filters.responseHeader.value = value;
+        softRenderList();
+      }, 300);
+    }
+    else if (action === 'remove-filter') el.addEventListener('click', () => {
+      const type = el.getAttribute('data-type');
+      const value = el.getAttribute('data-value');
+
+      if (type === 'method') {
+        state.filters.methods = state.filters.methods.filter(m => m !== value);
+      } else if (type === 'status') {
+        state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== value);
+      } else if (type === 'request-body') {
+        state.filters.requestBodyContains = '';
+      } else if (type === 'response-body') {
+        state.filters.responseBodyContains = '';
+      }
+
+      render();
+    });
+    else if (action === 'clear-all-filters') el.addEventListener('click', () => {
+      state.filters = {
+        methods: [],
+        statusCodes: [],
+        requestBodyContains: '',
+        responseBodyContains: '',
+        requestHeader: { name: '', value: '' },
+        responseHeader: { name: '', value: '' },
+        mockEnabled: null,
+        blocked: null,
+        hasNotes: null
+      };
+      state.search = '';
+      render();
+    });
     else if (action === 'toggle-mock') {
       const handler = async () => {
         const current = state.interactions.find(x => x.id === id);
@@ -1126,6 +1533,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:delete', id });
       state.selectedId = null; state.detailOpen = false;
       await refresh(); render();
+    });
+    else if (action === 'open-devtools-guide') el.addEventListener('click', (e) => {
+      e.preventDefault();
+      showDevToolsGuide();
     });
     else if (action === 'set-active-version') el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:setActiveVersion', id: e.target.value });
@@ -1603,18 +2014,175 @@ function showShortcutsDialog() {
 }
 
 // ---------- filters & helpers ----------
+// Helper: debounce input handler
+function debounceInput(el, callback, delay) {
+  let timer;
+  el.addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => callback(e.target.value), delay);
+  });
+}
+
 function filteredInteractions() {
-  const q = state.search.trim().toLowerCase();
-  return state.interactions.filter(i => {
-    if (state.methodFilter && (i.method || '').toUpperCase() !== state.methodFilter) return false;
-    if (state.statusFilter != null) {
+  const features = getFeatures();
+  let results = state.interactions;
+
+  // PHASE 1: Method filter
+  if (features.multiSelect && state.filters.methods.length > 0) {
+    results = results.filter(i => state.filters.methods.includes(i.method));
+  } else if (state.methodFilter) {
+    // Popup mode: single-select (backward compat)
+    results = results.filter(i => i.method === state.methodFilter);
+  }
+
+  // PHASE 2: Status filter
+  if (features.multiSelect && state.filters.statusCodes.length > 0) {
+    results = results.filter(i => matchesStatusFilter(i.responseStatus, state.filters.statusCodes));
+  } else if (state.statusFilter != null) {
+    // Popup mode: single-select (backward compat)
+    const filterFn = (i) => {
       const bucket = String(Math.floor((i.responseStatus || 0) / 100));
-      if (state.statusFilter === '0') { if ((i.responseStatus || 0) !== 0) return false; }
-      else if (bucket !== state.statusFilter) return false;
+      if (state.statusFilter === '0') return (i.responseStatus || 0) === 0;
+      return bucket === state.statusFilter;
+    };
+    results = results.filter(filterFn);
+  }
+
+  // PHASE 3: URL search (both modes)
+  const q = state.search.trim().toLowerCase();
+  if (q) {
+    results = results.filter(i => i.url.toLowerCase().includes(q));
+  }
+
+  // PHASE 4: Body search (DevTools only)
+  if (features.bodySearch) {
+    if (state.filters.requestBodyContains) {
+      const query = state.filters.requestBodyContains.toLowerCase();
+      results = results.filter(i => searchBodyContent(i.requestBody, query));
     }
-    if (q && !i.url.toLowerCase().includes(q)) return false;
-    return true;
-  }).sort((a, b) => b.timestamp - a.timestamp);
+
+    if (state.filters.responseBodyContains) {
+      const query = state.filters.responseBodyContains.toLowerCase();
+      results = results.filter(i => searchBodyContent(i.responseBody, query));
+    }
+  }
+
+  // PHASE 5: Header search (DevTools only)
+  if (features.headerSearch) {
+    if (state.filters.requestHeader.name || state.filters.requestHeader.value) {
+      results = results.filter(i =>
+        searchHeaders(
+          i.requestHeaders,
+          state.filters.requestHeader.name,
+          state.filters.requestHeader.value
+        )
+      );
+    }
+
+    if (state.filters.responseHeader.name || state.filters.responseHeader.value) {
+      results = results.filter(i =>
+        searchHeaders(
+          i.responseHeaders,
+          state.filters.responseHeader.name,
+          state.filters.responseHeader.value
+        )
+      );
+    }
+  }
+
+  // PHASE 6: Boolean filters (DevTools only)
+  if (state.filters.mockEnabled !== null) {
+    results = results.filter(i => i.mockEnabled === state.filters.mockEnabled);
+  }
+  if (state.filters.blocked !== null) {
+    results = results.filter(i => i.blocked === state.filters.blocked);
+  }
+  if (state.filters.hasNotes !== null) {
+    results = results.filter(i => state.filters.hasNotes ? (i.notes && i.notes.trim()) : !i.notes);
+  }
+
+  // PHASE 7: Sort (DevTools only)
+  if (features.sortableColumns) {
+    results = sortInteractions(results, state.sortBy, state.sortOrder);
+  } else {
+    // Popup mode: simple timestamp DESC
+    results.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  return results;
+}
+
+// Helper: Match status filter
+function matchesStatusFilter(status, filters) {
+  if (!filters || filters.length === 0) return true;
+  for (const f of filters) {
+    if (f === '0' && status === 0) return true;
+    if (f.endsWith('xx')) {
+      const bucket = Math.floor(status / 100);
+      if (String(bucket) === f.charAt(0)) return true;
+    } else if (String(status) === f) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Helper: Search body content
+function searchBodyContent(body, query) {
+  if (!query) return true;
+  if (!body) return false;
+
+  const q = query.toLowerCase();
+
+  // Handle JSON bodies
+  if (typeof body === 'object') {
+    const str = JSON.stringify(body).toLowerCase();
+    return str.includes(q);
+  }
+
+  // Handle string bodies
+  if (typeof body === 'string') {
+    return body.toLowerCase().includes(q);
+  }
+
+  return false;
+}
+
+// Helper: Search headers
+function searchHeaders(headers, nameQuery, valueQuery) {
+  if (!nameQuery && !valueQuery) return true;
+  if (!headers || typeof headers !== 'object') return false;
+
+  const nq = nameQuery.toLowerCase();
+  const vq = valueQuery.toLowerCase();
+
+  for (const [name, value] of Object.entries(headers)) {
+    const nameMatch = !nq || name.toLowerCase().includes(nq);
+    const valueMatch = !vq || String(value).toLowerCase().includes(vq);
+    if (nameMatch && valueMatch) return true;
+  }
+  return false;
+}
+
+// Helper: Sort interactions
+function sortInteractions(interactions, sortBy, sortOrder) {
+  const sorted = [...interactions];
+
+  const comparators = {
+    timestamp: (a, b) => a.timestamp - b.timestamp,
+    url: (a, b) => a.url.localeCompare(b.url),
+    method: (a, b) => a.method.localeCompare(b.method),
+    status: (a, b) => (a.responseStatus || 0) - (b.responseStatus || 0),
+    duration: (a, b) => (a.durationMs || 0) - (b.durationMs || 0)
+  };
+
+  sorted.sort(comparators[sortBy] || comparators.timestamp);
+
+  if (sortOrder === 'desc') {
+    sorted.reverse();
+  }
+
+  return sorted;
 }
 function groupByDomain(list) {
   const map = new Map();
