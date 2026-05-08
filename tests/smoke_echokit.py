@@ -107,9 +107,11 @@ def main():
                 import shutil; shutil.rmtree(user_data)
 
             # CI-friendly browser launch args to prevent timeout
+            # Note: Using "new" headless mode which supports extensions properly
             browser_args = [
                 f'--disable-extensions-except={EXT_PATH}',
                 f'--load-extension={EXT_PATH}',
+                '--headless=new',            # NEW headless mode (Chrome 112+) supports extensions
                 '--no-sandbox',
                 '--no-first-run',
                 '--disable-dev-shm-usage',  # Overcome limited resource problems
@@ -124,7 +126,7 @@ def main():
 
             ctx = p.chromium.launch_persistent_context(
                 user_data,
-                headless=True,  # Changed to True for CI compatibility
+                headless=False,  # Set to False - we use --headless=new flag instead
                 args=browser_args,
                 viewport={'width': 1280, 'height': 800},
                 timeout=60000,  # Reduce timeout from default 180s to 60s
