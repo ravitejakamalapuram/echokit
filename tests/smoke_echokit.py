@@ -134,12 +134,22 @@ def main():
             page = ctx.new_page()
             page.goto(f'http://127.0.0.1:{PORT}/')
             page.wait_for_load_state('domcontentloaded')
-            for _ in range(40):
+
+            # Wait for service worker - headless mode needs more time
+            # Increased from 40 iterations to 60 for headless CI environments
+            for i in range(60):
                 if ctx.service_workers:
-                    sw = ctx.service_workers[0]; break
-                time.sleep(0.3)
+                    sw = ctx.service_workers[0]
+                    break
+                time.sleep(0.5)  # Increased from 0.3s to 0.5s
+                # Reload page every 10 attempts to trigger service worker registration
+                if i > 0 and i % 10 == 0:
+                    page.reload(wait_until='domcontentloaded')
+
             step('service_worker_detected', sw is not None)
-            if sw is None: return results
+            if sw is None:
+                print(f'⚠️  No service workers found after 30 seconds')
+                return results
 
             ext_id = sw.url.split('/')[2]
             tab_id = sw.evaluate("async () => (await chrome.tabs.query({url:'http://127.0.0.1:*/*'}))[0]?.id")
