@@ -106,10 +106,28 @@ def main():
             if os.path.exists(user_data):
                 import shutil; shutil.rmtree(user_data)
 
+            # CI-friendly browser launch args to prevent timeout
+            browser_args = [
+                f'--disable-extensions-except={EXT_PATH}',
+                f'--load-extension={EXT_PATH}',
+                '--no-sandbox',
+                '--no-first-run',
+                '--disable-dev-shm-usage',  # Overcome limited resource problems
+                '--disable-gpu',             # Disable GPU hardware acceleration
+                '--disable-software-rasterizer',  # Disable software rendering fallback
+                '--disable-background-networking',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-hang-monitor',
+            ]
+
             ctx = p.chromium.launch_persistent_context(
-                user_data, headless=False,
-                args=[f'--disable-extensions-except={EXT_PATH}', f'--load-extension={EXT_PATH}', '--no-sandbox', '--no-first-run'],
+                user_data,
+                headless=True,  # Changed to True for CI compatibility
+                args=browser_args,
                 viewport={'width': 1280, 'height': 800},
+                timeout=60000,  # Reduce timeout from default 180s to 60s
             )
 
             sw = None

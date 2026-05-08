@@ -10,10 +10,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - name: Install Playwright + xvfb
+      - name: Install Playwright + xvfb + DBus
         run: |
           pip install playwright
           python -m playwright install --with-deps chromium
-          sudo apt-get install -y xvfb xauth
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth dbus-x11
+
+      - name: Setup DBus session
+        run: |
+          # Start a DBus session to prevent DBus errors in headless browser
+          mkdir -p ~/.dbus-session
+          dbus-launch --sh-syntax > ~/.dbus-session/dbus-env
+          cat ~/.dbus-session/dbus-env
+
       - name: Run smoke test
-        run: xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/smoke_echokit.py
+        run: |
+          # Source DBus environment
+          if [ -f ~/.dbus-session/dbus-env ]; then
+            . ~/.dbus-session/dbus-env
+          fi
+          # Run with xvfb (virtual display)
+          xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/smoke_echokit.py
+        env:
+          # Prevent DBus warnings
+          DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/1001/bus
