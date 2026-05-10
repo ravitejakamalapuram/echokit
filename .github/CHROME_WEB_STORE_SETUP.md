@@ -40,7 +40,9 @@ Once configured, your workflow will:
    - App name: `EchoKit Publisher`
    - User support email: Your email
    - Developer contact: Your email
-   - Click **Save and Continue** (skip scopes, test users)
+   - Click **Save and Continue** (skip scopes for now)
+   - **Important**: On the "Test users" page, click **"+ ADD USERS"** and add your email address
+   - Click **Save and Continue**
 4. Back to Create OAuth client ID:
    - Application type: **Web application**
    - Name: `Chrome Web Store Publisher`
@@ -183,6 +185,19 @@ The workflow will automatically:
 ---
 
 ## 🛠️ Troubleshooting
+
+### "Error 403: access_denied - has not completed the Google verification process"
+
+**Cause**: Your email is not added as a test user in the OAuth consent screen
+
+**Fix**:
+1. Go to [OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent)
+2. Select your project
+3. Scroll to **"Test users"** section
+4. Click **"+ ADD USERS"**
+5. Add your email address
+6. Click **"Save"**
+7. Return to OAuth Playground and retry "Authorize APIs"
 
 ### "Missing required GitHub Secrets"
 
