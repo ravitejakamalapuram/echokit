@@ -144,7 +144,12 @@ async function refresh() {
   state.trialDaysLeft = resp.trialDaysLeft || 0;
 }
 
-// Helper: Classify API source for visibility badges
+/**
+ * Classify API source for visibility badges
+ * @param {Object} interaction - The interaction object with tabId and sourceTabExists
+ * @param {number|null} currentTabId - The ID of the currently active tab
+ * @returns {string} Source type: 'this-tab' | 'other-tab' | 'closed-tab' | 'imported'
+ */
 function classifySource(interaction, currentTabId) {
   if (interaction.tabId === null) return 'imported';
   if (interaction.tabId === currentTabId) return 'this-tab';
@@ -152,7 +157,12 @@ function classifySource(interaction, currentTabId) {
   return 'other-tab';
 }
 
-// Helper: Render source badge with optional click-to-switch functionality
+/**
+ * Render source badge with optional click-to-switch functionality
+ * @param {Object} interaction - The interaction object
+ * @param {number|null} currentTabId - The ID of the currently active tab
+ * @returns {string} HTML string for the source badge
+ */
 function renderSourceBadge(interaction, currentTabId) {
   const source = classifySource(interaction, currentTabId);
   const config = {

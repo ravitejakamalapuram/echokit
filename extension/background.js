@@ -251,7 +251,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 globalThis.__echokitHandle = handleMessage;
 
-// Helper: Get tab info for source tracking
+/**
+ * Get tab info for source tracking (checks if tab still exists)
+ * @param {number|null} tabId - The tab ID to check
+ * @returns {Promise<{exists: boolean, title: string, url: string}>} Tab metadata
+ */
 async function getTabInfo(tabId) {
   if (tabId === null) return { exists: false, title: 'Imported', url: '' };
   try {
