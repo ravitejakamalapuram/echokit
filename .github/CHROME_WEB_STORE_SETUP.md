@@ -182,6 +182,25 @@ The workflow will automatically:
 - Upload to Chrome Web Store
 - Publish for review
 
+### ⚠️ Important: "In Review" Limitation
+
+**Chrome Web Store only allows one version to be in review at a time.**
+
+**What happens:**
+- ✅ **First release**: Uploads + publishes successfully → Goes to review
+- ⚠️ **Second release (while first is in review)**: Uploads successfully but cannot publish
+- ✅ **After review completes**: You can publish new versions again
+
+**The workflow handles this gracefully:**
+- Shows a warning: "Cannot publish: Another version is currently in review"
+- Marks the workflow as **success** (since upload worked)
+- You can push new tags once the review completes
+
+**Typical timeline:**
+- Chrome review: 1-2 days
+- During review: You can push tags, but they'll upload only (not publish)
+- After approval: Next tag push will publish immediately
+
 ---
 
 ## 🛠️ Troubleshooting
@@ -244,11 +263,26 @@ The workflow will automatically:
 
 **Fix**: Verify `CWS_EXTENSION_ID` matches your extension in the Chrome Web Store dashboard
 
+### "Cannot publish: Another version is currently in review"
+
+**Cause**: Chrome Web Store policy - only one version can be in review at a time
+
+**This is normal behavior, not an error!** The workflow:
+- ✅ Uploaded your new version successfully
+- ⚠️ Cannot submit for review because another version is pending
+- ✅ Marks workflow as **success** (upload worked)
+
+**Fix**:
+- **Option 1 (Recommended)**: Wait for current review to complete (1-2 days), then push a new tag
+- **Option 2**: Go to [Chrome Web Store Dashboard](https://chrome.google.com/webstore/devconsole) and:
+  - Withdraw the current submission from review
+  - Push a new tag to publish the latest version
+
 ### "Publish failed" but upload succeeded
 
-**Cause**: Extension might already be in review
+**Cause**: Extension might already be in review (see above) or other publishing issue
 
-**Fix**: Check the Chrome Web Store dashboard - it may have published successfully despite the error
+**Fix**: Check the Chrome Web Store dashboard to see the actual status
 
 ---
 
