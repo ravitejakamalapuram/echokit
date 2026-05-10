@@ -62,9 +62,17 @@ jobs:
         run: |
           set -e
           echo "🔑 Fetching OAuth access token..."
-          TOKEN=$(curl -s "https://oauth2.googleapis.com/token" \
-            -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token" \
-            | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+          TOKEN_RESPONSE=$(curl -s "https://oauth2.googleapis.com/token" \
+            -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token")
+
+          # Check if access_token exists in response
+          if ! echo "$TOKEN_RESPONSE" | python3 -c "import sys,json; obj=json.load(sys.stdin); exit(0 if 'access_token' in obj else 1)" 2>/dev/null; then
+            echo "❌ Failed to get access token. Response:"
+            echo "$TOKEN_RESPONSE"
+            exit 1
+          fi
+
+          TOKEN=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
           echo "📤 Uploading extension to Chrome Web Store..."
           UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" \
