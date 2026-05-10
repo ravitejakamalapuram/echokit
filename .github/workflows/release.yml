@@ -102,6 +102,15 @@ jobs:
           RESPONSE_BODY=$(echo "$PUBLISH_RESPONSE" | sed '$d')
 
           if [[ "$HTTP_CODE" != "200" ]]; then
+            # Check if error is due to item already in review
+            if echo "$RESPONSE_BODY" | grep -q "item that is in review"; then
+              echo "⚠️ Cannot publish: Another version is currently in review"
+              echo "📋 The extension was uploaded successfully but cannot be published yet"
+              echo "⏳ Wait for the current review to complete, then manually publish or push a new tag"
+              echo "🔗 Check status: https://chrome.google.com/webstore/devconsole"
+              exit 0  # Exit success since upload worked
+            fi
+
             echo "❌ Publish failed with HTTP $HTTP_CODE"
             echo "$RESPONSE_BODY"
             exit 1

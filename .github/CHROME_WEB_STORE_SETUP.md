@@ -186,6 +186,31 @@ The workflow will automatically:
 
 ## 🛠️ Troubleshooting
 
+### "Error: unauthorized_client" when deploying
+
+**Cause**: OAuth client configuration issue - the refresh token doesn't match the client credentials, or the OAuth client isn't properly set up
+
+**Fix**:
+1. **Verify redirect URI** in [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials)
+   - Click on your OAuth client
+   - Ensure **Authorized redirect URIs** includes: `https://developers.google.com/oauthplayground`
+   - Click **"Save"** if you added it
+
+2. **Verify Chrome Web Store API is enabled**
+   - Go to [APIs & Services → Library](https://console.cloud.google.com/apis/library)
+   - Search "Chrome Web Store API"
+   - Make sure it says "MANAGE" (meaning it's enabled)
+
+3. **Regenerate the refresh token**
+   - The most common cause is mixing up OAuth clients
+   - Go to [OAuth Playground](https://developers.google.com/oauthplayground)
+   - Use the **EXACT** Client ID and Secret from GitHub secrets
+   - Generate a new refresh token
+   - Update GitHub secret `CWS_REFRESH_TOKEN`
+
+4. **Test locally before deploying**
+   - Run `./scripts/test-cws-auth.sh` with your credentials to verify they work
+
 ### "Error 403: access_denied - has not completed the Google verification process"
 
 **Cause**: Your email is not added as a test user in the OAuth consent screen
