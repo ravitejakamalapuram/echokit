@@ -19,7 +19,10 @@ const FEATURES = {
     waterfallView: true,  // Keep waterfall in both
     resizablePanes: false,
     filterChips: false,
-    multiSelect: false
+    multiSelect: false,
+    sourceBadges: true,      // Show source badges in both popup and devtools
+    sourceFilters: false,    // Filters only in devtools
+    sourceGrouping: false    // Grouping only in devtools
   },
   devtools: {
     advancedFilters: true,
@@ -29,7 +32,10 @@ const FEATURES = {
     waterfallView: true,
     resizablePanes: true,
     filterChips: true,
-    multiSelect: true
+    multiSelect: true,
+    sourceBadges: true,      // Show source badges in both popup and devtools
+    sourceFilters: true,     // Advanced filters in devtools
+    sourceGrouping: true     // Group-by-source in devtools
   }
 };
 
@@ -63,7 +69,14 @@ let state = {
     responseHeader: { name: '', value: '' },
     mockEnabled: null,
     blocked: null,
-    hasNotes: null
+    hasNotes: null,
+    // Source filters (NEW)
+    sources: {
+      thisTab: true,
+      otherTabs: true,
+      closedTabs: false,            // Default: hide noise from closed tabs
+      imported: true
+    }
   },
   // Advanced UI state
   advancedFilterOpen: false,
@@ -129,6 +142,57 @@ async function refresh() {
   state.isPro = resp.isPro || false;
   state.trial = resp.trial || false;
   state.trialDaysLeft = resp.trialDaysLeft || 0;
+}
+
+// Helper: Classify API source for visibility badges
+function classifySource(interaction, currentTabId) {
+  if (interaction.tabId === null) return 'imported';
+  if (interaction.tabId === currentTabId) return 'this-tab';
+  if (!interaction.sourceTabExists) return 'closed-tab';
+  return 'other-tab';
+}
+
+// Helper: Render source badge with optional click-to-switch functionality
+function renderSourceBadge(interaction, currentTabId) {
+  const source = classifySource(interaction, currentTabId);
+  const config = {
+    'this-tab': {
+      label: 'This Tab',
+      icon: '✓',
+      title: 'Recorded on this tab',
+      clickable: false
+    },
+    'other-tab': {
+      label: `Tab #${interaction.tabId}`,
+      icon: '→',
+      title: `Click to switch to ${interaction.sourceTabTitle || 'this tab'}`,
+      clickable: true
+    },
+    'closed-tab': {
+      label: 'Closed',
+      icon: '✗',
+      title: 'Source tab is no longer open',
+      clickable: false
+    },
+    'imported': {
+      label: 'Imported',
+      icon: '↓',
+      title: 'Imported from external source',
+      clickable: false
+    }
+  };
+
+  const c = config[source];
+  const clickAttr = c.clickable ? `data-action="switch-to-tab" data-tab-id="${interaction.tabId}" style="cursor:pointer"` : '';
+
+  return `
+    <span class="ek-source-badge ${source}"
+          title="${c.title}"
+          data-testid="source-badge-${source}"
+          ${clickAttr}>
+      ${c.icon} ${c.label}
+    </span>
+  `;
 }
 
 function applyTheme() {
@@ -812,6 +876,41 @@ function renderAdvancedFilterPanel() {
           </div>
         </div>
       </div>
+
+      <!-- Source Filter (NEW) -->
+      <div class="ek-filter-section">
+        <label class="ek-filter-label">API Source</label>
+        <div class="ek-checkbox-group">
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-source-toggle"
+                   data-source="thisTab"
+                   ${state.filters.sources.thisTab ? 'checked' : ''}/>
+            <span>This tab</span>
+          </label>
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-source-toggle"
+                   data-source="otherTabs"
+                   ${state.filters.sources.otherTabs ? 'checked' : ''}/>
+            <span>Other tabs</span>
+          </label>
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-source-toggle"
+                   data-source="closedTabs"
+                   ${state.filters.sources.closedTabs ? 'checked' : ''}/>
+            <span>Closed tabs</span>
+          </label>
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-source-toggle"
+                   data-source="imported"
+                   ${state.filters.sources.imported ? 'checked' : ''}/>
+            <span>Imported</span>
+          </label>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -1043,12 +1142,14 @@ function renderSortableTable(interactions) {
 
 // Renders sortable table header
 function renderSortableListHeader() {
+  const features = getFeatures();
   const cols = [
     { key: 'method', label: 'Method', width: '80px' },
     { key: 'url', label: 'URL', flex: 2 },
     { key: 'status', label: 'Status', width: '80px' },
     { key: 'duration', label: 'Duration', width: '90px' },
     { key: 'timestamp', label: 'Time', width: '100px' },
+    ...(features.sourceBadges ? [{ key: 'source', label: 'Source', width: '120px' }] : []),
     { key: 'actions', label: '', width: '80px' }
   ];
 
@@ -1080,6 +1181,7 @@ function renderInteractionRow(i) {
   const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
   const active = i.id === state.selectedId ? 'selected' : '';
   const method = (i.method || 'GET').toUpperCase();
+  const features = getFeatures();
 
   return `
     <div class="ek-table-row ${active}"
@@ -1102,6 +1204,11 @@ function renderInteractionRow(i) {
       <div class="ek-col ek-timestamp" style="width:100px">
         ${formatTimestamp(i.timestamp)}
       </div>
+      ${features.sourceBadges ? `
+      <div class="ek-col" style="width:120px">
+        ${renderSourceBadge(i, state.tabId)}
+      </div>
+      ` : ''}
       <div class="ek-col" style="width:80px;display:flex;gap:4px;justify-content:flex-end">
         <button class="ek-icon-btn ${i.mockEnabled ? 'on' : ''}"
                 data-action="toggle-mock"
@@ -1481,6 +1588,11 @@ function bindEvents() {
       }
       softRenderList();
     });
+    else if (action === 'filter-source-toggle') el.addEventListener('change', (e) => {
+      const source = el.getAttribute('data-source');
+      state.filters.sources[source] = e.target.checked;
+      softRenderList();
+    });
     else if (action === 'filter-request-body') {
       debounceInput(el, (value) => {
         state.filters.requestBodyContains = value;
@@ -1826,6 +1938,20 @@ function softRenderList() {
       });
     });
   }
+
+  // Rebind switch-to-tab handlers for source badges (NEW)
+  list.querySelectorAll('[data-action="switch-to-tab"]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
+      if (!tabId) return;
+      try {
+        await chrome.tabs.update(tabId, { active: true });
+      } catch (err) {
+        console.error('Failed to switch to tab:', err);
+      }
+    });
+  });
 
   // Update footer count
   const footer = root.querySelector('.ek-footer');
@@ -2333,6 +2459,18 @@ function filteredInteractions() {
   }
   if (state.filters.hasNotes !== null) {
     results = results.filter(i => state.filters.hasNotes ? (i.notes && i.notes.trim()) : !i.notes);
+  }
+
+  // PHASE 6.5: Source filters (DevTools only) - NEW
+  if (features.sourceFilters) {
+    results = results.filter(i => {
+      const source = classifySource(i, state.tabId);
+      if (source === 'this-tab') return state.filters.sources.thisTab;
+      if (source === 'other-tab') return state.filters.sources.otherTabs;
+      if (source === 'closed-tab') return state.filters.sources.closedTabs;
+      if (source === 'imported') return state.filters.sources.imported;
+      return true;
+    });
   }
 
   // PHASE 7: Sort (DevTools only)
