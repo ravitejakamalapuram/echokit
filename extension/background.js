@@ -279,15 +279,22 @@ async function handleMessage(msg, sender) {
       const proStatus = await getProStatus();
 
       // Enrich interactions with source metadata for visibility features
-      const enriched = await Promise.all(all.filter(i => visibleInContext(i, ctx)).map(async (i) => {
-        const tabInfo = await getTabInfo(i.tabId);
+      const visible = all.filter(i => visibleInContext(i, ctx));
+      const uniqueTabIds = [...new Set(visible.map(i => i.tabId))];
+      const tabInfoCache = new Map();
+      await Promise.all(uniqueTabIds.map(async (tabId) => {
+        const info = await getTabInfo(tabId);
+        tabInfoCache.set(tabId, info);
+      }));
+      const enriched = visible.map((i) => {
+        const tabInfo = tabInfoCache.get(i.tabId) || { exists: false, title: 'Unknown', url: '' };
         return {
           ...i,
           sourceTabExists: tabInfo.exists,
           sourceTabTitle: tabInfo.title,
           sourceTabUrl: tabInfo.url
         };
-      }));
+      });
 
       return {
         tab: tabId != null ? { tabId, host, ...getTab(tabId) } : null,

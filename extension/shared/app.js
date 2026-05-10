@@ -44,6 +44,17 @@ function getFeatures() {
   return FEATURES[state.mode] || FEATURES.popup;
 }
 
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let state = {
   mode: 'popup',
   tabId: null,
@@ -165,6 +176,9 @@ function classifySource(interaction, currentTabId) {
  */
 function renderSourceBadge(interaction, currentTabId) {
   const source = classifySource(interaction, currentTabId);
+  const sourceTabTitle = escapeHtml(interaction.sourceTabTitle || 'this tab');
+  const tabId = escapeHtml(interaction.tabId);
+
   const config = {
     'this-tab': {
       label: 'This Tab',
@@ -173,9 +187,9 @@ function renderSourceBadge(interaction, currentTabId) {
       clickable: false
     },
     'other-tab': {
-      label: `Tab #${interaction.tabId}`,
+      label: `Tab #${tabId}`,
       icon: '→',
-      title: `Click to switch to ${interaction.sourceTabTitle || 'this tab'}`,
+      title: `Click to switch to ${sourceTabTitle}`,
       clickable: true
     },
     'closed-tab': {
@@ -193,14 +207,18 @@ function renderSourceBadge(interaction, currentTabId) {
   };
 
   const c = config[source];
-  const clickAttr = c.clickable ? `data-action="switch-to-tab" data-tab-id="${interaction.tabId}" style="cursor:pointer"` : '';
+  const escapedLabel = escapeHtml(c.label);
+  const escapedTitle = escapeHtml(c.title);
+  const clickAttr = c.clickable
+    ? `data-action="switch-to-tab" data-tab-id="${tabId}" style="cursor:pointer" role="button" tabindex="0"`
+    : '';
 
   return `
     <span class="ek-source-badge ${source}"
-          title="${c.title}"
+          title="${escapedTitle}"
           data-testid="source-badge-${source}"
           ${clickAttr}>
-      ${c.icon} ${c.label}
+      ${c.icon} ${escapedLabel}
     </span>
   `;
 }
@@ -1108,12 +1126,16 @@ function renderRow(i) {
   const urlPretty = prettyUrl(i.url);
   const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
   const mode = i.matchMode || 'strict';
+  const features = getFeatures();
+  const showBadge = features.sourceBadges;
+
   return `
     <div class="ek-row ${active}" data-id="${i.id}" data-action="select" data-testid="api-row">
       <span class="ek-method ${method}">${method}</span>
       <div class="ek-url" title="${escapeHtml(i.url)}"><span class="ek-url-path">${escapeHtml(urlPretty.path)}</span><span class="ek-url-query">${escapeHtml(urlPretty.query)}</span></div>
       ${mode !== 'strict' ? `<span class="ek-mode-badge" title="match mode: ${mode}">${modeBadge(mode)}</span>` : ''}
       ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions">×${versionCount}</span>` : ''}
+      ${showBadge ? renderSourceBadge(i, state.tabId) : ''}
       <span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>
       <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle"></button>
       <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn">⊘</button>
@@ -1667,6 +1689,16 @@ function bindEvents() {
       const column = el.getAttribute('data-column');
       applySort(column);
     });
+    else if (action === 'switch-to-tab') el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
+      if (Number.isNaN(tabId)) return;
+      try {
+        await chrome.tabs.update(tabId, { active: true });
+      } catch (err) {
+        console.error('Failed to switch to tab:', err);
+      }
+    });
     else if (action === 'clear-all-filters') el.addEventListener('click', () => {
       state.filters = {
         methods: [],
@@ -1677,7 +1709,8 @@ function bindEvents() {
         responseHeader: { name: '', value: '' },
         mockEnabled: null,
         blocked: null,
-        hasNotes: null
+        hasNotes: null,
+        sources: { thisTab: true, otherTabs: true, closedTabs: false, imported: true }
       };
       state.search = '';
       render();
