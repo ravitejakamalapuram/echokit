@@ -5,6 +5,7 @@
 - ✅ **OpenAPI / Swagger 2 import** → menu item + `echokit:import:openapi` handler that walks `paths` × `methods`, extracts examples, creates interactions with `mockEnabled=true`
 - ✅ **URL rewrite rules** (Settings → URL Rewrite Rules) — substring or `/regex/flags`, applied in `injected.js` to outgoing real fetches
 - ✅ **Response transform rules** (Settings → Response Transform Rules) — add/remove header, set body, regex-replace body; applied to mocked responses
+- ✅ **Global request headers** (Settings → Global Request Headers) — inject, override, or remove headers on all outgoing requests; supports three modes (add, override, remove) with URL pattern filtering; applied in `injected.js` to both fetch and XHR before network; useful for auth tokens, tenant IDs, feature flags
 - ✅ **Mock chaining** (Detail panel → Mock Chain) — define N response steps, cursor advances on each hit, optional loop, reset cursor; chain step resolved server-side in `buildMockIndexFor`, advanced via `echokit:mock:hit`
 - ✅ **Network waterfall visualizer** — header toggle button switches list to a timeline view (method, path, status, time bar)
 - ✅ **7-day Pro trial on install** — `chrome.runtime.onInstalled` grants `echokit_trial_expiry`; `getProStatus()` returns `{pro, trial, trialDaysLeft}`; trial badge in header
