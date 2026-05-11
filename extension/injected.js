@@ -127,6 +127,7 @@
       state.mocking = !!p.mocking;
       state.rewriteRules = p.rewriteRules || [];
       state.transformRules = p.transformRules || [];
+      state.requestHeaders = p.requestHeaders || [];
     }
   }, false);
   emit('ready');
@@ -165,6 +166,50 @@
       } catch {}
     }
     return { body, headers };
+  }
+
+  // Apply global request headers to outgoing requests
+  function applyRequestHeaders(headers, url) {
+    const rules = (state.requestHeaders || []).filter(r => r.enabled !== false);
+    if (!rules.length) return headers;
+
+    let modified = { ...headers };
+
+    for (const rule of rules) {
+      try {
+        // URL pattern filtering (blank = apply to all)
+        if (rule.urlPattern && !url.includes(rule.urlPattern)) continue;
+
+        const key = rule.key || '';
+        if (!key) continue;
+
+        if (rule.mode === 'add') {
+          // Only add if header doesn't exist
+          if (!(key in modified) && !(key.toLowerCase() in Object.keys(modified).map(k => k.toLowerCase()))) {
+            modified[key] = rule.value || '';
+          }
+        } else if (rule.mode === 'override' || !rule.mode) {
+          // Set header (replace or add) - default mode
+          // First remove any case-variant duplicates
+          const lowerKey = key.toLowerCase();
+          for (const k of Object.keys(modified)) {
+            if (k.toLowerCase() === lowerKey) delete modified[k];
+          }
+          modified[key] = rule.value || '';
+        } else if (rule.mode === 'remove') {
+          // Delete header (case-insensitive)
+          delete modified[key];
+          const lowerKey = key.toLowerCase();
+          for (const k of Object.keys(modified)) {
+            if (k.toLowerCase() === lowerKey) delete modified[k];
+          }
+        }
+      } catch (e) {
+        console.warn('[EchoKit] Request header rule error:', e);
+      }
+    }
+
+    return modified;
   }
 
   // ---------- Mock lookup (tries each supported match mode) ----------
@@ -226,8 +271,10 @@
           reqBody = init && init.body != null ? await bodyToText(init.body) : null;
         } else if (input && typeof input === 'object') {
           url = input.url;
-          method = input.method || 'GET';
-          reqHeaders = headersToObject(input.headers);
+          method = (init && init.method) || input.method || 'GET';
+          const inputHeaders = headersToObject(input.headers);
+          const initHeaders = headersToObject(init && init.headers);
+          reqHeaders = { ...inputHeaders, ...initHeaders };
           try { reqBody = await input.clone().text(); } catch { reqBody = null; }
         } else {
           url = String(input); method = 'GET'; reqHeaders = {}; reqBody = null;
@@ -254,12 +301,19 @@
 
       // Apply URL rewrite rules to real requests
       const rewrittenUrl = applyRewriteRules(url);
+
+      // Apply global request headers to real requests
+      const modifiedReqHeaders = applyRequestHeaders(reqHeaders, url);
+
       const started = Date.now();
       let res, err;
       try {
         // Use rewritten URL if different
         const fetchTarget = rewrittenUrl !== url ? rewrittenUrl : input;
-        res = await origFetch(fetchTarget, init);
+        // Create modified init with updated headers
+        const modifiedInit = init ? { ...init } : {};
+        modifiedInit.headers = modifiedReqHeaders;
+        res = await origFetch(fetchTarget, modifiedInit);
       } catch (e) { err = e; }
       if (state.recording) {
         try {
@@ -269,7 +323,7 @@
             emit('record', {
               matchKeys,
               method, url: normalizeUrl(url),
-              requestHeaders: reqHeaders, requestBody: reqBody,
+              requestHeaders: modifiedReqHeaders, requestBody: reqBody,
               responseStatus: res.status,
               responseHeaders: headersToObject(res.headers),
               responseBody: text,
@@ -280,7 +334,7 @@
             emit('record', {
               matchKeys,
               method, url: normalizeUrl(url),
-              requestHeaders: reqHeaders, requestBody: reqBody,
+              requestHeaders: modifiedReqHeaders, requestBody: reqBody,
               responseStatus: 0, responseHeaders: {}, responseBody: String(err),
               durationMs: Date.now() - started, type: 'fetch', failed: true
             });
@@ -318,12 +372,26 @@
       return origOpen.apply(this, arguments);
     };
     XHR.prototype.setRequestHeader = function (k, v) {
+      // Only update internal state, don't call origSetHeader yet (send() will apply all headers)
       if (this.__echokit) this.__echokit.headers[k] = v;
-      return origSetHeader.apply(this, arguments);
     };
     XHR.prototype.send = function (body) {
       const ctx = this.__echokit || {};
       ctx.body = body != null ? (typeof body === 'string' ? body : (body instanceof URLSearchParams ? body.toString() : '[binary]')) : null;
+
+      // Apply global request headers BEFORE matching/blocking
+      const url = ctx.url || '';
+      ctx.headers = applyRequestHeaders(ctx.headers || {}, url);
+
+      // Now re-set all headers on the XHR object
+      for (const [key, value] of Object.entries(ctx.headers)) {
+        try {
+          origSetHeader.call(this, key, value);
+        } catch (e) {
+          console.warn('[EchoKit] Failed to set header:', key, e);
+        }
+      }
+
       const matchKeys = computeMatchKeys(ctx.method, ctx.url, ctx.body);
       // Per-API block (XHR variant).
       if (isBlocked(matchKeys)) {

@@ -5,6 +5,15 @@ on:
   push:
     branches: [main]
 
+# NOTE: This workflow is a TEMPLATE for projects that use EchoKit, not for
+# EchoKit itself. It's kept here as documentation and example code.
+# It expects package.json and npm scripts, which EchoKit doesn't have.
+#
+# To use this in your project:
+# 1. Copy this file to your .github/workflows/ directory
+# 2. Export your mocks to tests/fixtures/echokit-export.json
+# 3. Configure API_BASE_URL in your tests
+#
 # Drop this file into .github/workflows/ in your project to run integration
 # tests against EchoKit-recorded API mocks. Keep your exported JSON under
 # version control (e.g. tests/fixtures/echokit-export.json).
@@ -12,6 +21,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Skip this workflow for EchoKit repo itself - it's a template for downstream projects
+    if: false  # Re-enable in projects that use EchoKit, not in EchoKit itself
     permissions:
       contents: read
       pull-requests: write   # needed to comment the coverage report on PRs

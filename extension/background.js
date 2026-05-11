@@ -22,7 +22,8 @@ let settings = {
   autoOpenOnRefresh: true,
   blocklist: [],
   rewriteRules: [],
-  transformRules: []
+  transformRules: [],
+  requestHeaders: []
 };
 
 async function hydrate() {
@@ -191,7 +192,7 @@ async function pushTabMeta(tabId) {
   const ctx = { tabId, host: st.host, scope: settings.scope };
   const all = await getAllInteractions();
   const { index, blockedKeys } = buildMockIndexFor(all, ctx);
-  safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist, rewriteRules: settings.rewriteRules || [], transformRules: settings.transformRules || [] } });
+  safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist, rewriteRules: settings.rewriteRules || [], transformRules: settings.transformRules || [], requestHeaders: settings.requestHeaders || [] } });
   safeSend(tabId, { type: 'echokit:mockIndex', payload: { mocks: index, blocked: blockedKeys } });
   await updateBadge(tabId);
 }

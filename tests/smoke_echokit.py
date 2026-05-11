@@ -661,6 +661,22 @@ def main():
                  tr_rules)
             sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'transformRules': []}})
 
+            # === NEW: Global Request Headers CRUD via settings:update ===
+            sw_send(sw, {'type': 'echokit:settings:update',
+                         'patch': {'requestHeaders': [
+                             {'key': 'Authorization', 'value': 'Bearer test-token-123',
+                              'mode': 'override', 'urlPattern': '', 'enabled': True}
+                         ]}})
+            rh_state = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
+            rh_headers = rh_state.get('settings', {}).get('requestHeaders', [])
+            step('request_headers_persist',
+                 len(rh_headers) == 1 and
+                 rh_headers[0].get('key') == 'Authorization' and
+                 rh_headers[0].get('mode') == 'override' and
+                 rh_headers[0].get('value') == 'Bearer test-token-123',
+                 rh_headers)
+            sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'requestHeaders': []}})
+
             # === NEW in v1.6: OpenAPI / Swagger import ===
             sw_send(sw, {'type': 'echokit:interactions:clearAll'})
             openapi_spec = {

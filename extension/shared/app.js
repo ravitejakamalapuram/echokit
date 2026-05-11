@@ -59,7 +59,7 @@ let state = {
   mode: 'popup',
   tabId: null,
   tab: { recording: false, mocking: false, sessionId: null, host: '' },
-  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [], rewriteRules: [], transformRules: [] },
+  settings: { corsOverride: false, scope: 'domain', theme: 'dark', autoOpenOnRefresh: true, blocklist: [], rewriteRules: [], transformRules: [], requestHeaders: [] },
   interactions: [],
   allCount: 0,
   isPro: false,
@@ -2191,6 +2191,34 @@ function showSettingsDialog() {
       </div>
 
       <div class="ek-settings-row">
+        <div style="flex:1">
+          <div class="ek-settings-title">Global Request Headers</div>
+          <div class="ek-settings-hint">Inject, override, or remove headers on all outgoing requests. Useful for auth tokens, tenant IDs, feature flags, etc.</div>
+          <div id="ek-requestheaders" style="margin-top:8px" data-testid="requestheaders">
+            ${(s.requestHeaders || []).map((r, idx) => `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px" data-testid="requestheader-row">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
+                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="rh-key" data-idx="${idx}" placeholder="Header name (e.g., Authorization)" style="flex:2" data-testid="requestheader-key-${idx}"/>
+                  <select class="ek-select" data-a="rh-mode" data-idx="${idx}" style="max-width:120px" data-testid="requestheader-mode-${idx}">
+                    <option value="add" ${r.mode==='add'?'selected':''}>Add</option>
+                    <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
+                    <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
+                  </select>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
+                </div>
+                <div class="ek-row-inline" style="gap:6px">
+                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
+                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="rh-url" data-idx="${idx}" placeholder="URL contains… (blank = all)" style="flex:1" data-testid="requestheader-url-${idx}"/>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="ek-btn ek-btn-ghost" data-a="rh-add" style="margin-top:6px" data-testid="requestheader-add">＋ Add request header</button>
+        </div>
+      </div>
+
+      <div class="ek-settings-row">
         <div>
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
@@ -2347,6 +2375,38 @@ function showSettingsDialog() {
     await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
     await refresh(); reopen();
   });
+
+  // --- Request Headers handlers ---
+  const rhUpdate = async (idx, patch) => {
+    const headers = [...(state.settings.requestHeaders || [])];
+    headers[idx] = { mode: 'override', enabled: true, ...(headers[idx] || {}), ...patch };
+    await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
+    await refresh();
+  };
+  overlay.querySelectorAll('[data-a="rh-key"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { key: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-value"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { value: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-mode"]').forEach(el => el.addEventListener('change', async (e) => {
+    await rhUpdate(Number(el.getAttribute('data-idx')), { mode: e.target.value });
+    reopen();
+  }));
+  overlay.querySelectorAll('[data-a="rh-url"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { urlPattern: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
+    await rhUpdate(Number(el.getAttribute('data-idx')), { enabled: e.target.checked });
+    reopen();
+  }));
+  overlay.querySelectorAll('[data-a="rh-remove"]').forEach(el => el.addEventListener('click', async () => {
+    const idx = Number(el.getAttribute('data-idx'));
+    const headers = [...(state.settings.requestHeaders || [])];
+    headers.splice(idx, 1);
+    await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
+    await refresh(); reopen();
+  }));
+  overlay.querySelector('[data-a="rh-add"]')?.addEventListener('click', async () => {
+    const headers = [...(state.settings.requestHeaders || []), { key: '', value: '', mode: 'override', urlPattern: '', enabled: true }];
+    await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
+    await refresh(); reopen();
+  });
+
   // Pre-fill license key input
   BG({ type: 'echokit:license:check' }).then(res => {
     const input = overlay.querySelector('#ek-license-input');
