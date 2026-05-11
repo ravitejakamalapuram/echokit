@@ -251,6 +251,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 globalThis.__echokitHandle = handleMessage;
 
+/**
+ * Get tab info for source tracking (checks if tab still exists)
+ * @param {number|null} tabId - The tab ID to check
+ * @returns {Promise<{exists: boolean, title: string, url: string}>} Tab metadata
+ */
+async function getTabInfo(tabId) {
+  if (tabId === null) return { exists: false, title: 'Imported', url: '' };
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    return { exists: true, title: tab.title || 'Untitled', url: tab.url || '' };
+  } catch {
+    return { exists: false, title: `Tab #${tabId}`, url: '' };
+  }
+}
+
 async function handleMessage(msg, sender) {
   const fromTabId = sender?.tab?.id ?? msg?.tabId ?? null;
   switch (msg?.type) {
@@ -262,10 +277,29 @@ async function handleMessage(msg, sender) {
       const ctx = { tabId, host, scope: settings.scope };
       const { index, blockedKeys } = buildMockIndexFor(all, ctx);
       const proStatus = await getProStatus();
+
+      // Enrich interactions with source metadata for visibility features
+      const visible = all.filter(i => visibleInContext(i, ctx));
+      const uniqueTabIds = [...new Set(visible.map(i => i.tabId))];
+      const tabInfoCache = new Map();
+      await Promise.all(uniqueTabIds.map(async (tabId) => {
+        const info = await getTabInfo(tabId);
+        tabInfoCache.set(tabId, info);
+      }));
+      const enriched = visible.map((i) => {
+        const tabInfo = tabInfoCache.get(i.tabId) || { exists: false, title: 'Unknown', url: '' };
+        return {
+          ...i,
+          sourceTabExists: tabInfo.exists,
+          sourceTabTitle: tabInfo.title,
+          sourceTabUrl: tabInfo.url
+        };
+      });
+
       return {
         tab: tabId != null ? { tabId, host, ...getTab(tabId) } : null,
         settings,
-        interactions: all.filter(i => visibleInContext(i, ctx)),
+        interactions: enriched,
         allCount: all.length,
         isPro: proStatus.pro,
         trial: proStatus.trial,

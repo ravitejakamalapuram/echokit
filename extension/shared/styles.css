@@ -1616,6 +1616,52 @@ a {
   filter: drop-shadow(0 0 2px var(--amber-glow));
 }
 
+/* Source badges (NEW - API source visibility) */
+.ek-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid;
+  font-family: var(--font-mono);
+  transition: all 160ms ease;
+}
+
+.ek-source-badge.this-tab {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: var(--emerald);
+  color: var(--emerald);
+}
+
+.ek-source-badge.other-tab {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.ek-source-badge.other-tab:hover {
+  background: rgba(96, 165, 250, 0.18);
+  border-color: var(--blue-light);
+  transform: translateY(-1px);
+}
+
+.ek-source-badge.closed-tab {
+  background: rgba(113, 113, 122, 0.12);
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+.ek-source-badge.imported {
+  background: var(--amber-dim);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--amber);
+}
+
 /* Icon buttons in table */
 .ek-icon-btn {
   width: 28px;
