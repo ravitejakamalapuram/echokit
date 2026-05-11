@@ -16,26 +16,26 @@
 ## 🎯 Key Benefits for Developers
 
 ### 1. **Zero Code Changes**
-```
+```text
 Before: Change environment variable → Rebuild → Redeploy → Test
 After:  Add header in EchoKit UI → Refresh page → Test
 ```
 **Time Saved**: 5-30 minutes per test iteration
 
 ### 2. **Instant Switching**
-```
+```text
 Toggle between different auth tokens/tenants with ONE CLICK
 Perfect for multi-tenant testing, role-based access testing, etc.
 ```
 
 ### 3. **Team Collaboration**
-```
+```text
 Export header configuration → Share JSON with team → Import → Everyone has same setup
 No more "it works on my machine" issues related to headers
 ```
 
 ### 4. **URL-Scoped Control**
-```
+```text
 Apply headers only to specific APIs:
 - /api/v1/* → Add X-API-Version: 1.0
 - /admin/* → Add Authorization: Bearer admin-token
@@ -46,7 +46,7 @@ Apply headers only to specific APIs:
 
 ## 🏗️ Architecture
 
-```
+```text
 User adds header in Settings UI
          ↓
 Background service worker stores in chrome.storage
@@ -112,7 +112,7 @@ Strip headers before requests are sent.
 ## 🎨 UI Design
 
 ### Settings Panel Layout
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  Global Request Headers                                         │
 │  Inject, override, or remove headers on all outgoing requests   │

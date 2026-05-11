@@ -190,6 +190,11 @@
           }
         } else if (rule.mode === 'override' || !rule.mode) {
           // Set header (replace or add) - default mode
+          // First remove any case-variant duplicates
+          const lowerKey = key.toLowerCase();
+          for (const k of Object.keys(modified)) {
+            if (k.toLowerCase() === lowerKey) delete modified[k];
+          }
           modified[key] = rule.value || '';
         } else if (rule.mode === 'remove') {
           // Delete header (case-insensitive)
@@ -266,8 +271,10 @@
           reqBody = init && init.body != null ? await bodyToText(init.body) : null;
         } else if (input && typeof input === 'object') {
           url = input.url;
-          method = input.method || 'GET';
-          reqHeaders = headersToObject(input.headers);
+          method = (init && init.method) || input.method || 'GET';
+          const inputHeaders = headersToObject(input.headers);
+          const initHeaders = headersToObject(init && init.headers);
+          reqHeaders = { ...inputHeaders, ...initHeaders };
           try { reqBody = await input.clone().text(); } catch { reqBody = null; }
         } else {
           url = String(input); method = 'GET'; reqHeaders = {}; reqBody = null;
@@ -365,8 +372,8 @@
       return origOpen.apply(this, arguments);
     };
     XHR.prototype.setRequestHeader = function (k, v) {
+      // Only update internal state, don't call origSetHeader yet (send() will apply all headers)
       if (this.__echokit) this.__echokit.headers[k] = v;
-      return origSetHeader.apply(this, arguments);
     };
     XHR.prototype.send = function (body) {
       const ctx = this.__echokit || {};
