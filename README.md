@@ -47,6 +47,19 @@ python3 tests/smoke_echokit.py  # No xvfb needed on macOS
 
 It spins up a local HTTP server, loads the unpacked extension in Chromium, drives fetch + XHR on a test page, and validates the full record → toggle → mock → edit loop with 24+ assertions.
 
+## Contributing
+
+We welcome contributions! Please read our guidelines:
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — Development workflow, testing, and code standards
+- [`.github/pull_request_template.md`](.github/pull_request_template.md) — PR checklist (auto-populated)
+- [`CODE_QUALITY_REVIEW.md`](CODE_QUALITY_REVIEW.md) — Code quality review and refactoring roadmap
+
+**Quick start for contributors:**
+1. Run tests locally: `python3 tests/smoke_echokit.py`
+2. Bump version in `manifest.json` before merging to `main` (for releases)
+3. Fill out the PR template checklist
+
 ## Documentation
 
 - [`extension/README.md`](extension/README.md) — extension architecture and feature map
