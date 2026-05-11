@@ -37,13 +37,15 @@ echokit/
 
 ## Run the end-to-end smoke test
 
+**Note**: These tests work perfectly locally but are currently disabled in CI due to a known Chromium limitation (extension service workers don't register in headless mode). Always run tests locally before merging PRs.
+
 ```bash
 pip install playwright && python3 -m playwright install chromium
-sudo apt-get install -y xvfb xauth
-xvfb-run -a python3 tests/smoke_echokit.py
+sudo apt-get install -y xvfb xauth  # Linux only
+python3 tests/smoke_echokit.py  # No xvfb needed on macOS
 ```
 
-It spins up a local HTTP server, loads the unpacked extension in headed Chromium via xvfb, drives fetch + XHR on a test page, and validates the full record → toggle → mock → edit loop.
+It spins up a local HTTP server, loads the unpacked extension in Chromium, drives fetch + XHR on a test page, and validates the full record → toggle → mock → edit loop with 24+ assertions.
 
 ## Documentation
 
