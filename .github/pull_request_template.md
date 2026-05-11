@@ -54,10 +54,11 @@ Closes #
 
 **Required for RELEASES (merging to main):**
 
-- [ ] 📦 Version bumped in `extension/manifest.json` (following [semver](https://semver.org/))
-  - Patch (1.6.4 → 1.6.5) for bug fixes
-  - Minor (1.6.4 → 1.7.0) for new features
-  - Major (1.6.4 → 2.0.0) for breaking changes
+- [ ] 📦 **Version bump is automated!** Use conventional commit prefixes:
+  - `fix:` → Patch bump (1.6.4 → 1.6.5)
+  - `feat:` → Minor bump (1.6.4 → 1.7.0)
+  - `BREAKING:` → Major bump (1.6.4 → 2.0.0)
+  - Auto-release will detect and bump version automatically
 - [ ] 📝 CHANGELOG updated (optional but recommended)
 - [ ] 🧪 Smoke tests run locally and passing
 - [ ] 📚 Documentation updated (if needed)
@@ -84,14 +85,19 @@ Closes #
 
 ---
 
-<!-- 
-Auto-Release Reminder:
-When this PR is merged to main with a new version in manifest.json,
-the auto-release workflow will automatically:
-1. Create a git tag (e.g., v1.7.0)
-2. Trigger the release workflow
-3. Create a GitHub Release
-4. Publish to Chrome Web Store (if configured)
+<!--
+🤖 Auto-Release & Auto-Version Bump:
 
-If you DON'T want an automatic release, keep the version unchanged.
+When this PR is merged to main, the workflow will:
+1. ✅ Automatically detect version bump type from commit messages
+2. ✅ Bump version in manifest.json (patch/minor/major)
+3. ✅ Create a git tag (e.g., v1.7.0)
+4. ✅ Trigger the release workflow
+5. ✅ Create a GitHub Release
+6. ✅ Publish to Chrome Web Store (if configured)
+
+Use conventional commits to control the bump:
+- fix: = patch (1.6.4 → 1.6.5)
+- feat: = minor (1.6.4 → 1.7.0)
+- BREAKING: = major (1.6.4 → 2.0.0)
 -->

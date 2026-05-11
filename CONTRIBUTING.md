@@ -67,10 +67,10 @@ python3 tests/smoke_echokit.py
 
 ### Required for RELEASES (merging to main)
 
-- [ ] 📦 **Version bumped in `extension/manifest.json`**
-  - Patch (1.6.4 → 1.6.5) for bug fixes
-  - Minor (1.6.4 → 1.7.0) for new features  
-  - Major (1.6.4 → 2.0.0) for breaking changes
+- [ ] 📦 **Version bump is AUTOMATED!** Just use conventional commits:
+  - `fix:` for bug fixes → Auto-bumps patch (1.6.4 → 1.6.5)
+  - `feat:` for new features → Auto-bumps minor (1.6.4 → 1.7.0)
+  - `BREAKING:` in message → Auto-bumps major (1.6.4 → 2.0.0)
 - [ ] 📝 CHANGELOG updated (optional but recommended)
 - [ ] 🧪 Smoke tests run locally and passing
 - [ ] 📚 Documentation updated (if needed)
@@ -85,45 +85,42 @@ python3 tests/smoke_echokit.py
 
 ---
 
-## 📦 Version Bumping
+## 📦 Automated Version Bumping
 
-### When to Bump Version
+### ✨ Version Bumping is Now AUTOMATED!
 
-**ALWAYS bump version when merging to `main` for a release.**
+You **NO LONGER need to manually update** `extension/manifest.json`. The version is automatically bumped based on your commit messages.
 
-### Version Format: `MAJOR.MINOR.PATCH`
+### How It Works
 
-| Change Type | Example | When to Use |
-|-------------|---------|-------------|
-| **Patch** | 1.6.4 → 1.6.5 | Bug fixes, small improvements |
-| **Minor** | 1.6.4 → 1.7.0 | New features (backward compatible) |
-| **Major** | 1.6.4 → 2.0.0 | Breaking changes |
+**Use Conventional Commits** in your commit messages:
 
-### How to Bump Version
+| Commit Prefix | Version Bump | Example |
+|--------------|--------------|---------|
+| `fix:` `bugfix:` `patch:` | **Patch** | 1.6.4 → 1.6.5 |
+| `feat:` `feature:` | **Minor** | 1.6.4 → 1.7.0 |
+| `BREAKING:` `BREAKING CHANGE:` | **Major** | 1.6.4 → 2.0.0 |
 
-**Option A: In Feature Branch (Recommended)**
+**Examples:**
 ```bash
-# Update extension/manifest.json before creating PR
-# Include version bump in the PR itself
-```
-
-**Option B: After Feature Merge**
-```bash
-# Create separate commit just for version bump
-# Push to main → triggers auto-release
+git commit -m "fix: Resolve header duplication bug"        # → 1.6.4 to 1.6.5
+git commit -m "feat: Add global request headers feature"   # → 1.6.4 to 1.7.0
+git commit -m "feat!: Remove deprecated API endpoints"     # → 1.6.4 to 2.0.0
 ```
 
 ### Auto-Release Workflow
 
-When you merge to `main` with a new version:
+When you merge to `main`:
 
-1. ✅ Auto-release detects new version
-2. ✅ Creates git tag (e.g., `v1.7.0`)
-3. ✅ Triggers release workflow
-4. ✅ Creates GitHub Release
-5. ✅ Publishes to Chrome Web Store (if configured)
+1. ✅ Auto-release **detects commit messages**
+2. ✅ **Automatically bumps** version in `manifest.json`
+3. ✅ **Commits the version bump** back to main
+4. ✅ Creates git tag (e.g., `v1.7.0`)
+5. ✅ Triggers release workflow
+6. ✅ Creates GitHub Release
+7. ✅ Publishes to Chrome Web Store (if configured)
 
-**Important**: If version is unchanged, **NO release will be created**.
+**No manual work required!** Just merge with proper commit messages.
 
 ---
 

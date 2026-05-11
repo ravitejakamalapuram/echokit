@@ -18,23 +18,90 @@ jobs:
           fetch-depth: 0  # Fetch all history for tag comparison
           token: ${{ secrets.PAT_FOR_WORKFLOWS || github.token }}  # Use PAT if available to trigger release.yml
 
-      - name: Get version from manifest
+      - name: Get current version and detect bump type
         id: version
         run: |
-          VERSION=$(node -e "console.log(require('./extension/manifest.json').version)")
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Manifest version: ${VERSION}"
+          CURRENT_VERSION=$(node -e "console.log(require('./extension/manifest.json').version)")
+          echo "current=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Current version: ${CURRENT_VERSION}"
+
+          # Detect version bump type from commit messages in the push
+          COMMIT_MESSAGES=$(git log --format=%s ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
+
+          # Check for conventional commit prefixes or keywords
+          if echo "$COMMIT_MESSAGES" | grep -qiE "^(feat|feature|BREAKING CHANGE|\!:|major)"; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+            echo "🟡 Detected: MINOR version bump (new feature)"
+          elif echo "$COMMIT_MESSAGES" | grep -qiE "^(fix|bugfix|patch)"; then
+            echo "bump=patch" >> $GITHUB_OUTPUT
+            echo "🟢 Detected: PATCH version bump (bug fix)"
+          elif echo "$COMMIT_MESSAGES" | grep -qiE "BREAKING"; then
+            echo "bump=major" >> $GITHUB_OUTPUT
+            echo "🔴 Detected: MAJOR version bump (breaking change)"
+          else
+            echo "bump=patch" >> $GITHUB_OUTPUT
+            echo "🟢 Default: PATCH version bump"
+          fi
+
+      - name: Calculate and apply new version
+        id: new_version
+        run: |
+          CURRENT="${{ steps.version.outputs.current }}"
+          BUMP_TYPE="${{ steps.version.outputs.bump }}"
+
+          # Parse version parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          # Bump version based on type
+          if [ "$BUMP_TYPE" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP_TYPE" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$BUMP_TYPE" = "patch" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "✅ Bumping version: ${CURRENT} → ${NEW_VERSION} (${BUMP_TYPE})"
+
+          # Update manifest.json with new version
+          node -e "
+            const fs = require('fs');
+            const manifest = JSON.parse(fs.readFileSync('./extension/manifest.json', 'utf8'));
+            manifest.version = '${NEW_VERSION}';
+            fs.writeFileSync('./extension/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+          "
+
+          echo "✅ Updated manifest.json to ${NEW_VERSION}"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet extension/manifest.json; then
+            echo "ℹ️ No version change needed"
+          else
+            git add extension/manifest.json
+            git commit -m "chore: Bump version to ${{ steps.new_version.outputs.version }} [skip ci]"
+            git push origin main
+            echo "✅ Committed and pushed version bump"
+          fi
 
       - name: Check if tag exists
         id: tag_check
         run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+          if git rev-parse "v${{ steps.new_version.outputs.version }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Tag v${{ steps.version.outputs.version }} already exists"
+            echo "⚠️ Tag v${{ steps.new_version.outputs.version }} already exists"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag v${{ steps.version.outputs.version }} does not exist - will create"
+            echo "✅ Tag v${{ steps.new_version.outputs.version }} does not exist - will create"
           fi
 
       - name: Create and push tag
@@ -42,24 +109,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}
 
-          Auto-tagged from main branch push
+          git tag -a "v${{ steps.new_version.outputs.version }}" -m "Release v${{ steps.new_version.outputs.version }}
+
+          Auto-tagged and auto-versioned from main branch push
+          Version bump: ${{ steps.version.outputs.current }} → ${{ steps.new_version.outputs.version }} (${{ steps.version.outputs.bump }})
           Commit: ${{ github.sha }}
-          
+
           This will trigger automated Chrome Web Store publishing."
-          
-          git push origin "v${{ steps.version.outputs.version }}"
-          
-          echo "✅ Created and pushed tag v${{ steps.version.outputs.version }}"
+
+          git push origin "v${{ steps.new_version.outputs.version }}"
+
+          echo "✅ Created and pushed tag v${{ steps.new_version.outputs.version }}"
           echo "🚀 This will trigger the release.yml workflow"
 
       - name: Skip message
         if: steps.tag_check.outputs.exists == 'true'
         run: |
-          echo "ℹ️ Skipping tag creation - v${{ steps.version.outputs.version }} already exists"
-          echo "💡 To publish a new version:"
-          echo "   1. Update extension/manifest.json version"
-          echo "   2. Merge to main"
-          echo "   3. Auto-release will create the tag and publish"
+          echo "ℹ️ Skipping tag creation - v${{ steps.new_version.outputs.version }} already exists"
+          echo "💡 Version was already bumped and tagged"
