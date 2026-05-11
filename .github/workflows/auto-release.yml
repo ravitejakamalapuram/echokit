@@ -1,0 +1,64 @@
+name: Auto Release on Main
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'extension/**'
+      - '!extension/**/*.md'
+
+jobs:
+  auto-tag-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tag comparison
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./extension/manifest.json').version)")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Manifest version: ${VERSION}"
+
+      - name: Check if tag exists
+        id: tag_check
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag v${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag v${{ steps.version.outputs.version }} does not exist - will create"
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}
+
+          Auto-tagged from main branch push
+          Commit: ${{ github.sha }}
+          
+          This will trigger automated Chrome Web Store publishing."
+          
+          git push origin "v${{ steps.version.outputs.version }}"
+          
+          echo "✅ Created and pushed tag v${{ steps.version.outputs.version }}"
+          echo "🚀 This will trigger the release.yml workflow"
+
+      - name: Skip message
+        if: steps.tag_check.outputs.exists == 'true'
+        run: |
+          echo "ℹ️ Skipping tag creation - v${{ steps.version.outputs.version }} already exists"
+          echo "💡 To publish a new version:"
+          echo "   1. Update extension/manifest.json version"
+          echo "   2. Merge to main"
+          echo "   3. Auto-release will create the tag and publish"
