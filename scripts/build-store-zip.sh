@@ -44,12 +44,12 @@ mkdir -p "$STORE_DIR"
 # ---- Lint pass: every JS file must be valid ----
 echo "→ syntax-checking JS files…"
 SYNTAX_OK=1
-while IFS= read -r -d '' f; do
+find "$EXT_DIR" -type f -name '*.js' -print0 | while IFS= read -r -d '' f; do
   if ! node -c "$f" 2>/dev/null; then
     echo "  ✗ syntax error: $f" >&2
     SYNTAX_OK=0
   fi
-done < <(find "$EXT_DIR" -type f -name '*.js' -print0)
+done
 if [[ $SYNTAX_OK -ne 1 ]]; then
   echo "✗ aborting: fix JS syntax errors first" >&2
   exit 2
@@ -68,7 +68,8 @@ node -e "
 # ---- Zip ----
 rm -f "$OUT"
 echo "→ zipping $EXT_DIR → $OUT"
-( cd "$EXT_DIR" && zip -rq "$OUT" . \
+if command -v zip &>/dev/null; then
+  ( cd "$EXT_DIR" && zip -rq "$OUT" . \
     -x '*.DS_Store' \
     -x '*.swp' '*.swo' \
     -x 'node_modules/*' \
@@ -77,6 +78,10 @@ echo "→ zipping $EXT_DIR → $OUT"
     -x 'tests/*' \
     -x '*.map' \
     -x 'README.dev.md' )
+else
+  # Fallback to python3 for creating zip
+  python3 /tmp/create_zip.py "$EXT_DIR" "$OUT"
+fi
 
 SIZE=$(du -h "$OUT" | cut -f1)
 echo ""

@@ -190,6 +190,11 @@
           }
         } else if (rule.mode === 'override' || !rule.mode) {
           // Set header (replace or add) - default mode
+          // Remove case-variant duplicates first
+          const lowerKey = key.toLowerCase();
+          for (const k of Object.keys(modified)) {
+            if (k.toLowerCase() === lowerKey) delete modified[k];
+          }
           modified[key] = rule.value || '';
         } else if (rule.mode === 'remove') {
           // Delete header (case-insensitive)
@@ -366,7 +371,7 @@
     };
     XHR.prototype.setRequestHeader = function (k, v) {
       if (this.__echokit) this.__echokit.headers[k] = v;
-      return origSetHeader.apply(this, arguments);
+      // Don't call origSetHeader here - headers will be applied in send()
     };
     XHR.prototype.send = function (body) {
       const ctx = this.__echokit || {};
