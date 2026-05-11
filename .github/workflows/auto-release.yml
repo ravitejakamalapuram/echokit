@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for tag comparison
+          token: ${{ secrets.PAT_FOR_WORKFLOWS || github.token }}  # Use PAT if available to trigger release.yml
 
       - name: Get version from manifest
         id: version

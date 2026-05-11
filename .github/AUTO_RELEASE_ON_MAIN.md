@@ -55,7 +55,24 @@ This triggers `release.yml` directly (skips `auto-release.yml`).
 
 ### Required GitHub Secrets
 
-For Chrome Web Store publishing to work, set these in repository settings:
+**For auto-release workflow to trigger release.yml:**
+- `PAT_FOR_WORKFLOWS` - Personal Access Token with `repo` scope
+  - **Why needed:** GitHub's `GITHUB_TOKEN` cannot trigger other workflows (security feature)
+  - **How to create:**
+    1. Go to https://github.com/settings/tokens/new
+    2. Note: "Workflow automation token"
+    3. Scopes: Select `repo` (full control of private repositories)
+    4. Expiration: Choose your preference (1 year recommended)
+    5. Click "Generate token" and copy it
+  - **Add to repository:**
+    1. Go to https://github.com/ravitejakamalapuram/echokit/settings/secrets/actions
+    2. Click "New repository secret"
+    3. Name: `PAT_FOR_WORKFLOWS`
+    4. Value: Paste your token
+    5. Click "Add secret"
+  - **Optional:** If not set, falls back to `GITHUB_TOKEN` (tag created but release.yml won't trigger)
+
+**For Chrome Web Store publishing to work:**
 - `CWS_EXTENSION_ID`
 - `CWS_CLIENT_ID`
 - `CWS_CLIENT_SECRET`
