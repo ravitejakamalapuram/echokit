@@ -1,6 +1,7 @@
 // EchoKit — Background service worker.
 // Adds in v1.2: GraphQL match mode, URL blocklist, localStorage copy/paste bridge, onboarding welcome tab.
 // v1.6.0: API Source Visibility with badges and filters
+// v1.6.1: Testing automated release workflow
 
 import { computeHash, computeMatchKeys } from './shared/matcher.js';
 import {
