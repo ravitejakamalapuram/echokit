@@ -1169,28 +1169,56 @@ a {
 .ek-waterfall {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-lg);
+  height: 100%;
+  overflow-y: auto;
   background: var(--bg);
+}
+
+.ek-waterfall-header {
+  display: grid;
+  grid-template-columns: 70px 200px 60px 1fr;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .ek-waterfall-row {
   display: grid;
-  grid-template-columns: 50px 80px 1fr 60px 40px;
+  grid-template-columns: 70px 200px 60px 1fr;
   gap: var(--space-md);
   align-items: center;
-  padding: var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-lg);
   font-size: 11px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
-.ek-waterfall-method {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  text-transform: uppercase;
+.ek-waterfall-row:hover {
+  background: var(--surface);
 }
 
-.ek-waterfall-url {
+.ek-waterfall-row.selected {
+  background: var(--surface-active);
+  border-left: 3px solid var(--accent);
+  padding-left: calc(var(--space-lg) - 3px);
+}
+
+.ek-waterfall-col-method {
+  display: flex;
+  align-items: center;
+}
+
+.ek-waterfall-col-path {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text);
@@ -1199,82 +1227,57 @@ a {
   text-overflow: ellipsis;
 }
 
-.ek-waterfall-bar-container {
-  position: relative;
-  height: 20px;
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.ek-waterfall-bar {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-base);
-}
-
-.ek-waterfall-bar.GET {
-  background: linear-gradient(90deg, var(--blue), var(--blue-light));
-}
-
-.ek-waterfall-bar.POST {
-  background: linear-gradient(90deg, var(--emerald), var(--emerald-light));
-}
-
-.ek-waterfall-bar.PUT {
-  background: linear-gradient(90deg, var(--amber), var(--amber-light));
-}
-
-.ek-waterfall-bar.DELETE {
-  background: linear-gradient(90deg, var(--red), var(--red-light));
-}
-
-.ek-waterfall-time {
+.ek-waterfall-col-status {
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: var(--fw-medium);
-  color: var(--text-muted);
-  text-align: right;
-}
-
-.ek-waterfall-status {
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: var(--fw-semibold);
   text-align: center;
 }
 
-.ek-waterfall-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xl);
-  padding: var(--space-lg);
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+.ek-waterfall-col-bar {
+  position: relative;
+  height: 24px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  overflow: visible;
+}
+
+.ek-waterfall-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  min-width: 2px;
+}
+
+.ek-waterfall-bar-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: var(--fw-medium);
+  color: rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.ek-waterfall-footer-stat {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.ek-waterfall-footer-value {
-  color: var(--text);
-  font-weight: var(--fw-semibold);
-}
-
-.ek-waterfall-footer-value.mocked {
-  color: var(--amber);
-}
-
-.ek-waterfall-footer-value.error {
-  color: var(--red);
+/* Method badge in waterfall */
+.ek-waterfall-row .ek-method-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
 }
 
 /* =============================================================================

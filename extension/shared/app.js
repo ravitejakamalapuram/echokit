@@ -1050,42 +1050,74 @@ function renderFilterChips() {
 
 function renderWaterfall(interactions) {
   if (!interactions.length) return renderEmpty();
+
   // Sort by start time
   const rows = interactions.map(i => ({
     ...i,
     startAt: i.timestamp - (i.durationMs || 0)
   })).sort((a, b) => a.startAt - b.startAt);
+
   const minT = rows[0].startAt;
   const maxT = Math.max(...rows.map(r => r.startAt + (r.durationMs || 1)));
   const totalSpan = Math.max(maxT - minT, 1);
-  const METHOD_COLORS = { GET: '#60a5fa', POST: '#34d399', PUT: '#f59e0b', PATCH: '#a78bfa', DELETE: '#ef4444', WS: '#f97316', SSE: '#f97316' };
+
+  const METHOD_COLORS = {
+    GET: '#60a5fa',
+    POST: '#34d399',
+    PUT: '#f59e0b',
+    PATCH: '#a78bfa',
+    DELETE: '#ef4444',
+    WS: '#f97316',
+    SSE: '#f97316'
+  };
+
+  // Format timeline duration
+  const timelineLabel = totalSpan < 1000
+    ? `${totalSpan}ms`
+    : totalSpan < 60000
+      ? `${(totalSpan / 1000).toFixed(2)}s`
+      : `${(totalSpan / 60000).toFixed(1)}min`;
+
   return `
     <div class="ek-waterfall" data-testid="waterfall-view">
       <div class="ek-waterfall-header">
         <span class="ek-waterfall-col-method">Method</span>
         <span class="ek-waterfall-col-path">Path</span>
         <span class="ek-waterfall-col-status">Status</span>
-        <span class="ek-waterfall-col-bar">Timeline (${totalSpan < 1000 ? totalSpan + 'ms' : (totalSpan / 1000).toFixed(2) + 's'})</span>
+        <span class="ek-waterfall-col-bar">Timeline (${timelineLabel})</span>
       </div>
       ${rows.map(r => {
         const relStart = ((r.startAt - minT) / totalSpan) * 100;
-        const relWidth = Math.max((r.durationMs || 1) / totalSpan * 100, 0.8);
+        const relWidth = Math.max((r.durationMs || 1) / totalSpan * 100, 0.5);
         const color = METHOD_COLORS[r.method] || '#8b8fa8';
         const st = r.overrideStatus ?? r.responseStatus;
         const stColor = st >= 500 ? '#ef4444' : st >= 400 ? '#f97316' : '#34d399';
-        const path = (() => { try { return new URL(r.url).pathname; } catch { return r.url; } })();
+
+        // Extract path from URL
+        const path = (() => {
+          try {
+            const url = new URL(r.url);
+            return url.pathname + (url.search ? '?' + url.search.slice(1, 20) + (url.search.length > 20 ? '...' : '') : '');
+          } catch {
+            return r.url;
+          }
+        })();
+
+        // Show duration label only if bar is wide enough
+        const showDuration = relWidth > 5 && r.durationMs;
+
         return `
           <div class="ek-waterfall-row ${r.id === state.selectedId ? 'selected' : ''}"
                data-action="select" data-id="${r.id}" data-testid="waterfall-row"
-               title="${escapeHtml(r.url)}\n${r.durationMs || 0}ms">
+               title="${escapeHtml(r.url)}\nDuration: ${r.durationMs || 0}ms\nStatus: ${st || 'pending'}">
             <span class="ek-waterfall-col-method">
               <span class="ek-method-badge" style="background:${color}22;color:${color};border-color:${color}44">${r.method}</span>
             </span>
-            <span class="ek-waterfall-col-path ek-mono">${escapeHtml(path.slice(0, 40))}</span>
+            <span class="ek-waterfall-col-path ek-mono" title="${escapeHtml(r.url)}">${escapeHtml(path)}</span>
             <span class="ek-waterfall-col-status" style="color:${stColor}">${st ?? '—'}</span>
             <span class="ek-waterfall-col-bar">
-              <span class="ek-waterfall-bar" style="left:${relStart.toFixed(1)}%;width:${relWidth.toFixed(1)}%;background:${color}"></span>
-              <span class="ek-waterfall-bar-label">${r.durationMs ? r.durationMs + 'ms' : ''}</span>
+              <span class="ek-waterfall-bar" style="left:${relStart.toFixed(2)}%;width:${relWidth.toFixed(2)}%;background:${color}"></span>
+              ${showDuration ? `<span class="ek-waterfall-bar-label">${r.durationMs}ms</span>` : ''}
             </span>
           </div>
         `;
