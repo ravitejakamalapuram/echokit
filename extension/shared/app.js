@@ -272,6 +272,7 @@ function render() {
 // Snapshot focus, selection, and scroll positions so we can restore after innerHTML wipe.
 function snapshotUIState() {
   const list = root.querySelector('[data-testid="api-list"]');
+  const waterfall = root.querySelector('.ek-waterfall');
   const detailBody = root.querySelector('[data-testid="api-detail"] .ek-detail-body');
   const ae = document.activeElement;
   let focus = null;
@@ -289,6 +290,7 @@ function snapshotUIState() {
   }
   return {
     listScroll: list?.scrollTop ?? 0,
+    waterfallScroll: waterfall?.scrollTop ?? 0,
     detailScroll: detailBody?.scrollTop ?? 0,
     focus
   };
@@ -296,8 +298,10 @@ function snapshotUIState() {
 
 function restoreUIState(snap) {
   const list = root.querySelector('[data-testid="api-list"]');
+  const waterfall = root.querySelector('.ek-waterfall');
   const detailBody = root.querySelector('[data-testid="api-detail"] .ek-detail-body');
   if (list) list.scrollTop = snap.listScroll;
+  if (waterfall) waterfall.scrollTop = snap.waterfallScroll ?? 0;
   if (detailBody) detailBody.scrollTop = snap.detailScroll;
   if (!snap.focus) return;
   const { testId, action, id, key, selStart, selEnd, scrollTop } = snap.focus;
