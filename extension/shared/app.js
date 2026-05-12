@@ -2673,7 +2673,4 @@ function prettyUrl(url) {
   try { const u = new URL(url, location.href); return { path: u.pathname, query: u.search }; }
   catch { return { path: url, query: '' }; }
 }
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
+// escapeHtml is defined at line 48 - removed duplicate declaration
