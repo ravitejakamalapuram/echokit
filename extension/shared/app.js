@@ -187,9 +187,9 @@ function renderSourceBadge(interaction, currentTabId) {
       clickable: false
     },
     'other-tab': {
-      label: `Tab #${tabId}`,
-      icon: '→',
-      title: `Click to switch to ${sourceTabTitle}`,
+      label: `Other Tab`,
+      icon: '⇄',
+      title: `Click to switch to tab: ${sourceTabTitle}`,
       clickable: true
     },
     'closed-tab': {
