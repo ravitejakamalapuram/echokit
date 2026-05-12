@@ -4,53 +4,42 @@ on:
   pull_request:
 
 jobs:
-  # Note: Extension smoke tests are currently skipped in CI due to a known
-  # Chromium limitation: extension service workers don't register reliably
-  # in headless mode (even with --headless=new). See Issue #4 for details.
-  #
-  # Tests work perfectly when run locally:
-  #   python3 tests/smoke_echokit.py
-  #
-  # This job is kept for documentation and can be re-enabled when/if the
-  # Chromium limitation is resolved, or when we migrate to unit tests that
-  # don't require a full browser environment.
+  # Smoke tests now run in headless mode using Playwright's chromium channel
+  # This enables Chrome extension testing in CI without requiring a display server
+  # Tests can be run locally in headed mode with: HEADLESS=false python3 tests/smoke_echokit.py
 
   smoke:
     runs-on: ubuntu-latest
-    # Skip extension tests in CI - they require non-headless browser
-    # Run them locally before merging: python3 tests/smoke_echokit.py
-    if: false  # TODO: Re-enable when headless extension support improves
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install Playwright + xvfb + DBus
-        run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
-          sudo apt-get update
-          sudo apt-get install -y xvfb xauth dbus-x11
+        with:
+          python-version: '3.11'
 
-      - name: Setup DBus session
+      - name: Install Playwright and dependencies
         run: |
-          # Start a DBus session to prevent DBus errors in headless browser
-          mkdir -p ~/.dbus-session
-          dbus-launch --sh-syntax > ~/.dbus-session/dbus-env
-          cat ~/.dbus-session/dbus-env
+          pip install playwright websockets
+          python -m playwright install chromium
 
-      - name: Run smoke test
-        run: |
-          # Source DBus environment
-          if [ -f ~/.dbus-session/dbus-env ]; then
-            . ~/.dbus-session/dbus-env
-          fi
-          # Run with xvfb (virtual display)
-          xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/smoke_echokit.py
+      - name: Run smoke tests (headless)
+        run: python3 tests/smoke_echokit.py
         env:
-          # Prevent DBus warnings
-          DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/1001/bus
+          HEADLESS: 'true'
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_number }}
+          path: |
+            test-results/
+            screenshots/
+            /tmp/*.png
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Basic validation job that always runs - verifies repo structure
   validate:
