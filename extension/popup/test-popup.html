@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>EchoKit Test</title>
+  <style>
+    body { 
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, sans-serif;
+      width: 480px;
+      height: 600px;
+    }
+    .test-box {
+      background: #2a2a2a;
+      border: 2px solid #00ff00;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .error { color: #ff4444; }
+    .success { color: #00ff00; }
+  </style>
+</head>
+<body>
+  <div class="test-box">
+    <h1>🔍 EchoKit Diagnostic</h1>
+    <div id="status">Loading...</div>
+  </div>
+
+  <div class="test-box">
+    <h2>Test Results:</h2>
+    <div id="results"></div>
+  </div>
+
+  <div class="test-box">
+    <h2>UI Test:</h2>
+    <div id="ek-root-test" style="min-height: 200px; background: #333; border: 1px solid #00ff00;"></div>
+  </div>
+
+  <script src="./diagnostic.js"></script>
+</body>
+</html>
