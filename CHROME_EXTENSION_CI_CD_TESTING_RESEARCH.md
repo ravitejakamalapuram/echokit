@@ -200,7 +200,7 @@ assert compare_images('baseline.png', 'current.png', threshold=0.01)
 **Files to Modify**:
 - `tests/smoke_echokit.py` (add channel='chromium')
 - `.github/workflows/test.yml` (remove `if: false`, update setup)
-- `.github/BRANCH_PROTECTION_RULES.md` (document new rule)
+- `BRANCH_PROTECTION_SETUP.md` (document new rule)
 
 ### Phase 2: Add Unit Tests (Week 2-3)
 

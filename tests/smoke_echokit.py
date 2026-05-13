@@ -169,7 +169,8 @@ def main():
             if sw is None and not ctx.service_workers:
                 try:
                     sw = ctx.wait_for_event('serviceworker', timeout=5000)
-                except:
+                except Exception as e:
+                    print(f'⚠️  Timeout waiting for service worker: {e}')
                     pass
 
             if sw is None and ctx.service_workers:
@@ -796,7 +797,9 @@ def main():
             popup3.close()
 
             # Screenshot for visual sanity (saved to /tmp for CI compatibility)
-            screenshot_path = '/tmp/echokit-popup-v15.png'
+            # Use unique filename to avoid collisions in parallel runs
+            import uuid
+            screenshot_path = f'/tmp/echokit-popup-v15-{uuid.uuid4().hex[:8]}.png'
             popup.screenshot(path=screenshot_path)
             print(f'saved {screenshot_path}')
 
