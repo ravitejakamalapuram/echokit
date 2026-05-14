@@ -19,7 +19,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-EXT_PATH = str(Path('/app/extension').resolve())
+# Extension path - works both locally and in CI
+EXT_PATH = str(Path(__file__).parent.parent / 'extension')
 PORT = 18770
 TEST_PORT = PORT
 
@@ -106,17 +107,17 @@ def main():
             if os.path.exists(user_data):
                 import shutil; shutil.rmtree(user_data)
 
-            # CI-friendly browser launch args to prevent timeout
-            # Note: Using "new" headless mode which supports extensions properly
+            # CI-compatible headless mode for Chrome extensions
+            # Use chromium channel for better headless extension support
+            # Can be overridden with HEADLESS=false env var for local debugging
+            headless_mode = os.getenv('HEADLESS', 'true').lower() == 'true'
+
             browser_args = [
                 f'--disable-extensions-except={EXT_PATH}',
                 f'--load-extension={EXT_PATH}',
-                '--headless=new',            # NEW headless mode (Chrome 112+) supports extensions
                 '--no-sandbox',
                 '--no-first-run',
                 '--disable-dev-shm-usage',  # Overcome limited resource problems
-                '--disable-gpu',             # Disable GPU hardware acceleration
-                '--disable-software-rasterizer',  # Disable software rendering fallback
                 '--disable-background-networking',
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
@@ -124,33 +125,62 @@ def main():
                 '--disable-hang-monitor',
             ]
 
+            launch_kwargs = {
+                'args': browser_args,
+            }
+
+            if headless_mode:
+                # Use chromium channel for headless CI support (Playwright recommendation)
+                # This enables the new headless mode that properly supports extensions
+                launch_kwargs['channel'] = 'chromium'
+                launch_kwargs['headless'] = True
+                print("🤖 Running in HEADLESS mode (CI-compatible)")
+            else:
+                # Use regular Chrome for local debugging
+                launch_kwargs['headless'] = False
+                print("👁️  Running in HEADED mode (debugging)")
+
             ctx = p.chromium.launch_persistent_context(
                 user_data,
-                headless=False,  # Set to False - we use --headless=new flag instead
-                args=browser_args,
+                **launch_kwargs,
                 viewport={'width': 1280, 'height': 800},
                 timeout=60000,  # Reduce timeout from default 180s to 60s
             )
 
+            # Wait for service worker using Playwright's event system
+            # This is more reliable than polling, especially in headless mode
             sw = None
+            if ctx.service_workers:
+                sw = ctx.service_workers[0]
+            else:
+                try:
+                    print("⏳ Waiting for extension service worker to register...")
+                    sw = ctx.wait_for_event('serviceworker', timeout=30000)
+                    print(f"✅ Service worker registered: {sw.url}")
+                except Exception as e:
+                    print(f"⚠️  Service worker registration timeout: {e}")
+
+            # Open a test page to trigger extension loading
             page = ctx.new_page()
             page.goto(f'http://127.0.0.1:{PORT}/')
             page.wait_for_load_state('domcontentloaded')
 
-            # Wait for service worker - headless mode needs more time
-            # Increased from 40 iterations to 60 for headless CI environments
-            for i in range(60):
-                if ctx.service_workers:
-                    sw = ctx.service_workers[0]
-                    break
-                time.sleep(0.5)  # Increased from 0.3s to 0.5s
-                # Reload page every 10 attempts to trigger service worker registration
-                if i > 0 and i % 10 == 0:
-                    page.reload(wait_until='domcontentloaded')
+            # Give extension one more chance to register if it hasn't yet
+            if sw is None and not ctx.service_workers:
+                try:
+                    sw = ctx.wait_for_event('serviceworker', timeout=5000)
+                except Exception as e:
+                    print(f'⚠️  Timeout waiting for service worker: {e}')
+                    pass
+
+            if sw is None and ctx.service_workers:
+                sw = ctx.service_workers[0]
 
             step('service_worker_detected', sw is not None)
             if sw is None:
-                print(f'⚠️  No service workers found after 30 seconds')
+                print(f'⚠️  No service workers found after waiting')
+                print(f'   Extension path: {EXT_PATH}')
+                print(f'   Headless mode: {headless_mode}')
                 return results
 
             ext_id = sw.url.split('/')[2]
@@ -766,9 +796,12 @@ def main():
             step('v16_settings_has_transform_add', popup3.locator('[data-testid="transform-add"]').count() > 0)
             popup3.close()
 
-            # Screenshot for visual sanity
-            popup.screenshot(path='/app/echokit-popup-v15.png')
-            print('saved /app/echokit-popup-v15.png')
+            # Screenshot for visual sanity (saved to /tmp for CI compatibility)
+            # Use unique filename to avoid collisions in parallel runs
+            import uuid
+            screenshot_path = f'/tmp/echokit-popup-v15-{uuid.uuid4().hex[:8]}.png'
+            popup.screenshot(path=screenshot_path)
+            print(f'saved {screenshot_path}')
 
             ctx.close()
     finally:
