@@ -8,7 +8,12 @@ Two UI surfaces sharing the same module:
 - **Popup** (400×600) — click the toolbar icon.
 - **DevTools panel** — opens next to Network/Console as an **EchoKit** tab.
 
-## Install (unpacked)
+## Install
+
+**From Chrome Web Store:**
+[Install EchoKit](https://chrome.google.com/webstore/detail/jndhbmaokpclbpjoogffaimahadpdcf)
+
+**Or install unpacked (for development):**
 
 1. `git clone https://github.com/ravitejakamalapuram/echokit.git`
 2. Open `chrome://extensions` → toggle **Developer mode** → **Load unpacked** → pick `echokit/extension/`.
