@@ -323,6 +323,19 @@ async function handleMessage(msg, sender) {
       await persistTabState(); await pushTabMeta(tabId);
       return { ok: true };
     }
+    case 'echokit:recording:stopAll': {
+      let stoppedCount = 0;
+      for (const [tabId, st] of tabState.entries()) {
+        if (st.recording) {
+          st.recording = false;
+          stoppedCount++;
+          await updateBadge(tabId);
+        }
+      }
+      await persistTabState();
+      await pushAllTabs();
+      return { ok: true, stoppedCount };
+    }
     case 'echokit:mocking:toggle': {
       const tabId = msg.tabId; const st = getTab(tabId); st.mocking = !!msg.enabled;
       await persistTabState(); await pushTabMeta(tabId);
