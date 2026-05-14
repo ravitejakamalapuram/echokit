@@ -1,0 +1,12 @@
+{
+  "name": "echokit",
+  "version": "1.0.0",
+  "description": "Chrome extension for recording and mocking HTTP traffic",
+  "scripts": {
+    "build": "./scripts/build-injected.sh",
+    "build:watch": "./scripts/build-injected.sh --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}
