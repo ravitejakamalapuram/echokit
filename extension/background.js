@@ -269,6 +269,15 @@ async function getTabInfo(tabId) {
   }
 }
 
+/**
+ * Handle incoming runtime messages from extension UI pages and content scripts, executing the requested command and returning an operation-specific result.
+ *
+ * This function dispatches on `msg.type` to perform state queries, recording/mocking controls, interaction CRUD, import/export operations, settings and license management, cookie/localStorage bridges, gist sync, and other background tasks. It enriches and persists state as needed and notifies tabs of updates.
+ *
+ * @param {object} msg - Message payload containing a `type` field and any command-specific properties.
+ * @param {chrome.runtime.MessageSender} sender - Message sender info (may include `tab` for tab-scoped requests).
+ * @returns {object} An object whose shape depends on the handled message; most responses include `{ ok: boolean }` and may include additional fields such as `settings`, `interactions`, `id`, `imported`, `deleted`, `sessionId`, `stoppedCount`, `data`, or `error` for failures. Unknown message types return `{ ok: false, error: string }`.
+ */
 async function handleMessage(msg, sender) {
   const fromTabId = sender?.tab?.id ?? msg?.tabId ?? null;
   switch (msg?.type) {

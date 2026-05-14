@@ -318,6 +318,14 @@ function restoreUIState(snap) {
   if (scrollTop && 'scrollTop' in el) el.scrollTop = scrollTop;
 }
 
+/**
+ * Build the top header HTML reflecting the current UI and tab state.
+ *
+ * The returned markup includes recording and mocking controls, a global CORS toggle,
+ * a waterfall view toggle, an Advanced Settings button, a menu toggle, a trial badge
+ * when applicable, and a compact stats bar showing the number of recorded interactions.
+ *
+ * @returns {string} The header HTML string. Contains interactive elements with `data-action` attributes such as `start-recording`, `stop-recording`, `toggle-mocking`, `toggle-cors-master`, `toggle-waterfall`, `open-settings`, and `toggle-menu`.
 function renderHeader() {
   const { recording, mocking } = state.tab;
   const cors = state.settings.corsOverride;
@@ -371,6 +379,14 @@ function renderHeader() {
   `;
 }
 
+/**
+ * Render the floating options menu anchored to the header menu button when the menu is open.
+ *
+ * Builds and inserts a fixed-position menu panel near the menu button, populates menu items
+ * (including pro-gated actions and clipboard preview indicators), attaches click handlers that
+ * invoke the appropriate action (e.g., export/import, copy/paste cookies/localStorage, gist,
+ * settings, stop all recordings), and installs an outside-click listener to close and remove the panel.
+ */
 function renderMenu() {
   // Remove any existing menu panel
   document.querySelectorAll('.ek-menu-panel').forEach(n => n.remove());
@@ -1581,7 +1597,13 @@ function renderAllCodeEditors() {
   });
 }
 
-// ---------- events ----------
+/**
+ * Attach UI event handlers for every element under the root that defines a `data-action`.
+ *
+ * Binds action-specific listeners which update local UI state, invoke background RPCs via `BG(...)`,
+ * trigger selective or full re-renders, and open dialogs/menus as appropriate (e.g., selection, recording
+ * controls, filtering, sorting, mock editing, header edits, chain operations, import/export, and settings).
+ */
 function bindEvents() {
   root.querySelectorAll('[data-action]').forEach(el => {
     const action = el.getAttribute('data-action');
@@ -2050,10 +2072,18 @@ async function onStartRecording() {
   await BG({ type: 'echokit:recording:start', tabId: state.tabId });
   await refresh(); render();
 }
+/**
+ * Stop recording for the current tab, refresh the stored state, and re-render the UI.
+ */
 async function onStopRecording() {
   await BG({ type: 'echokit:recording:stop', tabId: state.tabId });
   await refresh(); render();
 }
+/**
+ * Prompt the user to stop recording on every open tab, perform the stop action, refresh state, and update the UI.
+ *
+ * If the user confirms, sends a stop-all-recordings request to the background, displays an alert with the number of tabs stopped, then refreshes state and re-renders the UI.
+ */
 async function onStopAllRecordings() {
   if (!confirm('Stop recording on ALL open tabs?')) return;
   const res = await BG({ type: 'echokit:recording:stopAll' });
@@ -2063,6 +2093,10 @@ async function onStopAllRecordings() {
   }
   await refresh(); render();
 }
+/**
+ * Toggle mocking for the current tab based on the checkbox state and refresh the UI.
+ * @param {Event} e - Change event from the mocking toggle checkbox; the checkbox's `checked` state determines whether mocking is enabled for the current tab.
+ */
 async function onToggleMocking(e) {
   await BG({ type: 'echokit:mocking:toggle', tabId: state.tabId, enabled: e.target.checked });
   await refresh(); render();
@@ -2120,6 +2154,17 @@ function showImportDialog() {
   });
 }
 
+/**
+ * Open a settings modal that lets the user view and edit EchoKit configuration.
+ *
+ * The dialog exposes scope, theme, CORS override, auto-open behavior, advanced features
+ * (global request headers, blocklist, rewrite rules, response transforms), license key
+ * management, and other settings. When running in the DevTools panel a DevTools-specific
+ * informational callout is shown indicating changes apply across all tabs.
+ *
+ * User changes are persisted by sending background messages and the UI is refreshed after updates.
+ * The modal can be closed with the Done button or by clicking the overlay.
+ */
 function showSettingsDialog() {
   const s = state.settings;
   const isDevTools = state.mode === 'devtools';
