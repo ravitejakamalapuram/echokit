@@ -318,6 +318,14 @@ function restoreUIState(snap) {
   if (scrollTop && 'scrollTop' in el) el.scrollTop = scrollTop;
 }
 
+/**
+ * Build the top header HTML reflecting the current UI and tab state.
+ *
+ * The returned markup includes recording and mocking controls, a global CORS toggle,
+ * a waterfall view toggle, an Advanced Settings button, a menu toggle, a trial badge
+ * when applicable, and a compact stats bar showing the number of recorded interactions.
+ *
+ * @returns {string} The header HTML string. Contains interactive elements with `data-action` attributes such as `start-recording`, `stop-recording`, `toggle-mocking`, `toggle-cors-master`, `toggle-waterfall`, `open-settings`, and `toggle-menu`.
 function renderHeader() {
   const { recording, mocking } = state.tab;
   const cors = state.settings.corsOverride;
@@ -357,6 +365,9 @@ function renderHeader() {
           title="Toggle network waterfall view" data-testid="waterfall-toggle-btn">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
         </button>
+        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+        </button>
         <div class="ek-menu">
           <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
@@ -368,6 +379,14 @@ function renderHeader() {
   `;
 }
 
+/**
+ * Render the floating options menu anchored to the header menu button when the menu is open.
+ *
+ * Builds and inserts a fixed-position menu panel near the menu button, populates menu items
+ * (including pro-gated actions and clipboard preview indicators), attaches click handlers that
+ * invoke the appropriate action (e.g., export/import, copy/paste cookies/localStorage, gist,
+ * settings, stop all recordings), and installs an outside-click listener to close and remove the panel.
+ */
 function renderMenu() {
   // Remove any existing menu panel
   document.querySelectorAll('.ek-menu-panel').forEach(n => n.remove());
@@ -382,6 +401,8 @@ function renderMenu() {
     : `<span class="ek-subtle">nothing in clipboard</span>`;
   const proTag = `<span class="ek-pro-tag">PRO</span>`;
   panel.innerHTML = `
+    <button class="ek-menu-item" data-menu="stop-all" data-testid="menu-stop-all">Stop all recordings <span class="ek-subtle">across all tabs</span></button>
+    <div class="ek-menu-sep"></div>
     <button class="ek-menu-item" data-menu="clear" data-testid="menu-clear">Clear recordings <span class="ek-subtle">${state.interactions.length}</span></button>
     <button class="ek-menu-item" data-menu="export" data-testid="menu-export">Export JSON</button>
     <button class="ek-menu-item" data-menu="import" data-testid="menu-import">Import JSON</button>
@@ -398,7 +419,7 @@ function renderMenu() {
     <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist ${state.isPro ? '<span class="ek-subtle">share w/ team</span>' : proTag}</button>
     <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL ${state.isPro ? '' : proTag}</button>
     <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · blocklist</span></button>
+    <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · headers</span></button>
     <button class="ek-menu-item" data-menu="shortcuts" data-testid="menu-shortcuts">Keyboard shortcuts</button>
   `;
   document.body.appendChild(panel);
@@ -410,7 +431,8 @@ function renderMenu() {
   panel.querySelectorAll('[data-menu]').forEach(el => el.addEventListener('click', () => {
     const which = el.getAttribute('data-menu');
     state.menuOpen = false;
-    if (which === 'clear') onClearSession();
+    if (which === 'stop-all') onStopAllRecordings();
+    else if (which === 'clear') onClearSession();
     else if (which === 'export') onExport();
     else if (which === 'export-har') onExportHar();
     else if (which === 'export-postman') onExportPostman();
@@ -1575,7 +1597,13 @@ function renderAllCodeEditors() {
   });
 }
 
-// ---------- events ----------
+/**
+ * Attach UI event handlers for every element under the root that defines a `data-action`.
+ *
+ * Binds action-specific listeners which update local UI state, invoke background RPCs via `BG(...)`,
+ * trigger selective or full re-renders, and open dialogs/menus as appropriate (e.g., selection, recording
+ * controls, filtering, sorting, mock editing, header edits, chain operations, import/export, and settings).
+ */
 function bindEvents() {
   root.querySelectorAll('[data-action]').forEach(el => {
     const action = el.getAttribute('data-action');
@@ -1607,6 +1635,7 @@ function bindEvents() {
     });
     else if (action === 'toggle-menu') el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
     else if (action === 'toggle-cors') el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); });
+    else if (action === 'open-settings') el.addEventListener('click', () => { showSettingsDialog(); });
     else if (action === 'cycle-scope') el.addEventListener('click', async () => {
       const order = ['domain', 'tab', 'global'];
       const next = order[(order.indexOf(state.settings.scope || 'domain') + 1) % order.length];
@@ -2043,10 +2072,34 @@ async function onStartRecording() {
   await BG({ type: 'echokit:recording:start', tabId: state.tabId });
   await refresh(); render();
 }
+/**
+ * Stop recording for the current tab, refresh the stored state, and re-render the UI.
+ */
 async function onStopRecording() {
   await BG({ type: 'echokit:recording:stop', tabId: state.tabId });
   await refresh(); render();
 }
+/**
+ * Prompt the user to stop recording on every open tab, perform the stop action, refresh state, and update the UI.
+ *
+ * If the user confirms, sends a stop-all-recordings request to the background, displays an alert with the number of tabs stopped, then refreshes state and re-renders the UI.
+ */
+async function onStopAllRecordings() {
+  if (!confirm('Stop recording on ALL open tabs?')) return;
+  const res = await BG({ type: 'echokit:recording:stopAll' });
+  if (res?.ok) {
+    const count = res.stoppedCount || 0;
+    alert(`Stopped recording on ${count} tab${count === 1 ? '' : 's'}.`);
+  } else {
+    const errorMsg = res?.error || 'Unknown error occurred';
+    alert(`Failed to stop recordings: ${errorMsg}`);
+  }
+  await refresh(); render();
+}
+/**
+ * Toggle mocking for the current tab based on the checkbox state and refresh the UI.
+ * @param {Event} e - Change event from the mocking toggle checkbox; the checkbox's `checked` state determines whether mocking is enabled for the current tab.
+ */
 async function onToggleMocking(e) {
   await BG({ type: 'echokit:mocking:toggle', tabId: state.tabId, enabled: e.target.checked });
   await refresh(); render();
@@ -2104,13 +2157,40 @@ function showImportDialog() {
   });
 }
 
+/**
+ * Open a settings modal that lets the user view and edit EchoKit configuration.
+ *
+ * The dialog exposes scope, theme, CORS override, auto-open behavior, advanced features
+ * (global request headers, blocklist, rewrite rules, response transforms), license key
+ * management, and other settings. When running in the DevTools panel a DevTools-specific
+ * informational callout is shown indicating changes apply across all tabs.
+ *
+ * User changes are persisted by sending background messages and the UI is refreshed after updates.
+ * The modal can be closed with the Done button or by clicking the overlay.
+ */
 function showSettingsDialog() {
   const s = state.settings;
+  const isDevTools = state.mode === 'devtools';
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
   overlay.innerHTML = `
     <div class="ek-modal" data-testid="settings-modal">
       <div class="ek-modal-title">Settings</div>
+
+      ${isDevTools ? `
+        <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="color: #3b82f6; flex-shrink: 0;">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+          </svg>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 4px;">💡 DevTools Tip</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+              You're viewing settings from the DevTools panel. Changes here apply to <strong>all tabs</strong> in this browser.
+              Close this dialog to return to the EchoKit panel.
+            </div>
+          </div>
+        </div>
+      ` : ''}
 
       <div class="ek-settings-row">
         <div>
@@ -2158,6 +2238,41 @@ function showSettingsDialog() {
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
         </label>
+      </div>
+
+      <div style="margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-primary);">
+        🔧 Advanced Features
+      </div>
+
+      <div class="ek-settings-row" style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.3); border-radius: 8px; padding: 16px;">
+        <div style="flex:1">
+          <div class="ek-settings-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>🔑 Global Request Headers</span>
+            <span class="ek-tag amber" style="font-size: 10px;">FEATURED</span>
+          </div>
+          <div class="ek-settings-hint">Inject, override, or remove headers on <strong>all outgoing requests</strong>. Perfect for auth tokens, tenant IDs, API keys, feature flags, etc.</div>
+          <div id="ek-requestheaders" style="margin-top:12px" data-testid="requestheaders">
+            ${(s.requestHeaders || []).map((r, idx) => `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;background:var(--bg-secondary)" data-testid="requestheader-row">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
+                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="rh-key" data-idx="${idx}" placeholder="Header name (e.g., Authorization)" style="flex:2" data-testid="requestheader-key-${idx}"/>
+                  <select class="ek-select" data-a="rh-mode" data-idx="${idx}" style="max-width:120px" data-testid="requestheader-mode-${idx}">
+                    <option value="add" ${r.mode==='add'?'selected':''}>Add</option>
+                    <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
+                    <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
+                  </select>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
+                </div>
+                <div class="ek-row-inline" style="gap:6px">
+                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
+                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="rh-url" data-idx="${idx}" placeholder="URL contains… (blank = all)" style="flex:1" data-testid="requestheader-url-${idx}"/>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="ek-btn ek-btn-primary" data-a="rh-add" style="margin-top:6px" data-testid="requestheader-add">＋ Add request header</button>
+        </div>
       </div>
 
       <div class="ek-settings-row">
@@ -2223,34 +2338,6 @@ function showSettingsDialog() {
             `).join('')}
           </div>
           <button class="ek-btn ek-btn-ghost" data-a="tr-add" style="margin-top:6px" data-testid="transform-add">＋ Add transform rule</button>
-        </div>
-      </div>
-
-      <div class="ek-settings-row">
-        <div style="flex:1">
-          <div class="ek-settings-title">Global Request Headers</div>
-          <div class="ek-settings-hint">Inject, override, or remove headers on all outgoing requests. Useful for auth tokens, tenant IDs, feature flags, etc.</div>
-          <div id="ek-requestheaders" style="margin-top:8px" data-testid="requestheaders">
-            ${(s.requestHeaders || []).map((r, idx) => `
-              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px" data-testid="requestheader-row">
-                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
-                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="rh-key" data-idx="${idx}" placeholder="Header name (e.g., Authorization)" style="flex:2" data-testid="requestheader-key-${idx}"/>
-                  <select class="ek-select" data-a="rh-mode" data-idx="${idx}" style="max-width:120px" data-testid="requestheader-mode-${idx}">
-                    <option value="add" ${r.mode==='add'?'selected':''}>Add</option>
-                    <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
-                    <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
-                  </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
-                </div>
-                <div class="ek-row-inline" style="gap:6px">
-                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
-                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="rh-url" data-idx="${idx}" placeholder="URL contains… (blank = all)" style="flex:1" data-testid="requestheader-url-${idx}"/>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          <button class="ek-btn ek-btn-ghost" data-a="rh-add" style="margin-top:6px" data-testid="requestheader-add">＋ Add request header</button>
         </div>
       </div>
 
