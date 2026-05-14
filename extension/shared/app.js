@@ -2,7 +2,9 @@
 // Used by both popup + devtools panel. Mode-switches layout, preserves scroll & cursor.
 
 import { highlightJSON, isValidJSON } from './json-highlight.js';
+import { createScopedLogger } from './logger.js';
 
+const log = createScopedLogger('app');
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
 // Constants
@@ -314,7 +316,14 @@ function restoreUIState(snap) {
   const el = root.querySelector(sel);
   if (!el) return;
   el.focus({ preventScroll: true });
-  try { if (selStart != null && 'selectionStart' in el) el.setSelectionRange(selStart, selEnd ?? selStart); } catch {}
+  try {
+    if (selStart != null && 'selectionStart' in el) {
+      el.setSelectionRange(selStart, selEnd ?? selStart);
+    }
+  } catch (e) {
+    // Expected for non-text input elements - silently ignore
+    log.debug('Could not set selection range on element', { element: el.tagName, selStart, selEnd });
+  }
   if (scrollTop && 'scrollTop' in el) el.scrollTop = scrollTop;
 }
 
@@ -727,7 +736,12 @@ function showGistUploadDialog() {
     const r = await BG({ type: 'echokit:gist:upload', token, description: desc, public: pub });
     overlay.remove();
     if (r?.ok) {
-      try { await navigator.clipboard.writeText(r.url); } catch {}
+      try {
+        await navigator.clipboard.writeText(r.url);
+      } catch (e) {
+        log.warn('Failed to copy gist URL to clipboard', e, { url: r.url });
+        // Still show success toast even if clipboard copy fails
+      }
       toast(`Uploaded — gist URL copied: ${r.url}`);
     } else alert('Gist upload failed: ' + (r?.error || 'unknown'));
   });
@@ -1761,7 +1775,7 @@ function bindEvents() {
       try {
         await chrome.tabs.update(tabId, { active: true });
       } catch (err) {
-        console.error('Failed to switch to tab:', err);
+        log.error('Failed to switch to tab', err, { tabId });
       }
     });
     else if (action === 'clear-all-filters') el.addEventListener('click', () => {
@@ -1830,7 +1844,10 @@ function bindEvents() {
         ta.value = pretty;
         await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: pretty } });
         await refresh(); render();
-      } catch {}
+      } catch (e) {
+        log.warn('Failed to format JSON - invalid JSON syntax', e);
+        alert('Invalid JSON - cannot format');
+      }
     });
     else if (action === 'reset-body') el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: null } });
@@ -2056,7 +2073,7 @@ function softRenderList() {
       try {
         await chrome.tabs.update(tabId, { active: true });
       } catch (err) {
-        console.error('Failed to switch to tab:', err);
+        log.error('Failed to switch to tab', err, { tabId });
       }
     });
   });

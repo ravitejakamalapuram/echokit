@@ -6,6 +6,14 @@
   if (window.__echokitInjected) return;
   window.__echokitInjected = true;
 
+  // Minimal inline logger for injected script (cannot import ES modules in main world)
+  const LOG_PREFIX = '[EchoKit]';
+  const log = {
+    info: (msg, ...args) => console.log(`${LOG_PREFIX} ${msg}`, ...args),
+    warn: (msg, ...args) => console.warn(`${LOG_PREFIX} ${msg}`, ...args),
+    error: (msg, err, ctx) => console.error(`${LOG_PREFIX} ${msg}`, { error: err?.message || err, ...ctx })
+  };
+
   const SRC_INJECTED = 'echokit-injected';
   const SRC_CONTENT = 'echokit-content';
 
@@ -205,7 +213,7 @@
           }
         }
       } catch (e) {
-        console.warn('[EchoKit] Request header rule error:', e);
+        log.warn('Request header rule error:', e);
       }
     }
 
@@ -388,7 +396,7 @@
         try {
           origSetHeader.call(this, key, value);
         } catch (e) {
-          console.warn('[EchoKit] Failed to set header:', key, e);
+          log.warn(`Failed to set header: ${key}`, e);
         }
       }
 

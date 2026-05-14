@@ -8,6 +8,10 @@ import {
   putInteraction, getInteraction, deleteInteraction, getAllInteractions,
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
+import { validateSettings } from './shared/validation.js';
+import { createScopedLogger } from './shared/logger.js';
+
+const log = createScopedLogger('background');
 
 const SESSION_KEY = 'echokit_tab_state';
 const SETTINGS_KEY = 'echokit_settings';
@@ -31,15 +35,24 @@ async function hydrate() {
     const s = await chrome.storage.session.get(SESSION_KEY);
     const raw = s[SESSION_KEY];
     if (raw && typeof raw === 'object') for (const [tid, v] of Object.entries(raw)) tabState.set(Number(tid), v);
-  } catch {}
+  } catch (e) {
+    log.warn('Failed to restore tab state from session storage', e);
+  }
   const stored = await getMeta(SETTINGS_KEY, null);
   if (stored) settings = { ...settings, ...stored };
   await applyCorsRules();
   await applyBlocklistRules();
+  log.info('Hydration complete', { tabCount: tabState.size, settingsKeys: Object.keys(settings) });
 }
 
 async function persistTabState() {
-  try { const obj = {}; for (const [k, v] of tabState.entries()) obj[k] = v; await chrome.storage.session.set({ [SESSION_KEY]: obj }); } catch {}
+  try {
+    const obj = {};
+    for (const [k, v] of tabState.entries()) obj[k] = v;
+    await chrome.storage.session.set({ [SESSION_KEY]: obj });
+  } catch (e) {
+    log.error('Failed to persist tab state to session storage', e);
+  }
 }
 
 function getTab(tabId) {
@@ -103,14 +116,18 @@ async function isLicenseValid(key) {
     if (cached && cached.key === key && (Date.now() - cached.ts) < LICENSE_CACHE_TTL_MS) {
       return !!cached.valid;
     }
-  } catch {}
+  } catch (e) {
+    log.warn('Failed to read license cache', e);
+  }
 
   // Hit the Worker if configured.
   const remote = await validateLicenseRemote(key);
   if (remote.ok) {
     try {
       await chrome.storage.local.set({ [LICENSE_CACHE_KEY]: { key, valid: remote.valid, plan: remote.plan, expiresAt: remote.expiresAt, ts: Date.now() } });
-    } catch {}
+    } catch (e) {
+      log.warn('Failed to cache license validation result', e);
+    }
     return !!remote.valid;
   }
 
@@ -285,7 +302,14 @@ async function handleMessage(msg, sender) {
       const tabId = msg.tabId ?? fromTabId;
       const all = await getAllInteractions();
       let host = '';
-      try { if (tabId != null) { const t = await chrome.tabs.get(tabId); host = hostOf(t?.url || ''); } } catch {}
+      try {
+        if (tabId != null) {
+          const t = await chrome.tabs.get(tabId);
+          host = hostOf(t?.url || '');
+        }
+      } catch (e) {
+        log.warn('Failed to get tab URL for getState', e, { tabId });
+      }
       const ctx = { tabId, host, scope: settings.scope };
       const { index, blockedKeys } = buildMockIndexFor(all, ctx);
       const proStatus = await getProStatus();
@@ -460,11 +484,20 @@ async function handleMessage(msg, sender) {
       return { ok: true, imported: data.interactions.length };
     }
     case 'echokit:settings:update': {
-      settings = { ...settings, ...msg.patch };
+      const { patch } = msg;
+      const validation = validateSettings(patch);
+
+      if (!validation.valid) {
+        log.error('Invalid settings update rejected', null, { errors: validation.errors, patch });
+        return { ok: false, error: validation.errors.join('; ') };
+      }
+
+      settings = { ...settings, ...patch };
       await setMeta(SETTINGS_KEY, settings);
       await applyCorsRules();
       await applyBlocklistRules();
       await pushAllTabs();
+      log.info('Settings updated successfully', { updatedKeys: Object.keys(patch) });
       return { ok: true, settings };
     }
     // --- Cookies copy/paste ---
