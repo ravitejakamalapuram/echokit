@@ -11,7 +11,7 @@ Two UI surfaces sharing the same module:
 ## Install
 
 **From Chrome Web Store:**
-[Install EchoKit](https://chrome.google.com/webstore/detail/jndhbmaokpclbpjoogffaimahadpdcf)
+[Install EchoKit](https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf)
 
 **Or install unpacked (for development):**
 
