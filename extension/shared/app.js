@@ -566,28 +566,29 @@ function showDevToolsGuide() {
   overlay.className = 'ek-modal-overlay';
   overlay.innerHTML = `
     <div class="ek-modal" data-testid="devtools-guide-modal">
-      <div class="ek-modal-title">🔧 Advanced Tools in DevTools</div>
+      <div class="ek-modal-title">⚙️ Advanced Settings in DevTools</div>
       <div style="margin:16px 0">
         <p style="margin:0 0 12px;line-height:1.6;color:var(--text-secondary)">
-          For advanced filtering, body search, and performance analysis:
+          For the best settings experience with advanced features and unlimited space:
         </p>
         <ol style="margin:0 0 16px;padding-left:24px">
           <li style="margin:8px 0;line-height:1.6">Press <kbd style="display:inline-block;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600">F12</kbd> or <kbd style="display:inline-block;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600">Cmd+Opt+I</kbd> to open Chrome DevTools</li>
           <li style="margin:8px 0;line-height:1.6">Click the <strong>EchoKit</strong> tab (next to Console, Network, etc.)</li>
-          <li style="margin:8px 0;line-height:1.6">Access all professional features with unlimited space!</li>
+          <li style="margin:8px 0;line-height:1.6">Click the ⚙️ <strong>Settings</strong> button in the header to access all configuration options</li>
         </ol>
         <div style="background:var(--bg-secondary);border-radius:8px;padding:16px;margin:16px 0">
-          <strong style="display:block;margin-bottom:12px;color:var(--accent)">Available in DevTools:</strong>
+          <strong style="display:block;margin-bottom:12px;color:var(--accent)">Available in DevTools Settings:</strong>
           <ul style="list-style:none;padding:0;margin:0">
-            <li style="padding:4px 0;font-size:14px">✅ Multi-select filters (method + status)</li>
-            <li style="padding:4px 0;font-size:14px">✅ Search request/response bodies</li>
-            <li style="padding:4px 0;font-size:14px">✅ Search headers</li>
-            <li style="padding:4px 0;font-size:14px">✅ Sort by URL, duration, status</li>
-            <li style="padding:4px 0;font-size:14px">✅ Filter chips & result count</li>
+            <li style="padding:4px 0;font-size:14px">🔑 <strong>Global Request Headers</strong> - Inject custom headers on all requests</li>
+            <li style="padding:4px 0;font-size:14px">🚫 <strong>Blocklist</strong> - Block specific requests by pattern</li>
+            <li style="padding:4px 0;font-size:14px">🔄 <strong>Rewrite Rules</strong> - Transform URLs before sending</li>
+            <li style="padding:4px 0;font-size:14px">✏️ <strong>Response Transforms</strong> - Modify response bodies</li>
+            <li style="padding:4px 0;font-size:14px">⚡ <strong>CORS Override</strong> - Bypass CORS restrictions</li>
+            <li style="padding:4px 0;font-size:14px">🎨 <strong>Theme & Scope</strong> - Customize appearance and data scope</li>
           </ul>
         </div>
         <p style="background:rgba(96,165,250,0.1);border-left:3px solid var(--accent);padding:12px 16px;border-radius:4px;font-size:14px;margin:0">
-          <strong>💡 Tip:</strong> The DevTools panel stays open while you browse and never gets in the way!
+          <strong>💡 Tip:</strong> The DevTools panel provides unlimited space for managing complex configurations!
         </p>
       </div>
       <div class="ek-modal-actions">
@@ -1635,7 +1636,15 @@ function bindEvents() {
     });
     else if (action === 'toggle-menu') el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
     else if (action === 'toggle-cors') el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); });
-    else if (action === 'open-settings') el.addEventListener('click', () => { showSettingsDialog(); });
+    else if (action === 'open-settings') el.addEventListener('click', () => {
+      // In popup mode, guide users to DevTools for better settings experience
+      // In DevTools mode, open settings dialog directly
+      if (state.mode === 'popup') {
+        showDevToolsGuide();
+      } else {
+        showSettingsDialog();
+      }
+    });
     else if (action === 'cycle-scope') el.addEventListener('click', async () => {
       const order = ['domain', 'tab', 'global'];
       const next = order[(order.indexOf(state.settings.scope || 'domain') + 1) % order.length];
