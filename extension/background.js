@@ -62,6 +62,7 @@ function visibleInContext(interaction, ctx) {
 //      extension keeps working offline once a key has been validated.
 const LICENSE_CACHE_KEY = 'echokit_license_cache';
 const LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_LICENSE_WORKER_URL = 'https://echokit-license.echokit-rk.workers.dev';
 
 function validateLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
@@ -76,9 +77,9 @@ async function validateLicenseRemote(key) {
   let endpoint;
   try {
     const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
-    endpoint = cfg.echokit_license_endpoint;
-  } catch { endpoint = null; }
-  if (!endpoint) return { ok: false, error: 'no endpoint configured' };
+    endpoint = cfg.echokit_license_endpoint || DEFAULT_LICENSE_WORKER_URL;
+  } catch { endpoint = DEFAULT_LICENSE_WORKER_URL; }
+  if (!endpoint) endpoint = DEFAULT_LICENSE_WORKER_URL;
   try {
     const r = await fetch(endpoint.replace(/\/$/, '') + '/v1/validate', {
       method: 'POST',

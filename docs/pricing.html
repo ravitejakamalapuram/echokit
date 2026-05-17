@@ -260,8 +260,7 @@
   </footer>
 
   <script>
-    // Stripe Payment Links (placeholder — replace with real links after creating products in Stripe)
-    // LemonSqueezy checkout URLs - Live Mode
+    // LemonSqueezy checkout URLs - Production Mode
     const LINKS = {
       monthly: 'https://echokit.lemonsqueezy.com/checkout/buy/a10eaa5e-ce99-4c84-aff6-900405e87880?enabled=1662237',
       annual:  'https://echokit.lemonsqueezy.com/checkout/buy/371e5a4f-2096-4ea0-9197-322ffb41702c?enabled=1662250',
@@ -271,16 +270,33 @@
     document.getElementById('btn-annual').href = LINKS.annual;
     document.getElementById('btn-lifetime').href = LINKS.lifetime;
 
-    function verifyKey() {
+    async function verifyKey() {
       const k = document.getElementById('license-input').value.trim().toUpperCase();
       const msg = document.getElementById('activate-msg');
       if (!k) { msg.textContent = 'Please enter a key.'; msg.className = 'activate-msg err'; return; }
-      const valid = k.startsWith('EK-PRO-') || k.startsWith('EK-YEAR-') || k.startsWith('EK-LTD-');
-      if (valid) {
-        msg.innerHTML = '✓ Valid key format. Open the extension → Menu → Settings → License Key and paste it there.';
-        msg.className = 'activate-msg ok';
-      } else {
-        msg.textContent = '✗ Invalid key format. Keys start with EK-PRO-, EK-YEAR-, or EK-LTD-.';
+
+      msg.textContent = 'Verifying...';
+      msg.className = 'activate-msg';
+
+      try {
+        const res = await fetch('https://echokit-license.echokit-rk.workers.dev/v1/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: k })
+        });
+        const data = await res.json();
+
+        if (data.valid) {
+          const planName = data.plan === 'LTD' ? 'Lifetime' : data.plan === 'YEAR' ? 'Annual' : 'Monthly';
+          const expiryText = data.expiresAt ? new Date(data.expiresAt * 1000).toLocaleDateString() : 'Never';
+          msg.innerHTML = `✓ Valid ${planName} license. Expires: ${expiryText}<br>Open the extension → Menu → Settings → License Key and paste it there.`;
+          msg.className = 'activate-msg ok';
+        } else {
+          msg.textContent = '✗ ' + (data.error || 'Invalid license key');
+          msg.className = 'activate-msg err';
+        }
+      } catch (e) {
+        msg.textContent = '✗ Verification failed: ' + e.message;
         msg.className = 'activate-msg err';
       }
     }
