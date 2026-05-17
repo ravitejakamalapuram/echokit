@@ -5,7 +5,31 @@ echo "🍋 LemonSqueezy Webhook Setup"
 echo "============================="
 echo ""
 
-WORKER_URL="https://echokit-license.echokit-rk.workers.dev"
+# Auto-detect worker URL from wrangler.toml
+WORKER_NAME=$(grep "name" wrangler.toml | head -1 | cut -d'"' -f2)
+if [ -z "$WORKER_NAME" ]; then
+  echo "Error: Could not detect worker name from wrangler.toml"
+  exit 1
+fi
+
+# Prompt for worker URL
+echo "Enter your Worker URL (or press Enter to use default):"
+echo "Format: https://$WORKER_NAME.your-subdomain.workers.dev"
+read -r WORKER_URL_INPUT
+
+if [ -n "$WORKER_URL_INPUT" ]; then
+  WORKER_URL="$WORKER_URL_INPUT"
+else
+  # Try to get from wrangler
+  WORKER_URL=$(wrangler deployments list 2>/dev/null | grep "https://" | head -1 | awk '{print $NF}')
+  if [ -z "$WORKER_URL" ]; then
+    echo "Error: Could not auto-detect Worker URL. Please enter it manually."
+    exit 1
+  fi
+fi
+
+echo "Using Worker URL: $WORKER_URL"
+echo ""
 
 echo "📋 STEP 1: Configure Webhook in LemonSqueezy"
 echo "-------------------------------------------"
@@ -70,7 +94,7 @@ echo "  4. Check 'Recent deliveries' tab for 200 OK"
 echo ""
 echo "Option B: Make a Test Purchase"
 echo "  1. Enable Test Mode in LemonSqueezy"
-echo "  2. Open: file:///Users/rkamalapuram/git-personal/echokit/docs/pricing.html"
+echo "  2. Open your pricing page (docs/pricing.html)"
 echo "  3. Click 'Get Pro Monthly'"
 echo "  4. Use test card: 4242 4242 4242 4242"
 echo "  5. Check your email for license key!"

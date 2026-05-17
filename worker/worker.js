@@ -277,14 +277,15 @@ export default {
           let plan = 'PRO'; // Default to monthly
 
           // Use total_usd for consistent detection (always in USD cents)
-          if (totalUsd >= 19000) {
-            // $190+ = Lifetime
+          // Use thresholds to handle potential discounts or price variations
+          if (totalUsd >= 19900) {
+            // $199+ = Lifetime
             plan = 'LTD';
-          } else if (totalUsd >= 4000) {
-            // $40+ = Annual
+          } else if (totalUsd >= 4900) {
+            // $49+ = Annual
             plan = 'YEAR';
           } else {
-            // Everything else = Monthly
+            // < $49 = Monthly
             plan = 'PRO';
           }
 
