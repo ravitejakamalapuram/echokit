@@ -270,11 +270,27 @@ export default {
         const eventType = event.meta?.event_name;
 
         // Handle successful purchase events
-        if (eventType === 'order_created' || eventType === 'subscription_created') {
+        // IMPORTANT: Only process subscription_created for subscriptions to avoid duplicates
+        // For one-time purchases, order_created is sufficient
+        // LemonSqueezy sends BOTH order_created AND subscription_created for subscriptions
+        if (eventType === 'subscription_created' || eventType === 'order_created') {
+          // For order_created: check if it's a subscription order
+          if (eventType === 'order_created') {
+            const attributes = event.data?.attributes || {};
+            const firstOrderItem = attributes.first_order_item;
+
+            // Skip if this order has a subscription (subscription_created will handle it)
+            if (firstOrderItem?.subscription_id) {
+              console.log('LemonSqueezy: Skipping order_created for subscription (will be handled by subscription_created)');
+              return Response.json({ received: true, skipped: 'subscription order' }, { headers: corsHeaders() });
+            }
+          }
+
+          // Process the purchase (both subscription_created and one-time order_created)
           const attributes = event.data?.attributes || {};
           const email = attributes.user_email || attributes.customer_email;
 
-          // Detect plan based on price (simpler than custom data!)
+        // Detect plan based on price (simpler than custom data!)
           // LemonSqueezy webhook includes: total, total_usd, currency
           const totalUsd = attributes.total_usd || 0; // Amount in cents (USD)
           const total = attributes.total || 0; // Amount in customer's currency (cents)
