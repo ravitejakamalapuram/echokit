@@ -208,7 +208,7 @@ export default {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'EchoKit <no-reply@resend.dev>',
+                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
                   to: [email],
                   subject: `Your EchoKit ${planName} License Key`,
                   html: emailBody
@@ -339,7 +339,7 @@ export default {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'EchoKit <no-reply@resend.dev>',
+                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
                   to: [email],
                   subject: `Your EchoKit ${planName} License Key`,
                   html: emailBody

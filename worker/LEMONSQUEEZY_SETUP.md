@@ -151,46 +151,61 @@ wrangler secret put RESEND_API_KEY
 wrangler deploy
 ```
 
-### 4.3 Current Email Behavior
+### 4.3 Email Domain Configuration
 
-**With `no-reply@resend.dev` (current setup):**
-- ⚠️ Emails only go to YOUR verified email
-- ✅ Works for testing
-- ❌ **Won't work for customers in production**
-
-**To send to customers, you MUST add a custom domain (see Step 5)**
+**Using `mail.echo-kit.com` (production setup):**
+- ✅ Emails will be sent to customers
+- ✅ Professional sender address: `no-reply@mail.echo-kit.com`
+- ⚠️ **Requires DNS verification** (see Step 5 below)
 
 ---
 
-## Step 5: Add Custom Domain (Required for Production)
+## Step 5: Verify Domain in Resend (Required for Production)
 
-### 5.1 Verify Domain in Resend
+### 5.1 Add Domain to Resend
 
 1. Go to: https://resend.com/domains
 2. Click **"Add Domain"**
-3. Enter your domain (e.g., `echokit.com` or `mail.echokit.com`)
-4. Add DNS records shown by Resend to your domain registrar:
-   - **SPF** (TXT): `v=spf1 include:resend.com ~all`
-   - **DKIM** (TXT): Long string provided by Resend
-   - **DMARC** (TXT): `v=DMARC1; p=none`
-5. Wait for verification (5-15 minutes)
+3. Enter: `mail.echo-kit.com`
+4. Resend will show DNS records to add
 
-### 5.2 Update Worker
+### 5.2 Add DNS Records to Your Domain Registrar
 
-Edit `worker/worker.js` line ~376:
+Add these records to your domain registrar (where you bought echo-kit.com):
 
-**Before:**
-```javascript
-from: 'EchoKit <no-reply@resend.dev>',
+**Required Records:**
+- **SPF (TXT)**: `v=spf1 include:resend.com ~all`
+- **DKIM (TXT)**: Long string provided by Resend (unique to your account)
+- **DMARC (TXT)**: `v=DMARC1; p=none`
+
+**Example DNS setup:**
+```text
+Type: TXT
+Name: @
+Value: v=spf1 include:resend.com ~all
+
+Type: TXT
+Name: resend._domainkey
+Value: [Long DKIM string from Resend]
+
+Type: TXT
+Name: _dmarc
+Value: v=DMARC1; p=none
 ```
 
-**After:**
-```javascript
-from: 'EchoKit <no-reply@yourdomain.com>',
-```
+### 5.3 Wait for Verification
 
-Deploy:
+- DNS propagation takes 5-15 minutes (sometimes up to 24 hours)
+- Check Resend dashboard for "Verified" status
+- Once verified, emails will send to customers automatically
+
+### 5.4 Deploy Updated Worker
+
+The worker is already configured to use `no-reply@mail.echo-kit.com`.
+
+Just deploy:
 ```bash
+cd worker
 wrangler deploy
 ```
 
