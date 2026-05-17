@@ -1,5 +1,6 @@
 #!/bin/bash
 # LemonSqueezy Webhook Setup Script
+set -euo pipefail
 
 echo "🍋 LemonSqueezy Webhook Setup"
 echo "============================="
@@ -58,24 +59,33 @@ echo "Now we'll set the signing secret you just copied."
 echo ""
 
 # Set the webhook secret
-wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
+if ! wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET; then
+  echo "❌ Failed to set LEMONSQUEEZY_WEBHOOK_SECRET"
+  exit 1
+fi
 
 echo ""
 echo "🚀 STEP 3: Deploy Worker"
 echo "----------------------"
 echo ""
-wrangler deploy
+if ! wrangler deploy; then
+  echo "❌ Worker deployment failed"
+  exit 1
+fi
 
 echo ""
 echo "✅ STEP 4: Verify Setup"
 echo "---------------------"
 echo ""
 echo "Checking worker health..."
-HEALTH=$(curl -s "$WORKER_URL/__health")
+if ! HEALTH=$(curl -fsS --max-time 10 "$WORKER_URL/__health"); then
+  echo "❌ Health endpoint request failed"
+  exit 1
+fi
 echo "Response: $HEALTH"
 echo ""
 
-if echo "$HEALTH" | grep -q '"ok":true'; then
+if echo "$HEALTH" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'; then
   echo "✅ Worker is healthy!"
 else
   echo "❌ Worker health check failed!"
