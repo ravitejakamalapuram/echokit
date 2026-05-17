@@ -117,8 +117,11 @@ openssl rand -hex 32
    - **Callback URL**: `https://echokit-license.{your-subdomain}.workers.dev/v1/lemonsqueezy-webhook`
    - **Signing Secret**: Paste the secret you generated in 3.1
    - **Events**: Select:
-     - ✅ `order_created`
-     - ✅ `subscription_created`
+     - ✅ `order_created` (for one-time purchases)
+     - ✅ `subscription_created` (for subscriptions)
+   - **Note**: The worker is smart enough to handle both events without duplicates
+     - For subscriptions: Only `subscription_created` is processed
+     - For one-time purchases: Only `order_created` is processed
 4. Click **"Save Webhook"**
 
 ### 3.3 Set Webhook Secret in Worker
