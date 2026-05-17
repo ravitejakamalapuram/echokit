@@ -90,7 +90,6 @@ async function validateLicenseRemote(key) {
     const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
     endpoint = cfg.echokit_license_endpoint || DEFAULT_LICENSE_WORKER_URL;
   } catch { endpoint = DEFAULT_LICENSE_WORKER_URL; }
-  if (!endpoint) endpoint = DEFAULT_LICENSE_WORKER_URL;
   try {
     const r = await fetch(endpoint.replace(/\/$/, '') + '/v1/validate', {
       method: 'POST',
