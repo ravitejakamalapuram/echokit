@@ -23,6 +23,18 @@
 
 ---
 
+### 1.5. DNS Configuration ✨ (NEW!)
+- [x] Domain verified on Cloudflare nameservers
+- [x] Zone ID obtained: `a94a4d7324d18dcc520612b4c16d5a40`
+- [x] CNAME record created: `api.echo-kit.com` → Worker
+- [x] CNAME record created: `www.echo-kit.com` → apex
+- [x] DNS propagated successfully
+- [x] Automated scripts created
+
+**DNS IPs:** 104.21.3.182, 172.67.131.2 ✅
+
+---
+
 ### 2. Cloudflare Worker Deployment 🚀
 - [x] Worker deployed successfully
 - [x] Live at: `https://echokit-license.echokit-rk.workers.dev`
@@ -46,36 +58,31 @@ curl https://echokit-license.echokit-rk.workers.dev/__health
 - [x] Created `.github/workflows/deploy-worker.yml` (CI/CD)
 - [x] Created `setup-cloudflare-hosting.sh` (interactive script)
 - [x] Created `update-email-addresses.sh` (email migration)
+- [x] Created `setup-dns-records.sh` (manual DNS guide)
+- [x] Created `setup-dns-via-api.sh` (automated DNS via API)
 - [x] All changes committed and pushed to GitHub
 
 ---
 
 ## 📋 **Pending Tasks**
 
-### Priority 1: Domain Configuration (When Ready)
+### Priority 1: Add Worker Route (2 min) ⚡
 
-#### Task 1: Add echo-kit.com to Cloudflare (10 min)
+**DNS is already configured!** Just need to add the Worker route:
+
 ```
 1. Go to: https://dash.cloudflare.com
-2. Click: "Add a Site"
-3. Enter: echo-kit.com
-4. Select: Free plan
-5. Copy nameservers (e.g., aldo.ns.cloudflare.com)
-6. Update nameservers at your domain registrar
-7. Wait for activation (5-30 minutes)
+2. Click: Workers & Pages (left sidebar)
+3. Click: echokit-license
+4. Click: Triggers tab
+5. Under "Routes", click: Add route
+6. Fill in:
+   Route: api.echo-kit.com/*
+   Zone: echo-kit.com
+7. Click: Add route
 ```
 
-#### Task 2: Configure DNS for Worker (2 min)
-```
-1. After domain active: Dashboard → echo-kit.com → DNS
-2. Add CNAME record:
-   Type: CNAME
-   Name: api
-   Target: echokit-license.echokit-rk.workers.dev
-   Proxy: ON (orange cloud)
-3. Save
-4. Re-deploy worker: cd worker && wrangler deploy
-```
+**Test:** `curl https://api.echo-kit.com/__health`
 
 **Result:** Worker accessible at `https://api.echo-kit.com` ✨
 
