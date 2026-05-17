@@ -1,9 +1,11 @@
 // EchoKit license-validation Cloudflare Worker
 //
 // Endpoints:
-//   POST /v1/validate         { key, deviceId? } → { valid, plan, expiresAt, error? }
-//   POST /v1/issue   (admin)  { plan, expiresAt } → { key }
-//   GET  /__health            → { ok: true }
+//   POST /v1/validate              { key, deviceId? } → { valid, plan, expiresAt, error? }
+//   POST /v1/issue        (admin)  { plan, expiresAt } → { key }
+//   POST /v1/stripe-webhook        Stripe payment webhook (auto-issue licenses)
+//   POST /v1/lemonsqueezy-webhook  LemonSqueezy payment webhook (auto-issue licenses)
+//   GET  /__health                 → { ok: true }
 //
 // Key format:  EK-{PLAN}-{EXPIRY}-{SIG}
 //   PLAN     = "PRO" | "YEAR" | "LTD"
@@ -23,6 +25,59 @@ function corsHeaders() {
     'access-control-allow-headers': 'content-type, authorization',
     'access-control-max-age': '86400'
   };
+}
+
+// Helper: build license key email template
+function buildLicenseEmail(key, planName, expiryText, source = null) {
+  const sourceAttribution = source === 'lemonsqueezy'
+    ? 'Powered by LemonSqueezy 🍋<br>\n    '
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f59e0b; color: #000; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .key-box { background: #f3f4f6; border: 2px solid #f59e0b; border-radius: 6px; padding: 16px; margin: 20px 0; font-family: 'Monaco', 'Courier New', monospace; font-size: 16px; text-align: center; }
+    .instructions { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; }
+    .footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎉 Welcome to EchoKit ${planName}!</h1>
+  </div>
+
+  <p>Thank you for purchasing EchoKit ${planName}! Your license key is ready.</p>
+
+  <div class="key-box">
+    ${key}
+  </div>
+
+  <p><strong>Plan:</strong> ${planName}<br>
+  <strong>Status:</strong> ${expiryText}</p>
+
+  <div class="instructions">
+    <strong>How to activate:</strong><br>
+    1. Open the EchoKit Chrome extension<br>
+    2. Click the menu (⋮) → Settings<br>
+    3. Paste your license key in the "License Key" field<br>
+    4. Click "Activate"<br>
+    5. All Pro features unlock instantly!
+  </div>
+
+  <p>Need help? Visit <a href="https://github.com/ravitejakamalapuram/echokit">github.com/ravitejakamalapuram/echokit</a> or reply to this email.</p>
+
+  <div class="footer">
+    EchoKit — API Recorder & Mocker<br>
+    ${sourceAttribution}This is an automated email. Your license key is cryptographically signed and cannot be changed.
+  </div>
+</body>
+</html>
+  `.trim();
 }
 
 async function hmacSha256Hex(secret, message) {
@@ -143,51 +198,7 @@ export default {
             const planName = plan === 'LTD' ? 'Lifetime' : plan === 'YEAR' ? 'Annual' : 'Monthly';
             const expiryText = expiresAt === 0 ? 'Never expires' : `Expires: ${new Date(expiresAt * 1000).toLocaleDateString()}`;
 
-            const emailBody = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #f59e0b; color: #000; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
-    .header h1 { margin: 0; font-size: 24px; }
-    .key-box { background: #f3f4f6; border: 2px solid #f59e0b; border-radius: 6px; padding: 16px; margin: 20px 0; font-family: 'Monaco', 'Courier New', monospace; font-size: 16px; text-align: center; }
-    .instructions { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; }
-    .footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🎉 Welcome to EchoKit ${planName}!</h1>
-  </div>
-
-  <p>Thank you for purchasing EchoKit ${planName}! Your license key is ready.</p>
-
-  <div class="key-box">
-    ${key}
-  </div>
-
-  <p><strong>Plan:</strong> ${planName}<br>
-  <strong>Status:</strong> ${expiryText}</p>
-
-  <div class="instructions">
-    <strong>How to activate:</strong><br>
-    1. Open the EchoKit Chrome extension<br>
-    2. Click the menu (⋮) → Settings<br>
-    3. Paste your license key in the "License Key" field<br>
-    4. Click "Activate"<br>
-    5. All Pro features unlock instantly!
-  </div>
-
-  <p>Need help? Visit <a href="https://github.com/ravitejakamalapuram/echokit">github.com/ravitejakamalapuram/echokit</a> or reply to this email.</p>
-
-  <div class="footer">
-    EchoKit — API Recorder & Mocker<br>
-    This is an automated email. Your license key is cryptographically signed and cannot be changed.
-  </div>
-</body>
-</html>
-            `.trim();
+            const emailBody = buildLicenseEmail(key, planName, expiryText);
 
             try {
               const emailRes = await fetch('https://api.resend.com/emails', {
@@ -197,7 +208,7 @@ export default {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'EchoKit <no-reply@resend.dev>',
+                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
                   to: [email],
                   subject: `Your EchoKit ${planName} License Key`,
                   html: emailBody
@@ -230,6 +241,154 @@ export default {
 
       } catch (e) {
         console.error('Stripe webhook error:', e);
+        return Response.json({ error: 'webhook processing failed: ' + e.message },
+          { status: 500, headers: corsHeaders() });
+      }
+    }
+
+    // LemonSqueezy webhook: auto-issue license keys on successful payment
+    if (url.pathname === '/v1/lemonsqueezy-webhook' && request.method === 'POST') {
+      try {
+        const body = await request.text();
+        const signature = request.headers.get('x-signature');
+
+        // Verify webhook signature
+        if (!signature || !env.LEMONSQUEEZY_WEBHOOK_SECRET) {
+          return Response.json({ error: 'missing signature or webhook secret not configured' },
+            { status: 400, headers: corsHeaders() });
+        }
+
+        // Verify HMAC signature from LemonSqueezy
+        const expectedSignature = await hmacSha256Hex(env.LEMONSQUEEZY_WEBHOOK_SECRET, body);
+        if (!timingSafeEqual(signature, expectedSignature)) {
+          return Response.json({ error: 'invalid signature' },
+            { status: 401, headers: corsHeaders() });
+        }
+
+        // Parse event
+        const event = JSON.parse(body);
+        const eventType = event.meta?.event_name;
+
+        // Handle successful purchase events
+        // IMPORTANT: Only process subscription_created for subscriptions to avoid duplicates
+        // For one-time purchases, order_created is sufficient
+        // LemonSqueezy sends BOTH order_created AND subscription_created for subscriptions
+        if (eventType === 'subscription_created' || eventType === 'order_created') {
+          // For order_created: check if it's a subscription order
+          if (eventType === 'order_created') {
+            const attributes = event.data?.attributes || {};
+            const firstOrderItem = attributes.first_order_item;
+
+            // Skip if this order has a subscription (subscription_created will handle it)
+            if (firstOrderItem?.subscription_id) {
+              console.log('LemonSqueezy: Skipping order_created for subscription (will be handled by subscription_created)');
+              return Response.json({ received: true, skipped: 'subscription order' }, { headers: corsHeaders() });
+            }
+          }
+
+          // Process the purchase (both subscription_created and one-time order_created)
+          const attributes = event.data?.attributes || {};
+          const email = attributes.user_email || attributes.customer_email;
+
+        // Detect plan based on price (simpler than custom data!)
+          // LemonSqueezy webhook includes: total, total_usd, currency
+          const totalUsd = attributes.total_usd || 0; // Amount in cents (USD)
+          const total = attributes.total || 0; // Amount in customer's currency (cents)
+
+          // Detect plan from amount:
+          // $5.00 = 500 cents = Monthly (PRO)
+          // $49.00 = 4900 cents = Annual (YEAR)
+          // $199.00 = 19900 cents = Lifetime (LTD)
+          let plan = 'PRO'; // Default to monthly
+
+          // Use total_usd for consistent detection (always in USD cents)
+          // Use thresholds to handle potential discounts or price variations
+          if (totalUsd >= 19900) {
+            // $199+ = Lifetime
+            plan = 'LTD';
+          } else if (totalUsd >= 4900) {
+            // $49+ = Annual
+            plan = 'YEAR';
+          } else {
+            // < $49 = Monthly
+            plan = 'PRO';
+          }
+
+          // Allow custom_data override (takes precedence over price detection)
+          // Fallback order: 1) Price-based detection, 2) Custom data override
+          const customData = event.meta?.custom_data || {};
+          if (customData.echokit_plan) {
+            plan = customData.echokit_plan.toUpperCase();
+          }
+
+          // Validate plan
+          if (!ALLOWED_PLANS.has(plan)) {
+            console.error(`Invalid plan from LemonSqueezy: ${plan}`);
+            return Response.json({ error: 'invalid plan' }, { status: 400, headers: corsHeaders() });
+          }
+
+          // Determine expiry based on plan
+          let expiresAt = 0; // LTD default (never expires)
+          if (plan === 'PRO') {
+            // Monthly: expires in 30 days
+            expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
+          } else if (plan === 'YEAR') {
+            // Annual: expires in 365 days
+            expiresAt = Math.floor(Date.now() / 1000) + (365 * 86400);
+          }
+
+          // Issue the license key
+          const key = await issueKey(plan, expiresAt, env.ECHOKIT_HMAC_SECRET);
+
+          // Send email with license key (reuse email logic from Stripe webhook)
+          if (email && env.RESEND_API_KEY) {
+            const planName = plan === 'LTD' ? 'Lifetime' : plan === 'YEAR' ? 'Annual' : 'Monthly';
+            const expiryText = expiresAt === 0 ? 'Never expires' : `Expires: ${new Date(expiresAt * 1000).toLocaleDateString()}`;
+
+            const emailBody = buildLicenseEmail(key, planName, expiryText, 'lemonsqueezy');
+
+            try {
+              const emailRes = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
+                  to: [email],
+                  subject: `Your EchoKit ${planName} License Key`,
+                  html: emailBody
+                })
+              });
+
+              const emailResult = await emailRes.json();
+              console.log(`LemonSqueezy: Email sent to ${email}:`, emailResult);
+            } catch (emailErr) {
+              console.error('LemonSqueezy: Failed to send email:', emailErr);
+              // Don't fail the webhook - key is still issued
+            }
+          }
+
+          // Log for monitoring
+          console.log(`LemonSqueezy: Issued ${plan} license for ${email}: ${key} (expires: ${expiresAt || 'never'})`);
+
+          // Return success
+          return Response.json({
+            ok: true,
+            key,
+            plan,
+            expiresAt,
+            emailSent: !!(email && env.RESEND_API_KEY),
+            source: 'lemonsqueezy'
+          }, { headers: corsHeaders() });
+        }
+
+        // Acknowledge other event types
+        return Response.json({ received: true, event: eventType }, { headers: corsHeaders() });
+
+      } catch (e) {
+        console.error('LemonSqueezy webhook error:', e);
         return Response.json({ error: 'webhook processing failed: ' + e.message },
           { status: 500, headers: corsHeaders() });
       }

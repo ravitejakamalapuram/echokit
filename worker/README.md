@@ -1,28 +1,33 @@
 # EchoKit License Worker
 
-Cloudflare Worker that signs and validates EchoKit Pro license keys with
-HMAC-SHA256. No database — every key is self-signed by `ECHOKIT_HMAC_SECRET`,
-so the worker is stateless and free-tier friendly.
+Cloudflare Worker for license key validation, issuance, and automated delivery via LemonSqueezy payments.
 
-## Deploy
+**Features:**
+- ✅ Self-signed HMAC-SHA256 keys (no database required)
+- ✅ Automated LemonSqueezy payment integration
+- ✅ Email delivery via Resend
+- ✅ 3 pricing tiers: PRO ($5/month), YEAR ($49/year), LTD ($199 lifetime)
+- ✅ Admin API for manual key issuance
+
+## Quick Start
 
 ```bash
-cd /app/worker
-npm i -g wrangler
-wrangler login
-
-# 1. Generate a strong secret (paste into the prompt)
-openssl rand -hex 32 | xargs -I{} bash -c 'echo {}; wrangler secret put ECHOKIT_HMAC_SECRET'
-
-# 2. (optional) Set an admin token so you can mint new keys via /v1/issue
-wrangler secret put ECHOKIT_ADMIN_TOKEN
-
+cd worker
+npm install
 wrangler deploy
 ```
 
-You'll get a URL like `https://echokit-license.<your-account>.workers.dev`.
-Configure that URL into the extension via `chrome.storage.sync` key
-`echokit_license_endpoint` (the extension reads it on every license check).
+Configure secrets:
+```bash
+wrangler secret put ECHOKIT_HMAC_SECRET        # License signing (openssl rand -hex 32)
+wrangler secret put ECHOKIT_ADMIN_TOKEN        # Admin API auth
+wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET # LemonSqueezy webhook verification
+wrangler secret put RESEND_API_KEY             # Email delivery
+```
+
+**📖 Full Setup Guide**: See `LEMONSQUEEZY_SETUP.md`
+
+Your worker URL: `https://echokit-license.<your-account>.workers.dev`
 
 ## Endpoints
 
@@ -74,3 +79,37 @@ EK-{PLAN}-{EXPIRY}-{SIG}
 
 `wrangler secret put ECHOKIT_HMAC_SECRET` and redeploy. **All previously issued
 keys become invalid** — this is the revocation mechanism.
+
+---
+
+## Extension Integration
+
+### Free Trial
+- **7-day Pro trial** automatically granted on extension install
+- All Pro features unlocked during trial
+- Trial tracked in `chrome.storage.sync.echokit_trial_expiry`
+
+### License Validation Flow
+1. User enters license key in extension settings
+2. Extension validates format: `EK-{PLAN}-{EXPIRY}-{SIG}`
+3. Extension calls `/v1/validate` for cryptographic verification
+4. Result cached for 24 hours
+5. Pro features unlock
+
+### PRO Features (Gated)
+- **API Blocking**: Block specific API requests
+- **HAR/Postman Export**: Export recordings
+- **GitHub Gist Sync**: Backup/share recordings
+- **Advanced Matching**: More powerful mocking rules
+
+**Free features** (always available):
+- Basic API recording and replay
+- Request/response inspection
+- Simple URL-based mocking
+- DevTools integration
+
+---
+
+## Payment Integration
+
+See `LEMONSQUEEZY_SETUP.md` for complete LemonSqueezy integration guide.
