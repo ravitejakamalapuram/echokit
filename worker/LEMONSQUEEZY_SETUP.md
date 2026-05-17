@@ -8,14 +8,14 @@ Complete guide for setting up automated license key delivery via LemonSqueezy pa
 
 This integration automatically issues license keys when customers purchase EchoKit Pro through LemonSqueezy:
 
-```
+```text
 Customer Purchase → LemonSqueezy → Webhook → Worker → License Key → Email
 ```
 
 **Features:**
 - ✅ Automatic license key generation (HMAC-signed, no database needed)
 - ✅ Email delivery via Resend
-- ✅ Price-based plan detection ($5=PRO, $49=YEAR, $199=LTD)
+- ✅ Threshold-based plan detection (≥$199→LTD, ≥$49→YEAR, <$49→PRO)
 - ✅ Support for subscriptions and one-time payments
 - ✅ 24-hour license validation caching in extension
 
@@ -226,8 +226,8 @@ wrangler tail
 ```
 
 You should see:
-```
-LemonSqueezy: Issued {PLAN} license for {email}: EK-{PLAN}-{EXPIRY}-{SIG}
+```text
+LemonSqueezy: Issued {PLAN} license for {email}: EK-{PLAN}-{EXPIRY}-{SIGNATURE}
 LemonSqueezy: Email sent to {email}
 ```
 
@@ -244,20 +244,22 @@ curl -X POST https://echokit-license.{your-subdomain}.workers.dev/v1/validate \
 
 ## How It Works
 
-### Plan Detection (Price-Based)
+### Plan Detection (Threshold-Based)
 
-The worker automatically detects the plan from the payment amount:
+The worker automatically detects the plan from the payment amount using thresholds:
 
-```javascript
+```text
 // Line 268-295 in worker.js
-$5.00 (500 cents)    → PRO plan   (30-day license)
-$49.00 (4900 cents)  → YEAR plan  (365-day license)
-$199.00 (19900 cents) → LTD plan   (lifetime license)
+< $49 (< 4900 cents)        → PRO plan   (30-day license)
+$49-$198 (4900-19899 cents) → YEAR plan  (365-day license)
+≥ $199 (≥ 19900 cents)      → LTD plan   (lifetime license)
 ```
+
+This threshold-based detection allows for price variations (discounts, regional pricing, etc.) while still correctly mapping to the appropriate plan tier.
 
 ### License Key Format
 
-```
+```text
 EK-{PLAN}-{EXPIRY}-{SIGNATURE}
 ```
 
