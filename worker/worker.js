@@ -3,7 +3,6 @@
 // Endpoints:
 //   POST /v1/validate              { key, deviceId? } → { valid, plan, expiresAt, error? }
 //   POST /v1/issue        (admin)  { plan, expiresAt } → { key }
-//   POST /v1/stripe-webhook        Stripe payment webhook (auto-issue licenses)
 //   POST /v1/lemonsqueezy-webhook  LemonSqueezy payment webhook (auto-issue licenses)
 //   GET  /__health                 → { ok: true }
 //
@@ -154,95 +153,6 @@ export default {
         return Response.json({ key, plan, expiresAt }, { headers: corsHeaders() });
       } catch (e) {
         return Response.json({ error: e.message }, { status: 400, headers: corsHeaders() });
-      }
-    }
-
-    // Stripe webhook: auto-issue license keys on successful payment
-    if (url.pathname === '/v1/stripe-webhook' && request.method === 'POST') {
-      try {
-        const body = await request.text();
-        const signature = request.headers.get('stripe-signature');
-
-        if (!signature || !env.STRIPE_WEBHOOK_SECRET) {
-          return Response.json({ error: 'missing signature or webhook secret not configured' },
-            { status: 400, headers: corsHeaders() });
-        }
-
-        // Verify Stripe signature (simplified - in production use Stripe SDK)
-        // For now, we trust the signature verification is done by Stripe's webhook endpoint
-        // and we just parse the event. A production version should verify the HMAC.
-
-        const event = JSON.parse(body);
-
-        // Handle successful payment events
-        if (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded') {
-          const metadata = event.data.object.metadata || {};
-          const plan = metadata.echokit_plan || 'PRO';
-          const email = event.data.object.customer_email || event.data.object.receipt_email;
-
-          // Determine expiry based on plan
-          let expiresAt = 0; // LTD default
-          if (plan === 'PRO') {
-            // Monthly: expires in 30 days
-            expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
-          } else if (plan === 'YEAR') {
-            // Yearly: expires in 365 days
-            expiresAt = Math.floor(Date.now() / 1000) + (365 * 86400);
-          }
-
-          // Issue the key
-          const key = await issueKey(plan, expiresAt, env.ECHOKIT_HMAC_SECRET);
-
-          // Send email with license key
-          if (email && env.RESEND_API_KEY) {
-            const planName = plan === 'LTD' ? 'Lifetime' : plan === 'YEAR' ? 'Annual' : 'Monthly';
-            const expiryText = expiresAt === 0 ? 'Never expires' : `Expires: ${new Date(expiresAt * 1000).toLocaleDateString()}`;
-
-            const emailBody = buildLicenseEmail(key, planName, expiryText);
-
-            try {
-              const emailRes = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
-                  to: [email],
-                  subject: `Your EchoKit ${planName} License Key`,
-                  html: emailBody
-                })
-              });
-
-              const emailResult = await emailRes.json();
-              console.log(`Email sent to ${email}:`, emailResult);
-            } catch (emailErr) {
-              console.error('Failed to send email:', emailErr);
-              // Don't fail the webhook - key is still issued
-            }
-          }
-
-          // Log for monitoring
-          console.log(`Issued ${plan} license for ${email}: ${key} (expires: ${expiresAt || 'never'})`);
-
-          // Return success
-          return Response.json({
-            ok: true,
-            key,
-            plan,
-            expiresAt,
-            emailSent: !!(email && env.RESEND_API_KEY)
-          }, { headers: corsHeaders() });
-        }
-
-        // Acknowledge other event types
-        return Response.json({ received: true }, { headers: corsHeaders() });
-
-      } catch (e) {
-        console.error('Stripe webhook error:', e);
-        return Response.json({ error: 'webhook processing failed: ' + e.message },
-          { status: 500, headers: corsHeaders() });
       }
     }
 

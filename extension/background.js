@@ -62,7 +62,14 @@ function visibleInContext(interaction, ctx) {
 //      extension keeps working offline once a key has been validated.
 const LICENSE_CACHE_KEY = 'echokit_license_cache';
 const LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_LICENSE_WORKER_URL = 'https://echokit-license.echokit-rk.workers.dev';
 
+/**
+ * Determine whether a license key matches the accepted offline formats.
+ *
+ * @param {string|null|undefined} key - The license key to validate; may be null/undefined.
+ * @returns {boolean} `true` if the key begins with `EK-PRO-`, `EK-YEAR-`, or `EK-LTD-` (case-insensitive, trimmed), `false` otherwise.
+ */
 function validateLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim().toUpperCase();
@@ -70,25 +77,40 @@ function validateLicenseKey(key) {
   return /^EK-(PRO|YEAR|LTD)-/.test(k);
 }
 
+/**
+ * Validate a license key against the remote license validation endpoint.
+ * @param {string} key - License key to validate.
+ * @returns {{ok:true, valid:boolean, plan:string|null, expiresAt:string|null, error?:string|null} | {ok:false, error:string}} Result object: on success (`ok: true`) includes `valid`, optional `plan` and `expiresAt`, and optional `error` details; on failure (`ok: false`) includes an `error` message.
+ */
 async function validateLicenseRemote(key) {
   // Returns { ok: true, valid, plan, expiresAt } or { ok: false, error }.
   if (!key) return { ok: true, valid: false };
   let endpoint;
   try {
     const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
-    endpoint = cfg.echokit_license_endpoint;
-  } catch { endpoint = null; }
-  if (!endpoint) return { ok: false, error: 'no endpoint configured' };
+    endpoint = cfg.echokit_license_endpoint || DEFAULT_LICENSE_WORKER_URL;
+  } catch (e) {
+    // Storage read failed - propagate error instead of falling back
+    return { ok: false, error: 'storage error: ' + (e.message || e) };
+  }
+
+  // Add timeout to prevent hanging on slow networks
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
   try {
     const r = await fetch(endpoint.replace(/\/$/, '') + '/v1/validate', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key })
+      body: JSON.stringify({ key }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     if (!r.ok) return { ok: false, error: `http ${r.status}` };
     const j = await r.json();
     return { ok: true, valid: !!j.valid, plan: j.plan || null, expiresAt: j.expiresAt || null, error: j.error || null };
   } catch (e) {
+    clearTimeout(timeoutId);
     return { ok: false, error: String(e.message || e) };
   }
 }
