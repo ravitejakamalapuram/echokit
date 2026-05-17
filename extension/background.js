@@ -89,17 +89,28 @@ async function validateLicenseRemote(key) {
   try {
     const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
     endpoint = cfg.echokit_license_endpoint || DEFAULT_LICENSE_WORKER_URL;
-  } catch { endpoint = DEFAULT_LICENSE_WORKER_URL; }
+  } catch (e) {
+    // Storage read failed - propagate error instead of falling back
+    return { ok: false, error: 'storage error: ' + (e.message || e) };
+  }
+
+  // Add timeout to prevent hanging on slow networks
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
   try {
     const r = await fetch(endpoint.replace(/\/$/, '') + '/v1/validate', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key })
+      body: JSON.stringify({ key }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     if (!r.ok) return { ok: false, error: `http ${r.status}` };
     const j = await r.json();
     return { ok: true, valid: !!j.valid, plan: j.plan || null, expiresAt: j.expiresAt || null, error: j.error || null };
   } catch (e) {
+    clearTimeout(timeoutId);
     return { ok: false, error: String(e.message || e) };
   }
 }
