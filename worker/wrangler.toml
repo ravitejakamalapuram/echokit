@@ -17,5 +17,8 @@ compatibility_date = "2025-01-01"
 [vars]
 ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 
-# Optional: set a custom domain after deploy, e.g. license.echokit.dev
-# routes = ["license.echokit.dev/*"]
+# Custom domain routing (requires DNS setup in Cloudflare Dashboard)
+# The worker will be accessible at both api.echo-kit.com and the workers.dev URL
+routes = [
+  { pattern = "api.echo-kit.com/*", zone_name = "echo-kit.com" }
+]
