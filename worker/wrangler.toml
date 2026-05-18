@@ -17,8 +17,7 @@ compatibility_date = "2025-01-01"
 [vars]
 ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 
-# Custom domain routing (requires DNS setup in Cloudflare Dashboard)
-# The worker will be accessible at both api.echo-kit.com and the workers.dev URL
-routes = [
-  { pattern = "api.echo-kit.com/*", zone_name = "echo-kit.com" }
-]
+# Custom domain routing is configured in Cloudflare Dashboard
+# Route: api.echo-kit.com/* -> Zone: echo-kit.com
+# The worker is accessible at both api.echo-kit.com and the workers.dev URL
+# Removing routes from wrangler.toml since it's managed in the dashboard
