@@ -627,3 +627,69 @@ state = {
   sortOrder: 'desc'
 }
 ```
+
+---
+
+## UI Mockups
+
+### Current UI (Before)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔴 REC  ⚡ MOCK                                    example.com  │
+├─────────────────────────────────────────────────────────────────┤
+│ [Search URL...                           ] [GET][POST][PUT]    │
+│                                             [Status: all ▼]     │
+├─────────────────────────────────────────────────────────────────┤
+│ API List (15 interactions)                                      │
+│ 📦 api.example.com                                              │
+│   GET  /users           200  ⚡                                 │
+│   POST /auth            401  ⚡                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Limitations: URL-only search, single method filter, no body search, no sorting.
+
+### Proposed UI — Collapsed State
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔴 REC  ⚡ MOCK                                    example.com  │
+├─────────────────────────────────────────────────────────────────┤
+│ [Search: url, method:POST, status:4xx ] [🔍 Advanced ▼] [Clear]│
+├─────────────────────────────────────────────────────────────────┤
+│ Filters: 3 active                                   Showing 4/15│
+│ [× method:POST] [× status:4xx] [× request:"token"]              │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────┬──────────────────┬────────┬──────────┬─────────────┐   │
+│ │ ☑   │ URL ▼           │ Status │ Duration │ Time        │   │
+│ ├─────┼──────────────────┼────────┼──────────┼─────────────┤   │
+│ │ ⚡  │ POST /auth       │  401   │  12ms    │ 2 mins ago  │   │
+│ └─────┴──────────────────┴────────┴──────────┴─────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Proposed UI — Expanded Advanced Filters
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ ┌─ Advanced Filters ────────────────────────────────────────┐   │
+│ │ HTTP Method: [✓] GET  [✓] POST  [ ] PUT  [ ] PATCH  [ ] DELETE│
+│ │ Status:      [✓] 2xx  [ ] 3xx  [✓] 4xx  [ ] 5xx  [ ] Failed │
+│ │ Request contains:  [userId                             ]   │   │
+│ │ Response contains: [error                              ]   │   │
+│ │ Request Header:  [authorization  ] = [Bearer           ]   │   │
+│ │ Time Range: From [2026-05-01] To [2026-05-07]              │   │
+│ │ [ ] Mock enabled only  [ ] Blocked only  [ ] Has notes     │   │
+│ │                              [Apply Filters] [Reset All]   │   │
+│ └───────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Advanced Search Syntax Examples
+
+| Query | Finds |
+|-------|-------|
+| `method:POST url:/auth status:401` | Failed POST auth attempts |
+| `response:"User not found"` | Responses containing that string |
+| `method:GET status:2xx header:cache-control` | Successful GETs with cache headers |

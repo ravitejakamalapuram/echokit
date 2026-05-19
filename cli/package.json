@@ -5,6 +5,7 @@
   "bin": {
     "echokit-server": "./bin/echokit-server.js"
   },
+  "type": "commonjs",
   "main": "lib/server.js",
   "scripts": {
     "start": "node bin/echokit-server.js",

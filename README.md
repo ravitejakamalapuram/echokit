@@ -79,29 +79,99 @@ cd echokit
 4. **✅ Enable Mocking** — Toggle **MOCK** on
 5. **🎭 Test your app** — Requests now return mocked responses
 
-For detailed workflows, see the [Extension Architecture Guide](extension/README.md).
+For detailed workflows, see the [Extension Architecture Guide](extension/README.md). For the full product roadmap, see [TODO.md](TODO.md).
 
 ## Repository Structure
 
 ```
 echokit/
-├── 📦 extension/              # Chrome MV3 extension source code
+│
+│  ── SOURCE CODE ─────────────────────────────────────────────────────
+├── 📦 extension/              # Chrome MV3 extension (load this in chrome://extensions)
 │   ├── manifest.json          # Extension manifest (version, permissions)
 │   ├── background.js          # Service worker (IndexedDB, state, DNR)
 │   ├── injected.js            # Main-world fetch/XHR interception
 │   ├── content.js             # Isolated-world messaging bridge
 │   ├── popup/                 # Browser popup UI (400×600)
 │   ├── devtools/              # DevTools panel UI
-│   └── shared/                # Shared UI components & logic
-├── 🧪 tests/                  # End-to-end testing
-│   └── smoke_echokit.py       # Playwright smoke tests (24+ assertions)
-├── 📚 docs/                   # Documentation & website
+│   ├── shared/                # Shared UI components & logic
+│   ├── icons/                 # Extension icons (16/48/128px)
+│   └── onboarding/            # First-install welcome page
+│
+├── 🖥️  cli/                    # Node.js headless mock server (npm: echokit-server)
+│   ├── bin/echokit-server.js  # CLI entry point
+│   ├── lib/                   # Server & matcher logic
+│   └── test/                  # CLI unit tests
+│
+├── ☁️  worker/                  # Cloudflare Worker — HMAC license validation
+│   ├── worker.js              # Worker source
+│   └── wrangler.toml          # Cloudflare config
+│
+│  ── TESTS ────────────────────────────────────────────────────────────
+├── 🧪 tests/                  # All automated tests
+│   ├── smoke_echokit.py       # Playwright E2E smoke tests (87 assertions)
+│   ├── debug_extension.py     # Extension debug helper
+│   ├── test_imports.js        # Import validation
+│   └── test_validation.js     # Input validation tests
+│
+│  ── SCRIPTS & TOOLS ─────────────────────────────────────────────────
+├── 🛠️  scripts/                # Build, deploy, and setup scripts
+│   ├── build-store-zip.sh     # Builds Chrome Web Store zip
+│   ├── test-cws-auth.sh       # Tests CWS authentication
+│   ├── setup/                 # Cloudflare & DNS setup scripts
+│   └── tools/                 # Developer utilities
+│       └── generate_screenshots.py
+│
+│  ── WEB ASSETS ──────────────────────────────────────────────────────
+├── 🌐 website/                # Public website — served by Cloudflare Pages
 │   ├── index.html             # Landing page
-│   ├── simulator.html         # Interactive demo
-│   └── internal/              # Project documentation
-├── 📋 memory/                 # Product specifications
-│   └── PRD.md                 # Living product requirements
-└── 🛠️ scripts/                # Build & deployment scripts
+│   ├── docs.html              # Documentation page
+│   ├── pricing.html           # Pricing page
+│   ├── faq.html               # FAQ page
+│   ├── changelog.html         # Changelog page
+│   ├── simulator.html         # Interactive API mock simulator
+│   ├── privacy.html           # Privacy policy
+│   └── style.css              # Shared stylesheet
+│
+│  ── CONTRIBUTOR DOCS ────────────────────────────────────────────────
+├── 📖 docs/                   # Internal contributor documentation (not served publicly)
+│   ├── architecture/          # System design & technical deep-dives
+│   ├── deployment/            # CI/CD, hosting, and publishing guides
+│   ├── design/                # Design system & UI history
+│   ├── github/                # GitHub Actions & repo setup docs
+│   ├── research/              # Testing framework research notes
+│   ├── testing/               # Manual test plans & checklists
+│   ├── troubleshooting/       # Debug guides
+│   └── archive/               # Completed feature docs (historical reference)
+│
+│  ── STORE ASSETS ────────────────────────────────────────────────────
+├── 🏪 store/                  # Chrome Web Store listing assets
+│   ├── screenshots/           # Store screenshots (1280×800)
+│   ├── chrome-web-store.md    # Store listing copy
+│   ├── privacy-policy.md      # Privacy policy text
+│   ├── screenshot-guide.md    # Screenshot capture guide
+│   └── *.zip                  # Pre-built release bundles
+│
+│  ── DESIGN ──────────────────────────────────────────────────────────
+├── 🎨 design/                 # UI mockups & design system prototypes
+│   ├── EchoKit Design System v2.html
+│   ├── EchoKit Popup v1.html
+│   └── screenshots/           # Design reference screenshots
+│
+│  ── PRODUCT SPECS ───────────────────────────────────────────────────
+├── 📋 specs/                  # Living product specifications & decisions
+│   ├── PRD.md                 # Product Requirements Document
+│   ├── DECISION_SUMMARY.md    # Architecture & product decisions log
+│   ├── QUICK_REFERENCE.md     # Developer quick reference card
+│   └── ...                    # Feature designs, UX comparisons, etc.
+│
+│  ── ROOT DOCS ───────────────────────────────────────────────────────
+├── README.md                  # ← you are here
+├── CLAUDE.md                  # AI agent instructions (auto-loaded by Claude Code / Cursor)
+├── CHANGELOG.md               # Version history
+├── CONTRIBUTING.md            # Contribution guide & workflow
+├── DEVELOPMENT_RULES.md       # Code quality rules, PR checklist, merge rules
+└── TODO.md                    # Living roadmap (P0–P3 backlog)
 ```
 
 ## Testing
@@ -142,8 +212,9 @@ We welcome contributions from the community! 🎉
 ### Getting Started
 
 1. **Read the guidelines** — [CONTRIBUTING.md](CONTRIBUTING.md)
-2. **Review the PR template** — [Pull Request Checklist](.github/pull_request_template.md)
-3. **Follow coding standards** — See [CONTRIBUTING.md](CONTRIBUTING.md) for code quality guidelines
+2. **Review dev rules** — [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md) (code quality, PR checklist, merge rules)
+3. **Review the PR template** — [Pull Request Checklist](.github/pull_request_template.md)
+4. **Check the product spec** — [specs/PRD.md](specs/PRD.md)
 
 ### Contribution Workflow
 
@@ -178,10 +249,17 @@ git push origin feature/your-feature-name
 - **[Extension Architecture](extension/README.md)** — Deep dive into architecture, feature map, and technical design
 - **[Product Roadmap](TODO.md)** — Current priorities and upcoming features
 - **[Contributing Guide](CONTRIBUTING.md)** — Development workflow and code standards
+- **[Development Rules](DEVELOPMENT_RULES.md)** — Code quality rules, PR checklist, merge checklist
 
-### Additional Resources
-- **[Internal Documentation](docs/internal/README.md)** — Deployment guides, design history, and architecture decisions
-- **[Website Assets](docs/)** — Public-facing pages (pricing, FAQ, privacy policy)
+### Internal Contributor Docs
+- **[Internal Documentation](docs/README.md)** — Deployment guides, design history, and architecture decisions
+- **[Architecture](docs/architecture/)** — CORS implementation, Worker design
+- **[Deployment](docs/deployment/)** — CI/CD, Chrome publishing, Cloudflare hosting
+- **[GitHub CI/CD Setup](docs/github/)** — GitHub Actions setup, branch protection, release automation
+- **[Troubleshooting](docs/troubleshooting/)** — CORS issues, blank screen debugging
+
+### Web Assets
+- **[Website](website/)** — Public-facing pages (pricing, FAQ, privacy policy) — served by Cloudflare Pages
 - **[Chrome Web Store Listing](https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf)** — Official extension page
 
 ## Support

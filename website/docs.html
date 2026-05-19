@@ -1,7 +1,18 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Docs · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Docs · EchoKit</title>
+  <meta name="description" content="EchoKit documentation — match modes, scope system, error simulation, CORS override, export/import, and architecture."/>
+  <meta property="og:title" content="Docs · EchoKit"/>
+  <meta property="og:description" content="Learn how to use EchoKit: match modes, scope, error simulation, CORS override, export/import, and architecture."/>
+  <link rel="canonical" href="https://echokit.dev/docs.html"/>
+  <link rel="icon" href="./favicon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
 <body>
-<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./simulator.html">Simulator</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
 
 <div class="container doc-layout">
   <aside class="doc-toc">
@@ -26,7 +37,9 @@
     <p>EchoKit is a Chrome Manifest V3 extension that records <code>fetch</code> and <code>XMLHttpRequest</code> traffic from any tab, then replays user-edited responses for those same requests. It runs entirely in your browser.</p>
 
     <h2 id="install">Install</h2>
-    <p>Until published to the Chrome Web Store:</p>
+    <p><strong>From the Chrome Web Store (recommended):</strong></p>
+    <p><a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" target="_blank">Install EchoKit from the Chrome Web Store →</a></p>
+    <p><strong>Or load from source:</strong></p>
     <pre><code>git clone https://github.com/ravitejakamalapuram/echokit.git
 # chrome://extensions → Developer mode → Load unpacked → pick echokit/extension/</code></pre>
 

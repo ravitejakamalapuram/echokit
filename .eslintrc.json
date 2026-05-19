@@ -1,0 +1,82 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-debugger": "error",
+    "no-var": "error",
+    "prefer-const": ["warn", { "destructuring": "any" }],
+    "no-eval": "error",
+    "no-new-func": "error"
+  },
+  "overrides": [
+    {
+      "files": ["extension/background.js"],
+      "env": {
+        "browser": false,
+        "serviceworker": true
+      },
+      "globals": {
+        "chrome": "readonly",
+        "self": "readonly",
+        "indexedDB": "readonly",
+        "IDBKeyRange": "readonly",
+        "fetch": "readonly",
+        "caches": "readonly",
+        "clients": "readonly"
+      }
+    },
+    {
+      "files": ["extension/**/*.js"],
+      "globals": {
+        "chrome": "readonly"
+      }
+    },
+    {
+      "files": ["cli/**/*.js"],
+      "env": {
+        "browser": false,
+        "node": true,
+        "es2022": true
+      },
+      "parserOptions": {
+        "sourceType": "commonjs"
+      }
+    },
+    {
+      "files": ["worker/**/*.js"],
+      "env": {
+        "browser": false,
+        "worker": true,
+        "es2022": true
+      },
+      "globals": {
+        "ECHOKIT_HMAC_SECRET": "readonly",
+        "ECHOKIT_ADMIN_TOKEN": "readonly"
+      }
+    },
+    {
+      "files": ["tests/**/*.js"],
+      "env": {
+        "node": true,
+        "es2022": true
+      }
+    },
+    {
+      "files": ["scripts/**/*.js"],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

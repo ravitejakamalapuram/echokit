@@ -1,0 +1,40 @@
+{
+  "name": "echokit",
+  "version": "1.10.3",
+  "description": "Record real API interactions and instantly mock them. Chrome extension + headless server.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "npm run test:matcher && npm run test:cli",
+    "test:matcher": "node tests/test-matcher.js",
+    "test:cli": "node cli/test/test.js",
+    "test:smoke": "python3 tests/smoke_echokit.py",
+    "lint": "eslint extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js cli/bin/echokit-server.js cli/lib --ext .js",
+    "lint:fix": "eslint --fix extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js cli/bin/echokit-server.js cli/lib --ext .js",
+    "build": "bash scripts/build-store-zip.sh",
+    "build:bump": "bash scripts/build-store-zip.sh --bump"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ravitejakamalapuram/echokit.git"
+  },
+  "homepage": "https://echokit.dev",
+  "bugs": {
+    "url": "https://github.com/ravitejakamalapuram/echokit/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "chrome-extension",
+    "api-mocking",
+    "api-recorder",
+    "developer-tools",
+    "mock-server",
+    "testing"
+  ]
+}

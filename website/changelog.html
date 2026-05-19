@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Changelog · EchoKit</title>
+  <meta name="description" content="Full version history for EchoKit — the Chrome extension for recording and mocking fetch and XHR traffic."/>
+  <meta property="og:title" content="Changelog · EchoKit"/>
+  <meta property="og:description" content="Full version history for EchoKit — record and mock API traffic in your browser."/>
+  <link rel="canonical" href="https://echokit.dev/changelog.html"/>
+  <link rel="icon" href="./favicon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./simulator.html">Simulator</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+
+<main class="container" style="padding: 48px 24px; max-width: 760px;">
+  <h1>Changelog</h1>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.10.3</span><span class="changelog-date">Current</span></div>
+    <ul>
+      <li>Stability and polish pass across the extension UI.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.6.0</span><span class="changelog-date">2026</span></div>
+    <ul>
+      <li><strong>Global request headers</strong> — inject, override, or remove headers on all outgoing requests; optional URL pattern filtering.</li>
+      <li><strong>URL rewrite rules</strong> — substring or <code>/regex/flags</code> pattern applied to outgoing fetch URLs.</li>
+      <li><strong>Response transform rules</strong> — add/remove header, set body, or regex-replace body on mocked responses.</li>
+      <li><strong>Network waterfall visualizer</strong> — timeline view showing method, path, status, and duration bars.</li>
+      <li><strong>API source visibility badges</strong> — each request shows whether it was served from a mock, passed through, or blocked.</li>
+      <li><strong>GitHub Gist sync</strong> (Pro) — backup and share mock sets via personal Gist.</li>
+      <li><strong>Cookie read/write bridge</strong> and <strong>localStorage read/write bridge</strong>.</li>
+      <li><strong>OpenAPI / Swagger 2 import</strong> — walks <code>paths × methods</code> and creates mock interactions automatically.</li>
+      <li><strong>7-day Pro trial</strong> — automatically granted on install.</li>
+      <li>Cloudflare Worker license backend — stateless HMAC-SHA256 validation; Stripe webhook auto-issues keys.</li>
+      <li>CLI: <code>--report</code> and <code>--report-format markdown</code> flags; <code>/__healthz</code> endpoint; full WebSocket / SSE frame handling.</li>
+      <li>E2E smoke tests: 87/87 assertions passing.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.5.0</span><span class="changelog-date">2026</span></div>
+    <ul>
+      <li><strong>Freemium model</strong> — 50-recording free tier; Pro features gated behind license key.</li>
+      <li><strong>HAR import / export</strong> — convert Chrome HAR exports into mocks; export as HAR.</li>
+      <li><strong>Postman Collection v2.1 export</strong> — generate Postman-compatible collection JSON.</li>
+      <li><strong>Conditional mock</strong> (<code>mockMaxCount</code>) — fire a mock N times then pass through to real network.</li>
+      <li><strong>Mock chaining</strong> — define N response steps per interaction with loop mode and manual cursor reset.</li>
+      <li><strong>API blocking</strong> — block specific requests from ever reaching the network.</li>
+      <li><strong>WS/SSE mock replay</strong> — <code>createFakeMockWS</code> and <code>createFakeMockSSE</code>; frame-timed replay with loop mode.</li>
+      <li>Fixed: hash mismatch between record time and replay time — <code>injected.js</code> now passes the FNV-1a hash through directly.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.4.0</span><span class="changelog-date">2026</span></div>
+    <ul>
+      <li><strong><code>echokit-server</code></strong> — zero-dependency Node.js headless mock server published to npm.</li>
+      <li>Replays exported EchoKit JSON in CI or locally — no browser required.</li>
+      <li>Supports all six match modes: strict, ignore-query, ignore-body, path-wildcard, graphql, graphql-op.</li>
+      <li><code>--ci</code> mode exits non-zero if any request is unmatched; <code>--watch</code> mode reloads on file change.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.3.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>WebSocket + SSE (EventSource) capture — recorded as a single interaction with frame log.</li>
+      <li>Team sync via GitHub Gist — Menu → Upload to Gist produces a shareable URL; Menu → Import from Gist fetches &amp; imports with one click.</li>
+      <li>In-browser simulator at <code>/simulator.html</code> — demo the record/mock loop without installing.</li>
+      <li>Chrome Web Store ready: 440×280 promo tile + 1400×560 marquee + 4 captioned 1280×800 screenshots.</li>
+      <li>CI: tag-triggered release workflow zips the extension and attaches to GitHub Releases; optional auto-publish to Chrome Web Store.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.2.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>GraphQL match mode (operation + query fingerprint + variables).</li>
+      <li>URL blocklist via Chrome <code>urlFilter</code> patterns — blocks any matching request at the network layer.</li>
+      <li>localStorage copy/paste between tabs with smart clipboard detection.</li>
+      <li>Onboarding page opens on fresh install.</li>
+      <li>Landing page + Docs + FAQ (this site).</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.1.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>Overflow menu collapses EXPORT / IMPORT / SETTINGS / CLEAR — popup no longer overflows in 400px.</li>
+      <li>Scope system: Domain (default) / Tab / Global — recordings filtered per scope.</li>
+      <li>Per-API match modes: strict / ignore-query / ignore-body / path-wildcard.</li>
+      <li>Themes: Dark / Light / Auto.</li>
+      <li>JSON syntax highlighter (textarea + <code>&lt;pre&gt;</code> overlay).</li>
+      <li>Keyboard shortcuts via manifest commands.</li>
+      <li>Action badge: <span class="tag">REC</span> while recording, <span class="tag">MOCK</span> while mocking.</li>
+      <li>Auto-open popup on tab refresh when recording (<code>chrome.action.openPopup</code>).</li>
+      <li>Resizable DevTools panel.</li>
+      <li>Fixed: search input typing in reverse (soft-render list only).</li>
+      <li>Fixed: list + detail scroll resetting across polling re-renders (snapshot/restore).</li>
+      <li>Fixed: CLEAR now wipes all interactions in current scope.</li>
+      <li>Fixed: CORS toggle reachable via overflow menu + persistent footer indicator.</li>
+    </ul>
+  </div>
+
+  <div class="changelog-entry">
+    <div><span class="changelog-version">v1.0.0</span><span class="changelog-date">Feb 2026</span></div>
+    <ul>
+      <li>Initial release.</li>
+      <li>Record <code>fetch</code> + <code>XMLHttpRequest</code> per tab.</li>
+      <li>Strict matching (method + URL + body hash).</li>
+      <li>Per-API mock toggle + per-tab master toggle.</li>
+      <li>Raw JSON body editor, status + headers override.</li>
+      <li>Latency slider + error simulation (4xx / 5xx / network / timeout).</li>
+      <li>Search + filter + domain grouping.</li>
+      <li>Conflict handling with version picker.</li>
+      <li>Export / Import JSON.</li>
+      <li>CORS override via <code>declarativeNetRequest</code>.</li>
+    </ul>
+  </div>
+</main>
+
+<footer class="footer"><div class="container">Open source · MIT · <a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></footer>
+</body>
+</html>

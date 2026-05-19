@@ -1,7 +1,12 @@
 // EchoKit — Background service worker.
 // Adds in v1.2: GraphQL match mode, URL blocklist, localStorage copy/paste bridge, onboarding welcome tab.
 // v1.6.0: API Source Visibility with badges and filters
-// v1.6.4: Testing automated release workflow with PAT
+
+// Set to true locally to see CORS / rule installation diagnostics in the SW console.
+// Must be false in production builds (verbose logging has a measurable overhead in SW).
+const DEBUG = false;
+/** @type {(...args: unknown[]) => void} */
+const dbg = DEBUG ? console.log.bind(console) : () => {};
 
 import { computeHash, computeMatchKeys } from './shared/matcher.js';
 import {
@@ -15,9 +20,11 @@ const CORS_RULESET_ID = 1001;
 const BLOCKLIST_RULESET_BASE = 2000; // rules 2000..2099 reserved for blocklist
 
 const tabState = new Map();
+// Default settings. 'domain' scope is the documented default (matches app.js).
+// NOTE: any change here must also be reflected in the default state in shared/app.js.
 let settings = {
   corsOverride: false,
-  scope: 'tab',
+  scope: 'domain',
   theme: 'dark',
   autoOpenOnRefresh: true,
   blocklist: [],
@@ -82,13 +89,35 @@ function validateLicenseKey(key) {
  * @param {string} key - License key to validate.
  * @returns {{ok:true, valid:boolean, plan:string|null, expiresAt:string|null, error?:string|null} | {ok:false, error:string}} Result object: on success (`ok: true`) includes `valid`, optional `plan` and `expiresAt`, and optional `error` details; on failure (`ok: false`) includes an `error` message.
  */
+// Allowlist of valid license validation endpoints.
+// Custom endpoints must start with one of these prefixes.
+// This prevents a compromised chrome.storage.sync account from redirecting
+// validation to an attacker-controlled worker.
+const LICENSE_ENDPOINT_ALLOWLIST = [
+  'https://echokit-license.echokit-rk.workers.dev',
+  'https://echokit-license.echokit.dev',
+  'http://localhost', // dev/self-hosted only
+];
+
+/**
+ * Validate a license key against the remote license validation endpoint.
+ * The endpoint is read from chrome.storage.sync but restricted to the allowlist
+ * to prevent SSRF via a compromised sync account.
+ */
 async function validateLicenseRemote(key) {
   // Returns { ok: true, valid, plan, expiresAt } or { ok: false, error }.
   if (!key) return { ok: true, valid: false };
   let endpoint;
   try {
     const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
-    endpoint = cfg.echokit_license_endpoint || DEFAULT_LICENSE_WORKER_URL;
+    const stored = cfg.echokit_license_endpoint;
+    // Only accept the stored endpoint if it matches the allowlist.
+    if (stored && LICENSE_ENDPOINT_ALLOWLIST.some(prefix => stored.startsWith(prefix))) {
+      endpoint = stored;
+    } else {
+      if (stored) dbg('[EchoKit license] Ignoring non-allowlisted endpoint:', stored);
+      endpoint = DEFAULT_LICENSE_WORKER_URL;
+    }
   } catch (e) {
     // Storage read failed - propagate error instead of falling back
     return { ok: false, error: 'storage error: ' + (e.message || e) };
@@ -139,6 +168,12 @@ async function isLicenseValid(key) {
   // Worker unreachable — fall back to format-only validation so users keep
   // working offline / on flaky networks. Cache a short-lived "tentative"
   // result so we retry on the next call.
+  //
+  // SECURITY NOTE: This means any string matching `EK-{PRO|YEAR|LTD}-*` will
+  // pass as a valid Pro key while the validation worker is down. This is an
+  // intentional UX trade-off (better to let real customers keep working than
+  // to lock everyone out during an outage). The HMAC server check runs again
+  // on the next extension restart / after the 24h cache expires.
   return true;
 }
 
@@ -205,23 +240,42 @@ function buildMockIndexFor(interactions, ctx) {
   return { index, blockedKeys };
 }
 
-async function pushTabMeta(tabId) {
+/**
+ * Push current tab state + mock index to a single tab.
+ * Pass a pre-loaded interactions array when calling from pushAllTabs to avoid
+ * an IDB scan per tab (N×getAllInteractions problem).
+ *
+ * @param {number} tabId
+ * @param {Array|null} [cachedInteractions] - Pre-loaded interactions, or null to load fresh.
+ */
+async function pushTabMeta(tabId, cachedInteractions = null) {
   const st = getTab(tabId);
   let tab;
   try { tab = await chrome.tabs.get(tabId); } catch { return; }
   if (!tab) return;
   st.host = hostOf(tab.url || '');
   const ctx = { tabId, host: st.host, scope: settings.scope };
-  const all = await getAllInteractions();
+  // Use the caller-supplied snapshot if available; otherwise load from IDB.
+  const all = cachedInteractions ?? await getAllInteractions();
   const { index, blockedKeys } = buildMockIndexFor(all, ctx);
   safeSend(tabId, { type: 'echokit:tabState', payload: { ...st, corsOverride: settings.corsOverride, scope: settings.scope, blocklist: settings.blocklist, rewriteRules: settings.rewriteRules || [], transformRules: settings.transformRules || [], requestHeaders: settings.requestHeaders || [] } });
   safeSend(tabId, { type: 'echokit:mockIndex', payload: { mocks: index, blocked: blockedKeys } });
   await updateBadge(tabId);
 }
 
+/**
+ * Push state to all open tabs.
+ * Loads interactions ONCE and reuses the snapshot for every tab push,
+ * avoiding an N×IDB scan where N is the number of open tabs.
+ */
 async function pushAllTabs() {
-  const tabs = await chrome.tabs.query({});
-  for (const t of tabs) if (t.id != null) pushTabMeta(t.id).catch(() => {});
+  const [tabs, interactions] = await Promise.all([
+    chrome.tabs.query({}),
+    getAllInteractions(),
+  ]);
+  for (const t of tabs) {
+    if (t.id != null) pushTabMeta(t.id, interactions).catch(() => {});
+  }
 }
 
 function safeSend(tabId, msg) { chrome.tabs.sendMessage(tabId, msg).catch(() => {}); }
@@ -254,19 +308,19 @@ async function applyCorsRules() {
     const corsIds = currentDynamic.filter(r => r.id === CORS_RULESET_ID).map(r => r.id);
     if (corsIds.length) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: corsIds });
-      console.log('[EchoKit CORS] Removed', corsIds.length, 'dynamic CORS rule(s)');
+      dbg('[EchoKit CORS] Removed', corsIds.length, 'dynamic CORS rule(s)');
     }
 
     const currentSession = await chrome.declarativeNetRequest.getSessionRules();
     const sessionCorsIds = currentSession.filter(r => r.id === CORS_RULESET_ID).map(r => r.id);
     if (sessionCorsIds.length) {
       await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: sessionCorsIds });
-      console.log('[EchoKit CORS] Removed', sessionCorsIds.length, 'session CORS rule(s)');
+      dbg('[EchoKit CORS] Removed', sessionCorsIds.length, 'session CORS rule(s)');
     }
 
     // If CORS override is disabled, we're done
     if (!settings.corsOverride) {
-      console.log('[EchoKit CORS] CORS override disabled');
+      dbg('[EchoKit CORS] CORS override disabled');
       return;
     }
 
@@ -297,7 +351,7 @@ async function applyCorsRules() {
           condition: { urlFilter: '|http', resourceTypes }
         }]
       });
-      console.log('[EchoKit CORS] Installed GLOBAL dynamic rule (browser-wide)');
+      dbg('[EchoKit CORS] Installed GLOBAL dynamic rule (browser-wide)');
     } else if (scope === 'domain') {
       // Domain scope: we need to collect all current tab domains and update rules
       await applyCorsRulesForAllTabs();
@@ -348,7 +402,7 @@ async function applyCorsRulesForAllTabs() {
       const validTabIds = tabs.map(t => t.id).filter(id => id != null);
 
       if (validTabIds.length === 0) {
-        console.log('[EchoKit CORS] No valid tabs for tab-scoped CORS');
+        dbg('[EchoKit CORS] No valid tabs for tab-scoped CORS');
         return;
       }
 
@@ -365,7 +419,7 @@ async function applyCorsRulesForAllTabs() {
           }
         }]
       });
-      console.log('[EchoKit CORS] Installed TAB-scoped session rule for', validTabIds.length, 'tabs:', validTabIds);
+      dbg('[EchoKit CORS] Installed TAB-scoped session rule for', validTabIds.length, 'tabs:', validTabIds);
     } else if (scope === 'domain') {
       // Domain scope: create rules for unique domains
       const domains = new Set();
@@ -378,7 +432,7 @@ async function applyCorsRulesForAllTabs() {
 
       const domainList = Array.from(domains);
       if (domainList.length === 0) {
-        console.log('[EchoKit CORS] No valid domains for domain-scoped CORS');
+        dbg('[EchoKit CORS] No valid domains for domain-scoped CORS');
         return;
       }
 
@@ -394,7 +448,7 @@ async function applyCorsRulesForAllTabs() {
           }
         }]
       });
-      console.log('[EchoKit CORS] Installed DOMAIN-scoped session rule for', domainList.length, 'domains:', domainList);
+      dbg('[EchoKit CORS] Installed DOMAIN-scoped session rule for', domainList.length, 'domains:', domainList);
     }
   } catch (error) {
     console.error('[EchoKit CORS] Failed to apply scoped CORS rules:', error);
@@ -419,10 +473,18 @@ async function applyBlocklistRules() {
 
 // ---------- Messaging ----------
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  handleMessage(msg, sender).then(sendResponse).catch(err => sendResponse({ error: String(err) }));
+  console.log('[BG] Received message:', msg?.type);
+  handleMessage(msg, sender)
+    .then(result => {
+      console.log('[BG] Sending response for', msg?.type, ':', result);
+      sendResponse(result);
+    })
+    .catch(err => {
+      console.error('[BG] Error handling', msg?.type, ':', err);
+      sendResponse({ error: String(err) });
+    });
   return true;
 });
-globalThis.__echokitHandle = handleMessage;
 
 /**
  * Get tab info for source tracking (checks if tab still exists)
@@ -1049,3 +1111,9 @@ chrome.runtime.onInstalled.addListener(async (info) => {
 });
 chrome.runtime.onStartup.addListener(async () => { await hydrate(); await pushAllTabs(); });
 hydrate().then(pushAllTabs).catch(() => {});
+
+// Expose handleMessage for automated testing
+// This allows test scripts to call handleMessage directly without going through chrome.runtime.sendMessage
+if (typeof self !== 'undefined') {
+  self.__echokitHandle = handleMessage;
+}

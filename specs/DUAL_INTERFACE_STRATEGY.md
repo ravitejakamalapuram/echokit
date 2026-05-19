@@ -1,4 +1,28 @@
-# EchoKit Dual Interface Strategy - Research & Recommendations
+# EchoKit Dual Interface Strategy
+
+## TL;DR
+
+EchoKit has two surfaces sharing the same codebase. Keep the **Popup simple** (casual users, quick tasks) and put **advanced features in the DevTools panel** (power users, deep analysis).
+
+| Feature | Popup (480×600px) | DevTools Panel (unlimited) |
+|---|---|---|
+| REC/MOCK toggles | ✅ | ✅ |
+| URL search | ✅ Simple | ✅ Advanced syntax |
+| Method filter | ✅ Single-select | ✅ Multi-select |
+| Status filter | ✅ Dropdown (2xx…) | ✅ Multi-select + exact codes |
+| Interaction list | ✅ Grouped by domain | ✅ Grouped + table view |
+| Detail view | ✅ Slide-over panel | ✅ Resizable side pane |
+| Advanced filter panel | ❌ | ✅ |
+| Body search (req/resp) | ❌ | ✅ |
+| Header search | ❌ | ✅ |
+| Timestamp range filter | ❌ | ✅ |
+| Sortable columns | ❌ | ✅ ▲/▼ |
+| Waterfall view | ❌ | ✅ |
+| Filter chips | ❌ | ✅ |
+
+**Implementation key**: `const FEATURES = { popup: { advancedFilters: false }, devtools: { advancedFilters: true } }` in `shared/app.js`.
+
+---
 
 ## 🎯 Problem Statement
 
