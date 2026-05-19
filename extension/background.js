@@ -473,7 +473,16 @@ async function applyBlocklistRules() {
 
 // ---------- Messaging ----------
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  handleMessage(msg, sender).then(sendResponse).catch(err => sendResponse({ error: String(err) }));
+  console.log('[BG] Received message:', msg?.type);
+  handleMessage(msg, sender)
+    .then(result => {
+      console.log('[BG] Sending response for', msg?.type, ':', result);
+      sendResponse(result);
+    })
+    .catch(err => {
+      console.error('[BG] Error handling', msg?.type, ':', err);
+      sendResponse({ error: String(err) });
+    });
   return true;
 });
 
@@ -1102,3 +1111,9 @@ chrome.runtime.onInstalled.addListener(async (info) => {
 });
 chrome.runtime.onStartup.addListener(async () => { await hydrate(); await pushAllTabs(); });
 hydrate().then(pushAllTabs).catch(() => {});
+
+// Expose handleMessage for automated testing
+// This allows test scripts to call handleMessage directly without going through chrome.runtime.sendMessage
+if (typeof self !== 'undefined') {
+  self.__echokitHandle = handleMessage;
+}

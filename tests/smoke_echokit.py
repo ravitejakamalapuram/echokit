@@ -183,6 +183,9 @@ def main():
                 print(f'   Headless mode: {headless_mode}')
                 return results
 
+            # __echokitHandle is automatically exposed by background.js for testing
+            # It provides direct access to handleMessage without going through chrome.runtime.sendMessage
+
             ext_id = sw.url.split('/')[2]
             tab_id = sw.evaluate("async () => (await chrome.tabs.query({url:'http://127.0.0.1:*/*'}))[0]?.id")
             step('tab_id_resolved', tab_id is not None, f'tab={tab_id}')
