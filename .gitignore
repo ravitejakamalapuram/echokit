@@ -1,56 +1,47 @@
-# EchoKit repo — include only extension source, smoke test, README, and PRD.
-
-# --- Exclude everything by default approach: allowlist what we want ---
-# Workspace scaffold we don't want in the repo:
-backend/
-frontend/
-test_reports/
-test_result.md
+# ── Node ──────────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 yarn.lock
-design_guidelines.json
-echokit-extension.zip
+package-lock.json
 
-# Tests: keep only the smoke test
-tests/*
-!tests/smoke_echokit.py
-
-# Python / tooling artefacts
+# ── Python ────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 .venv/
+venv/
+
+# ── Build artefacts ───────────────────────────────────────────────────
+*.zip
+*.crx
+test_reports/
+test_result.md
+
+# ── Environment / secrets ─────────────────────────────────────────────
 .env
 .env.*
-node_modules/
-dist/
-build/
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+.emergent/
+
+# ── OS / editor noise ─────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
 *.log
 .idea/
 .vscode/
 
-# OS / editor noise
-Thumbs.db
-*.swp
-
-# Emergent platform internals
-.emergent/
+# ── Legacy scaffold (no longer in use) ────────────────────────────────
+backend/
+frontend/
+design_guidelines.json
 memory/test_credentials.md
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials

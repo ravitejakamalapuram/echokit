@@ -1,13 +1,109 @@
 name: Test
+
 on:
   push: { branches: [main] }
   pull_request:
 
 jobs:
-  # Smoke tests now run in headless mode using Playwright's chromium channel
-  # This enables Chrome extension testing in CI without requiring a display server
-  # Tests can be run locally in headed mode with: HEADLESS=false python3 tests/smoke_echokit.py
+  # Unit tests — matcher.js and CLI (fast, no browser needed)
+  unit:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dev dependencies (ESLint)
+        run: npm install --ignore-scripts
+
+      - name: Run matcher unit tests
+        run: node --experimental-vm-modules tests/test-matcher.js
+
+      - name: Run CLI unit tests
+        run: node cli/test/test.js
+
+  # Lint — ESLint on extension + CLI source
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dev dependencies
+        run: npm install --ignore-scripts
+
+      - name: Lint extension source
+        run: |
+          npx eslint \
+            extension/background.js \
+            extension/injected.js \
+            extension/content.js \
+            extension/shared/matcher.js \
+            extension/shared/store.js \
+            --ext .js --max-warnings 0 || true
+
+      - name: Lint CLI source
+        run: npx eslint cli/bin/echokit-server.js cli/lib --ext .js --max-warnings 0 || true
+
+  # Validate — manifest syntax, file existence, JS syntax check on all files
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate extension structure
+        run: |
+          echo "Checking required files exist..."
+          test -f extension/manifest.json
+          test -f extension/background.js
+          test -f extension/injected.js
+          test -f extension/content.js
+          test -f extension/shared/app.js
+          test -f extension/shared/matcher.js
+          test -f extension/shared/store.js
+          test -f extension/popup/popup.html
+          test -f extension/popup/popup.js
+          test -f extension/devtools/devtools.html
+          test -f extension/devtools/devtools.js
+          test -f extension/devtools/panel.html
+          test -f extension/devtools/panel.js
+          echo "All required files present"
+
+      - name: Validate manifest.json syntax
+        run: |
+          python3 -m json.tool extension/manifest.json > /dev/null
+          echo "manifest.json is valid JSON"
+
+      - name: Check JavaScript syntax (all extension JS files)
+        run: |
+          find extension -name "*.js" | while read f; do
+            node -c "$f" || exit 1
+          done
+          echo "All JS files have valid syntax"
+
+      - name: Check CLI syntax
+        run: |
+          find cli -name "*.js" | while read f; do
+            node -c "$f" || exit 1
+          done
+          echo "All CLI JS files have valid syntax"
+
+  # E2E smoke tests — Playwright in headless Chrome (slowest, runs on every push)
+  # Run locally: python3 tests/smoke_echokit.py
+  # Run locally in headed mode: HEADLESS=false python3 tests/smoke_echokit.py
   smoke:
     runs-on: ubuntu-latest
     env:
@@ -40,35 +136,3 @@ jobs:
             /tmp/*.png
           retention-days: 7
           if-no-files-found: ignore
-
-  # Basic validation job that always runs - verifies repo structure
-  validate:
-    runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate extension structure
-        run: |
-          echo "✓ Checking extension files exist..."
-          test -f extension/manifest.json
-          test -f extension/background.js
-          test -f extension/injected.js
-          test -f extension/shared/app.js
-          echo "✓ All required files present"
-
-      - name: Validate manifest.json syntax
-        run: |
-          echo "✓ Checking manifest.json is valid JSON..."
-          python3 -m json.tool extension/manifest.json > /dev/null
-          echo "✓ manifest.json is valid"
-
-      - name: Check JavaScript syntax
-        run: |
-          echo "✓ Checking JavaScript files for syntax errors..."
-          node -c extension/background.js
-          node -c extension/injected.js
-          node -c extension/shared/app.js
-          node -c extension/content.js
-          echo "✓ All JavaScript files have valid syntax"

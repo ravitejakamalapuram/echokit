@@ -30,16 +30,17 @@ jobs:
           # Detect version bump type from commit messages in the push
           COMMIT_MESSAGES=$(git log --format=%s ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
 
-          # Check for conventional commit prefixes or keywords
-          if echo "$COMMIT_MESSAGES" | grep -qiE "^(feat|feature|BREAKING CHANGE|\!:|major)"; then
-            echo "bump=minor" >> $GITHUB_OUTPUT
-            echo "🟡 Detected: MINOR version bump (new feature)"
-          elif echo "$COMMIT_MESSAGES" | grep -qiE "^(fix|bugfix|patch)"; then
-            echo "bump=patch" >> $GITHUB_OUTPUT
-            echo "🟢 Detected: PATCH version bump (bug fix)"
-          elif echo "$COMMIT_MESSAGES" | grep -qiE "BREAKING"; then
+          # Check for conventional commit prefixes or keywords.
+          # BREAKING is checked FIRST — a commit like "feat!: ..." or "BREAKING: ..." must bump major.
+          if echo "$COMMIT_MESSAGES" | grep -qiE "(BREAKING CHANGE|BREAKING:|^feat!|^fix!)"; then
             echo "bump=major" >> $GITHUB_OUTPUT
             echo "🔴 Detected: MAJOR version bump (breaking change)"
+          elif echo "$COMMIT_MESSAGES" | grep -qiE "^(feat|feature):"; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+            echo "🟡 Detected: MINOR version bump (new feature)"
+          elif echo "$COMMIT_MESSAGES" | grep -qiE "^(fix|bugfix|patch):"; then
+            echo "bump=patch" >> $GITHUB_OUTPUT
+            echo "🟢 Detected: PATCH version bump (bug fix)"
           else
             echo "bump=patch" >> $GITHUB_OUTPUT
             echo "🟢 Default: PATCH version bump"

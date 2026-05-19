@@ -1,248 +1,116 @@
 # Contributing to EchoKit
 
-Thank you for considering contributing to EchoKit! This document provides guidelines and best practices.
-
-## 📋 Table of Contents
-
-- [Development Workflow](#development-workflow)
-- [PR Checklist](#pr-checklist)
-- [Version Bumping](#version-bumping)
-- [Testing](#testing)
-- [Code Quality Standards](#code-quality-standards)
-- [Architecture Guidelines](#architecture-guidelines)
+Thank you for contributing! This document covers the workflow — not the rules. For detailed code rules, see [`DEVELOPMENT_RULES.md`](DEVELOPMENT_RULES.md).
 
 ---
 
-## 🔄 Development Workflow
-
-### 1. Create a Feature Branch
+## Quick start
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feature/your-feature-name
-```
+# Clone
+git clone https://github.com/ravitejakamalapuram/echokit.git
+cd echokit
 
-### 2. Make Your Changes
-
-- Keep changes focused and atomic
-- Write clear commit messages
-- Follow existing code style
-
-### 3. Test Locally
-
-```bash
-# Run smoke tests
-python3 tests/smoke_echokit.py
-
-# Load extension unpacked in Chrome
+# Load extension in Chrome
 # 1. Open chrome://extensions
 # 2. Enable Developer mode
-# 3. Click "Load unpacked"
-# 4. Select echokit/extension/
-```
-
-### 4. Create Pull Request
-
-- Use the PR template
-- Fill out all relevant sections
-- Link related issues
-
-### 5. Review & Merge
-
-- Address review feedback
-- Ensure all CI checks pass
-- Squash and merge when approved
-
----
-
-## ✅ PR Checklist
-
-### Required for ALL PRs
-
-- [ ] ✅ Code reviewed and approved
-- [ ] ✅ All CI checks passing
-- [ ] ✅ No merge conflicts
-- [ ] ✅ Branch is up-to-date with main
-
-### Required for RELEASES (merging to main)
-
-- [ ] 📦 **Version bump is AUTOMATED!** Just use conventional commits:
-  - `fix:` for bug fixes → Auto-bumps patch (1.6.4 → 1.6.5)
-  - `feat:` for new features → Auto-bumps minor (1.6.4 → 1.7.0)
-  - `BREAKING:` in message → Auto-bumps major (1.6.4 → 2.0.0)
-- [ ] 📝 CHANGELOG updated (optional but recommended)
-- [ ] 🧪 Smoke tests run locally and passing
-- [ ] 📚 Documentation updated (if needed)
-
-### Code Quality Checks
-
-- [ ] 🧹 No console.log/debugger statements
-- [ ] 📏 Functions are < 50 lines
-- [ ] 📄 Files are < 500 lines (see [refactoring issues](https://github.com/ravitejakamalapuram/echokit/issues))
-- [ ] 🔒 No hardcoded secrets or sensitive data
-- [ ] ✍️ JSDoc comments for new functions (recommended)
-
----
-
-## 📦 Automated Version Bumping
-
-### ✨ Version Bumping is Now AUTOMATED!
-
-You **NO LONGER need to manually update** `extension/manifest.json`. The version is automatically bumped based on your commit messages.
-
-### How It Works
-
-**Use Conventional Commits** in your commit messages:
-
-| Commit Prefix | Version Bump | Example |
-|--------------|--------------|---------|
-| `fix:` `bugfix:` `patch:` | **Patch** | 1.6.4 → 1.6.5 |
-| `feat:` `feature:` | **Minor** | 1.6.4 → 1.7.0 |
-| `BREAKING:` `BREAKING CHANGE:` | **Major** | 1.6.4 → 2.0.0 |
-
-**Examples:**
-```bash
-git commit -m "fix: Resolve header duplication bug"        # → 1.6.4 to 1.6.5
-git commit -m "feat: Add global request headers feature"   # → 1.6.4 to 1.7.0
-git commit -m "feat!: Remove deprecated API endpoints"     # → 1.6.4 to 2.0.0
-```
-
-### Auto-Release Workflow
-
-When you merge to `main`:
-
-1. ✅ Auto-release **detects commit messages**
-2. ✅ **Automatically bumps** version in `manifest.json`
-3. ✅ **Commits the version bump** back to main
-4. ✅ Creates git tag (e.g., `v1.7.0`)
-5. ✅ Triggers release workflow
-6. ✅ Creates GitHub Release
-7. ✅ Publishes to Chrome Web Store (if configured)
-
-**No manual work required!** Just merge with proper commit messages.
-
----
-
-## 🧪 Testing
-
-### Run Smoke Tests Locally
-
-**Required before merging any PR:**
-
-```bash
-# Install dependencies (first time only)
-pip install playwright
-python3 -m playwright install chromium
-sudo apt-get install -y xvfb xauth  # Linux only
+# 3. Click "Load unpacked" → select the echokit/extension/ folder
 
 # Run tests
+python3 tests/smoke_echokit.py   # E2E smoke tests (87 assertions)
+node cli/test/test.js             # CLI unit tests
+node tests/test-matcher.js        # Matcher unit tests
+```
+
+---
+
+## Workflow
+
+### 1. Branch
+
+```bash
+git checkout main && git pull origin main
+git checkout -b feat/your-feature-name   # or fix/...
+```
+
+Branch naming: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`
+
+### 2. Make changes
+
+Follow [`DEVELOPMENT_RULES.md`](DEVELOPMENT_RULES.md). Key points:
+- Scope all interaction reads through `getVisibleInteractions(tabId, host, scope)`
+- Wrap `JSON.parse` and storage calls in try-catch
+- Debounce text inputs at `DEBOUNCE_DELAY` (300 ms)
+- New public functions need JSDoc
+
+### 3. Test locally
+
+```bash
+# Required before opening a PR
 python3 tests/smoke_echokit.py
+
+# Load the extension unpacked and manually test your change
+# in both the popup and DevTools panel
 ```
 
-**Note**: Tests are currently disabled in CI due to headless Chrome limitations. Always run locally.
+### 4. Commit with conventional prefixes
 
-### Manual Testing Checklist
+Version bumps are automatic — CI reads your commit prefix and bumps `manifest.json` on merge:
 
-- [ ] Load extension unpacked
-- [ ] Test in popup UI
-- [ ] Test in DevTools panel
-- [ ] Test recording/mocking flow
-- [ ] Test all settings dialogs
-- [ ] Test new feature functionality
-- [ ] Verify no console errors
+| Prefix | Result |
+|--------|--------|
+| `fix:` | Patch bump (1.10.3 → 1.10.4) |
+| `feat:` | Minor bump (1.10.3 → 1.11.0) |
+| `BREAKING:` | Major bump (1.10.3 → 2.0.0) |
 
----
-
-## 🎨 Code Quality Standards
-
-### File Size Limits
-
-- **Maximum file size**: 500 lines
-- **Current issues**: `app.js` is 2,700 lines (see [Issue #8](https://github.com/ravitejakamalapuram/echokit/issues/8))
-- **Action**: Break large files into modules
-
-### Function Guidelines
-
-- **Maximum function length**: 50 lines
-- **Single responsibility**: One function = one task
-- **Descriptive names**: Use clear, verb-based names
-
-### Error Handling
-
-- **No empty catch blocks** without TODO comment
-- **Log errors with context**: Use consistent logging
-- **Validate inputs**: Check message handlers, settings updates
-- See [Issue #10](https://github.com/ravitejakamalapuram/echokit/issues/10) for details
-
-### Comments & Documentation
-
-```javascript
-/**
- * Apply global request headers to an HTTP request
- * @param {Object} headers - Current request headers
- * @param {string} url - Request URL for pattern matching
- * @returns {Object} Modified headers
- */
-function applyRequestHeaders(headers, url) {
-  // Implementation
-}
+```bash
+git commit -m "fix: resolve hash mismatch on URLSearchParams body"
+git commit -m "feat: add response delay randomisation option"
 ```
 
+### 5. Open a PR
+
+Use the PR template — it auto-fills when you open a pull request on GitHub. Fill out every section that applies; skip sections that don't.
+
+### 6. After merge
+
+CI automatically:
+1. Detects version bump type from commit messages
+2. Bumps `extension/manifest.json`
+3. Creates a git tag
+4. Creates a GitHub Release
+
 ---
 
-## 🏗️ Architecture Guidelines
-
-### Module Organization
+## Folder structure
 
 ```
-extension/
-├── background.js     # Service worker, storage, state
-├── injected.js       # fetch/XHR hooks in MAIN world
-├── content.js        # Message bridge (isolated world)
-├── shared/           # Reusable utilities
-│   ├── app.js        # UI module (⚠️ needs refactoring)
-│   ├── matcher.js    # URL matching logic
-│   └── store.js      # IndexedDB wrapper
-└── popup/            # Popup UI surface
+extension/    Chrome MV3 source
+cli/          Node.js headless mock server (npm: echokit-server)
+worker/       Cloudflare Worker (HMAC license validation)
+tests/        Automated tests
+scripts/      Build and deploy scripts
+website/      Public HTML/CSS — served by Cloudflare Pages
+docs/         Contributor documentation (not served publicly)
+specs/        Product specs and feature designs
 ```
 
-### Known Technical Debt
-
-See detailed refactoring issues:
-
-- [Issue #8](https://github.com/ravitejakamalapuram/echokit/issues/8): Break up `app.js` monolith
-- [Issue #9](https://github.com/ravitejakamalapuram/echokit/issues/9): Fix matcher logic duplication
-- [Issue #10](https://github.com/ravitejakamalapuram/echokit/issues/10): Add input validation
+Full layout and all rules: [`DEVELOPMENT_RULES.md`](DEVELOPMENT_RULES.md)
 
 ---
 
-## 🚫 What NOT to Do
+## What not to do
 
-- ❌ Don't merge to `main` without bumping version (for releases)
-- ❌ Don't skip local testing before creating PR
-- ❌ Don't leave console.log statements in production code
-- ❌ Don't create files > 500 lines (refactor instead)
-- ❌ Don't commit secrets or API keys
-- ❌ Don't use `git push --force` on shared branches
-
----
-
-## 🤝 Getting Help
-
-- **Questions?** Open a [GitHub Discussion](https://github.com/ravitejakamalapuram/echokit/discussions)
-- **Bug?** Create an [Issue](https://github.com/ravitejakamalapuram/echokit/issues)
-- **Feature idea?** Start with a Discussion first
+- Don't rename `echokit:*` message types — breaks existing user installations
+- Don't change `shared/matcher.js` without verifying record ↔ replay hash parity
+- Don't add npm dependencies to `cli/` — it's intentionally zero-dependency
+- Don't add new `manifest.json` permissions without explaining why in the PR
+- Don't create working-notes files (`NOTES.md`, `PLAN.md`, etc.) — use inline JSDoc
 
 ---
 
-## 📚 Additional Resources
+## Getting help
 
-- [README.md](README.md) - Project overview
-- [extension/README.md](extension/README.md) - Extension architecture
-- [specs/PRD.md](specs/PRD.md) - Product requirements
-- [TODO.md](TODO.md) - Project roadmap and backlog
-
----
-
-**Thank you for contributing to EchoKit!** 🎉
+- **Questions** → [GitHub Discussions](https://github.com/ravitejakamalapuram/echokit/discussions)
+- **Bug** → [Open an issue](https://github.com/ravitejakamalapuram/echokit/issues/new?template=bug_report.md)
+- **Feature idea** → [Open an issue](https://github.com/ravitejakamalapuram/echokit/issues/new?template=feature_request.md)

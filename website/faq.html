@@ -1,7 +1,16 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>FAQ · EchoKit</title><link rel="stylesheet" href="./style.css"/></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>FAQ · EchoKit</title>
+  <meta name="description" content="Frequently asked questions about EchoKit — the Chrome extension for recording and mocking fetch and XHR traffic."/>
+  <meta property="og:title" content="FAQ · EchoKit"/>
+  <meta property="og:description" content="Common questions about EchoKit: privacy, WebSockets, CORS, match modes, scope, and more."/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
 <body>
-<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
+<nav class="navbar"><div class="nav-inner"><a href="./" class="nav-brand"><span class="nav-mark">EK</span><span>ECHOKIT</span></a><div class="nav-links"><a href="./docs.html">Docs</a><a href="./simulator.html">Simulator</a><a href="./faq.html">FAQ</a><a href="./changelog.html">Changelog</a><a href="./privacy.html">Privacy</a><a href="https://github.com/ravitejakamalapuram/echokit">GitHub</a></div></div></nav>
 
 <main class="container" style="padding: 48px 24px;">
   <h1>Frequently asked questions</h1>
@@ -10,7 +19,7 @@
 
   <div class="qa"><div class="qa-q">Why does it need <code>&lt;all_urls&gt;</code>?</div><div class="qa-a">To record and mock network traffic on whatever site you're debugging. Scoped via <code>content_scripts</code>; only activated on tabs where you explicitly press REC.</div></div>
 
-  <div class="qa"><div class="qa-q">Can I mock WebSockets / Server-Sent Events?</div><div class="qa-a">Not yet. v1 covers <code>fetch</code> and <code>XMLHttpRequest</code>. WebSocket capture is planned — the interaction schema is designed to extend cleanly.</div></div>
+  <div class="qa"><div class="qa-q">Can I mock WebSockets / Server-Sent Events?</div><div class="qa-a">Yes. WebSocket + SSE capture shipped in v1.3.0 (recorded as a single interaction with full frame log). WS/SSE mock replay — frame-timed playback with loop mode — is a Pro feature available since v1.5.0.</div></div>
 
   <div class="qa"><div class="qa-q">What's the difference between EchoKit and Mirage / MSW?</div><div class="qa-a">MSW and Mirage need a <em>build-time</em> integration — you write handlers in code. EchoKit requires zero code changes: install the extension, hit record, edit, done. Great for ad-hoc debugging and bug reproduction. MSW remains the right choice for version-controlled test fixtures.</div></div>
 
@@ -30,7 +39,7 @@
 
   <div class="qa"><div class="qa-q">Does the popup stay open while I navigate?</div><div class="qa-a">Chrome closes popups on focus loss — that's a platform rule. EchoKit's auto-open-on-refresh setting will pop it back open on every navigation when recording is active. Prefer a persistent surface? Use the DevTools panel: it stays put.</div></div>
 
-  <div class="qa"><div class="qa-q">Is there a roadmap?</div><div class="qa-a">See <a href="./changelog.html">Changelog</a> and <a href="https://github.com/ravitejakamalapuram/echokit/issues">GitHub issues</a>. Short list: WebSockets, team sync via gist, onboarding tour improvements, Chrome Web Store launch.</div></div>
+  <div class="qa"><div class="qa-q">Is there a roadmap?</div><div class="qa-a">See the <a href="./changelog.html">Changelog</a> for what has shipped and <a href="https://github.com/ravitejakamalapuram/echokit/issues">GitHub issues</a> for upcoming work. Current focus: refactoring <code>shared/app.js</code> into smaller modules, LemonSqueezy payment integration, and CLI coverage improvements.</div></div>
 
   <p style="margin-top: 40px; text-align: center;"><a href="https://github.com/ravitejakamalapuram/echokit/issues/new" class="btn btn-primary">Didn't find your question? Open an issue →</a></p>
 </main>
