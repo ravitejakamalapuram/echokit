@@ -266,15 +266,39 @@ def main():
             step('rec_badge_shows_REC', badge == 'REC', f'badge="{badge}"')
             sw_send(sw, {'type':'echokit:recording:stop', 'tabId':tab_id})
 
-            # === CORS DNR rule on/off ===
-            sw_send(sw, {'type':'echokit:settings:update','patch':{'corsOverride':True}})
+            # === CORS DNR rule on/off (updated for scope-aware behavior) ===
+            # Test Global scope
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'global','corsOverride':True}})
             time.sleep(0.3)
             rules = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
-            step('cors_dnr_rule_installed', any(r.get('id')==1001 for r in (rules or [])), rules)
+            step('cors_global_dnr_rule_installed', any(r.get('id')==1001 for r in (rules or [])), rules)
+
+            # Test diagnostics
+            diag = sw_send(sw, {'type':'echokit:cors:diagnostics'})
+            step('cors_diagnostics_works',
+                 diag.get('ok') and diag.get('corsEnabled') and diag.get('scope')=='global' and diag.get('ruleInstalled'),
+                 diag)
+
+            # Test Domain scope
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'domain','corsOverride':True}})
+            time.sleep(0.3)
+            session_rules = sw.evaluate("chrome.declarativeNetRequest.getSessionRules()")
+            step('cors_domain_session_rule_installed', any(r.get('id')==1001 for r in (session_rules or [])), session_rules)
+
+            # Test Tab scope
+            sw_send(sw, {'type':'echokit:settings:update','patch':{'scope':'tab','corsOverride':True}})
+            time.sleep(0.3)
+            session_rules2 = sw.evaluate("chrome.declarativeNetRequest.getSessionRules()")
+            step('cors_tab_session_rule_installed', any(r.get('id')==1001 for r in (session_rules2 or [])), session_rules2)
+
+            # Turn off CORS
             sw_send(sw, {'type':'echokit:settings:update','patch':{'corsOverride':False}})
             time.sleep(0.3)
-            rules2 = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
-            step('cors_dnr_rule_removed', not any(r.get('id')==1001 for r in (rules2 or [])), rules2)
+            rules3 = sw.evaluate("chrome.declarativeNetRequest.getDynamicRules()")
+            session_rules3 = sw.evaluate("chrome.declarativeNetRequest.getSessionRules()")
+            step('cors_all_rules_removed',
+                 not any(r.get('id')==1001 for r in (rules3 or [])) and not any(r.get('id')==1001 for r in (session_rules3 or [])),
+                 {'dynamic': rules3, 'session': session_rules3})
 
             # === NEW in v1.2: GraphQL match mode ===
             sw_send(sw, {'type':'echokit:recording:start', 'tabId':tab_id})

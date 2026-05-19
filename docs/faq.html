@@ -22,7 +22,9 @@
 
   <div class="qa"><div class="qa-q">Can I mock responses for just some requests while letting others hit the real server?</div><div class="qa-a">Yes — every recorded API has its own toggle. Master MOCK must be on; individual mocks opt in via the per-row switch. Requests that don't match any enabled mock fall through to the real network.</div></div>
 
-  <div class="qa"><div class="qa-q">Does CORS override work on recorded or on real responses?</div><div class="qa-a">Both. Mocked responses always include permissive CORS headers. For real responses, the CORS Override toggle installs a <code>declarativeNetRequest</code> rule that rewrites the headers at the network layer. Toggle it off when you're done debugging.</div></div>
+  <div class="qa"><div class="qa-q">Does CORS override work on recorded or on real responses?</div><div class="qa-a">Both. Mocked responses always include permissive CORS headers. For real responses, the CORS Override toggle installs a <code>declarativeNetRequest</code> rule that rewrites the headers at the network layer. The scope setting (Global/Domain/Tab) controls where CORS applies. Toggle it off when you're done debugging.</div></div>
+
+  <div class="qa"><div class="qa-q">Is CORS override at tab level or domain level?</div><div class="qa-a">It depends on your <strong>Scope</strong> setting (Settings → Scope). <strong>Global</strong> = browser-wide (all tabs), <strong>Domain</strong> = current domain only, <strong>Tab</strong> = current tab only. Use the "🔍 Run Diagnostics" button in CORS settings to verify your rules are installed correctly.</div></div>
 
   <div class="qa"><div class="qa-q">Can teammates import my mocks?</div><div class="qa-a">Yes. Menu → Export JSON produces a single file with every interaction and override. Teammates hit Menu → Import JSON and pick Merge or Override strategy. Commit the JSON to your repo alongside bug repro issues.</div></div>
 
