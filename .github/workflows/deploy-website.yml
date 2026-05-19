@@ -30,6 +30,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: echokit
+          projectName: echokit-website
           directory: website
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

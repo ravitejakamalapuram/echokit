@@ -70,7 +70,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Mock chaining** — define N response steps per interaction; cursor advances on each hit with optional loop and manual cursor reset
 - **API blocking** — block specific requests from ever reaching the network
 - **WS/SSE mock replay** — `createFakeMockWS` and `createFakeMockSSE` in `injected.js`; frame-timed replay with loop mode
-- Pricing page at `docs/pricing.html` (Free / Pro monthly / Pro annual / Lifetime tiers)
+- Pricing page at `website/pricing.html` (Free / Pro monthly / Pro annual / Lifetime tiers)
 
 ### Fixed
 - Hash mismatch between record time and replay time: `injected.js` now computes the FNV-1a hash at record time and passes it through; background uses it as-is, keeping record-hash ≡ replay-hash byte-for-byte

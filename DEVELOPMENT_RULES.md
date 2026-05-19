@@ -8,16 +8,16 @@
 
 ## 📚 Table of Contents
 
-- [AI Agent Instructions](#-ai-agent-instructions) ← **read this first if you are an AI**
-- [Project Structure](#-project-structure)
-- [Core Principles](#-core-principles)
-- [Code Writing Rules](#-code-writing-rules)
-- [Chrome Extension Rules](#-chrome-extension-specific-rules)
-- [Documentation Rules](#-documentation-rules)
-- [PR Review Checklist](#-pr-review-phase)
-- [Merge Checklist](#-merge-phase)
-- [Common Mistakes](#-common-mistakes-to-avoid)
-- [Key References](#-key-references)
+- [AI Agent Instructions](#ai-agent-instructions) ← **read this first if you are an AI**
+- [Project Structure](#project-structure)
+- [Core Principles](#core-principles)
+- [Code Writing Rules](#code-writing-rules)
+- [Chrome Extension Rules](#chrome-extension-specific-rules)
+- [Documentation Rules](#documentation-rules)
+- [PR Review Checklist](#pr-review-phase)
+- [Merge Checklist](#merge-phase)
+- [Common Mistakes](#common-mistakes-to-avoid)
+- [Key References](#key-references)
 
 ---
 
@@ -38,7 +38,7 @@ Before making any changes, read these files in order:
 
 The folder layout below is intentional and final. Do not move files between folders, rename folders, or create new top-level directories without an explicit instruction.
 
-```
+```text
 extension/      ← Chrome MV3 source code only
 cli/            ← Node.js CLI server source only
 worker/         ← Cloudflare Worker source only
@@ -102,7 +102,7 @@ specs/          ← Living product specs, PRDs, and feature designs
 
 The authoritative folder layout. Any deviation from this is a bug.
 
-```
+```text
 echokit/
 │
 │  ── SOURCE CODE ─────────────────────────────────────────────────────
@@ -182,6 +182,7 @@ echokit/
 ├── CHANGELOG.md
 ├── TODO.md
 ├── CONTRIBUTING.md
+├── CLAUDE.md
 ├── DEVELOPMENT_RULES.md    ← you are here
 └── LICENSE
 ```
@@ -434,7 +435,7 @@ CORS rules are scope-aware. When writing or modifying `syncCorsRules()`:
 
 The recording↔replay pipeline depends on the FNV-1a hash being identical at both ends:
 
-```
+```text
 Record time (injected.js):  hash = FNV1a(`${METHOD}|${normalizeUrl(url)}|${normalizeBody(body)}`)
 Replay time (injected.js):  same computation → must produce the same hash
 ```
@@ -464,7 +465,7 @@ Any change to `normalizeUrl`, `normalizeBody`, or `computeHash` in `shared/match
 
 ### The documentation hierarchy
 
-```
+```text
 Code comment / JSDoc      ← for function-level behavior
 extension/README.md       ← for extension architecture and feature map
 README.md                 ← for project overview and getting started
@@ -635,7 +636,7 @@ Update `extension/manifest.json` before merging a release:
 
 ### Commit message format
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body — what changed and why>
@@ -645,7 +646,7 @@ Update `extension/manifest.json` before merging a release:
 
 **Types**: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`
 
-```
+```text
 feat(waterfall): add method-color-coded bars to timeline view
 
 - Added color constants per HTTP method (GET=green, POST=blue, …)
