@@ -235,23 +235,171 @@ async function updateBadge(tabId) {
   } catch {}
 }
 
+/**
+ * Apply CORS override rules based on current scope setting.
+ *
+ * Scope behavior:
+ * - 'global': Uses dynamic rules (browser-wide, persists across restarts)
+ * - 'domain': Uses session rules with requestDomains filter (domain-specific)
+ * - 'tab': Uses session rules with tabIds filter (tab-specific)
+ *
+ * Note: We use Access-Control-Allow-Origin: * without credentials=true
+ * because these are mutually exclusive per CORS spec. For credentialed
+ * requests, the server must specify an exact origin, not wildcard.
+ */
 async function applyCorsRules() {
-  const current = await chrome.declarativeNetRequest.getDynamicRules();
-  const corsIds = current.filter(r => r.id === CORS_RULESET_ID).map(r => r.id);
-  if (corsIds.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: corsIds });
-  if (!settings.corsOverride) return;
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    addRules: [{
-      id: CORS_RULESET_ID, priority: 1,
-      action: { type: 'modifyHeaders', responseHeaders: [
+  try {
+    // Clear existing CORS rules (both dynamic and session)
+    const currentDynamic = await chrome.declarativeNetRequest.getDynamicRules();
+    const corsIds = currentDynamic.filter(r => r.id === CORS_RULESET_ID).map(r => r.id);
+    if (corsIds.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: corsIds });
+      console.log('[EchoKit CORS] Removed', corsIds.length, 'dynamic CORS rule(s)');
+    }
+
+    const currentSession = await chrome.declarativeNetRequest.getSessionRules();
+    const sessionCorsIds = currentSession.filter(r => r.id === CORS_RULESET_ID).map(r => r.id);
+    if (sessionCorsIds.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: sessionCorsIds });
+      console.log('[EchoKit CORS] Removed', sessionCorsIds.length, 'session CORS rule(s)');
+    }
+
+    // If CORS override is disabled, we're done
+    if (!settings.corsOverride) {
+      console.log('[EchoKit CORS] CORS override disabled');
+      return;
+    }
+
+    // Build the base CORS action (without credentials to avoid conflict)
+    const corsAction = {
+      type: 'modifyHeaders',
+      responseHeaders: [
         { header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' },
         { header: 'Access-Control-Allow-Methods', operation: 'set', value: '*' },
-        { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' },
-        { header: 'Access-Control-Allow-Credentials', operation: 'set', value: 'true' }
-      ]},
-      condition: { urlFilter: '|http', resourceTypes: ['xmlhttprequest','sub_frame','main_frame','script','stylesheet','image','font','media','websocket','other'] }
-    }]
-  });
+        { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' }
+      ]
+    };
+
+    const resourceTypes = [
+      'xmlhttprequest', 'sub_frame', 'main_frame', 'script',
+      'stylesheet', 'image', 'font', 'media', 'websocket', 'other'
+    ];
+
+    const scope = settings.scope || 'domain';
+
+    if (scope === 'global') {
+      // Global scope: use dynamic rules (browser-wide)
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        addRules: [{
+          id: CORS_RULESET_ID,
+          priority: 1,
+          action: corsAction,
+          condition: { urlFilter: '|http', resourceTypes }
+        }]
+      });
+      console.log('[EchoKit CORS] Installed GLOBAL dynamic rule (browser-wide)');
+    } else if (scope === 'domain') {
+      // Domain scope: we need to collect all current tab domains and update rules
+      await applyCorsRulesForAllTabs();
+    } else if (scope === 'tab') {
+      // Tab scope: we need to collect all tab IDs and update rules
+      await applyCorsRulesForAllTabs();
+    }
+  } catch (error) {
+    console.error('[EchoKit CORS] Failed to apply CORS rules:', error);
+    // Try to notify user through any open tabs
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.id) {
+        safeSend(tab.id, {
+          type: 'echokit:error',
+          payload: { message: `CORS rule installation failed: ${error.message}` }
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Apply CORS rules for all open tabs when using domain or tab scope.
+ * This is called when scope is 'domain' or 'tab'.
+ */
+async function applyCorsRulesForAllTabs() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const scope = settings.scope || 'domain';
+
+    const corsAction = {
+      type: 'modifyHeaders',
+      responseHeaders: [
+        { header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' },
+        { header: 'Access-Control-Allow-Methods', operation: 'set', value: '*' },
+        { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' }
+      ]
+    };
+
+    const resourceTypes = [
+      'xmlhttprequest', 'sub_frame', 'main_frame', 'script',
+      'stylesheet', 'image', 'font', 'media', 'websocket', 'other'
+    ];
+
+    if (scope === 'tab') {
+      // Tab scope: create rules for each tab ID
+      const validTabIds = tabs.map(t => t.id).filter(id => id != null);
+
+      if (validTabIds.length === 0) {
+        console.log('[EchoKit CORS] No valid tabs for tab-scoped CORS');
+        return;
+      }
+
+      // Session rules support tabIds array
+      await chrome.declarativeNetRequest.updateSessionRules({
+        addRules: [{
+          id: CORS_RULESET_ID,
+          priority: 1,
+          action: corsAction,
+          condition: {
+            tabIds: validTabIds,
+            urlFilter: '|http',
+            resourceTypes
+          }
+        }]
+      });
+      console.log('[EchoKit CORS] Installed TAB-scoped session rule for', validTabIds.length, 'tabs:', validTabIds);
+    } else if (scope === 'domain') {
+      // Domain scope: create rules for unique domains
+      const domains = new Set();
+      for (const tab of tabs) {
+        if (tab.url) {
+          const host = hostOf(tab.url);
+          if (host) domains.add(host);
+        }
+      }
+
+      const domainList = Array.from(domains);
+      if (domainList.length === 0) {
+        console.log('[EchoKit CORS] No valid domains for domain-scoped CORS');
+        return;
+      }
+
+      // Session rules support requestDomains
+      await chrome.declarativeNetRequest.updateSessionRules({
+        addRules: [{
+          id: CORS_RULESET_ID,
+          priority: 1,
+          action: corsAction,
+          condition: {
+            requestDomains: domainList,
+            resourceTypes
+          }
+        }]
+      });
+      console.log('[EchoKit CORS] Installed DOMAIN-scoped session rule for', domainList.length, 'domains:', domainList);
+    }
+  } catch (error) {
+    console.error('[EchoKit CORS] Failed to apply scoped CORS rules:', error);
+    throw error;
+  }
 }
 
 async function applyBlocklistRules() {
@@ -804,6 +952,41 @@ async function handleMessage(msg, sender) {
       return { ok: true, data: { info: { name: `EchoKit — ${new Date().toLocaleDateString()}`, description: 'Exported from EchoKit v1.5', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' }, item: items } };
     }
 
+    // --- CORS Diagnostics ---
+    case 'echokit:cors:diagnostics': {
+      try {
+        const dynamicRules = await chrome.declarativeNetRequest.getDynamicRules();
+        const sessionRules = await chrome.declarativeNetRequest.getSessionRules();
+        const corsRule = [...dynamicRules, ...sessionRules].find(r => r.id === CORS_RULESET_ID);
+
+        const tabs = await chrome.tabs.query({});
+        const tabInfo = tabs.map(t => ({
+          id: t.id,
+          url: t.url,
+          host: hostOf(t.url || '')
+        }));
+
+        return {
+          ok: true,
+          corsEnabled: settings.corsOverride,
+          scope: settings.scope,
+          ruleInstalled: !!corsRule,
+          rule: corsRule || null,
+          dynamicRulesCount: dynamicRules.length,
+          sessionRulesCount: sessionRules.length,
+          tabs: tabInfo,
+          allDynamicRules: dynamicRules,
+          allSessionRules: sessionRules
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error.message,
+          stack: error.stack
+        };
+      }
+    }
+
     default: return { ok: false, error: `unknown message: ${msg?.type}` };
   }
 }
@@ -822,7 +1005,15 @@ chrome.commands?.onCommand.addListener(async (cmd) => {
 });
 
 // ---------- Tab lifecycle ----------
-chrome.tabs.onRemoved.addListener((tabId) => { tabState.delete(tabId); persistTabState(); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabState.delete(tabId);
+  persistTabState();
+  // Update CORS rules if we're in tab/domain scope
+  if (settings.corsOverride && (settings.scope === 'tab' || settings.scope === 'domain')) {
+    applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on tab removal:', err));
+  }
+});
+
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (info.status === 'loading') setTimeout(() => pushTabMeta(tabId).catch(() => {}), 100);
   if (info.status === 'complete') {
@@ -830,8 +1021,20 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
     if (st.recording && settings.autoOpenOnRefresh) { try { await chrome.action.openPopup({ windowId: tab.windowId }); } catch {} }
     await updateBadge(tabId);
   }
+  // Update CORS rules if URL changed and we're in domain scope
+  if (info.url && settings.corsOverride && settings.scope === 'domain') {
+    applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on navigation:', err));
+  }
 });
+
 chrome.tabs.onActivated.addListener(({ tabId }) => updateBadge(tabId).catch(() => {}));
+
+chrome.tabs.onCreated.addListener((tab) => {
+  // Update CORS rules when new tab is created in tab/domain scope
+  if (settings.corsOverride && (settings.scope === 'tab' || settings.scope === 'domain')) {
+    applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on tab creation:', err));
+  }
+});
 
 // ---------- Install / Startup ----------
 chrome.runtime.onInstalled.addListener(async (info) => {

@@ -90,7 +90,18 @@ hash = FNV1a(`${METHOD}|${normalizeUrl(url)}|${normalizeBody(body)}`)
 
 ### CORS override
 
-Toggling CORS in Settings installs a dynamic `declarativeNetRequest` rule that rewrites `Access-Control-Allow-*` headers on real responses. Mocked responses always include permissive CORS headers by default.
+Toggling CORS in Settings installs `declarativeNetRequest` rules that rewrite `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Methods: *`, and `Access-Control-Allow-Headers: *` on real responses. Mocked responses always include permissive CORS headers by default.
+
+**Scope-aware behavior:**
+- **Global**: Uses dynamic rules (browser-wide, all tabs)
+- **Domain**: Uses session rules with `requestDomains` filter (current domain only)
+- **Tab**: Uses session rules with `tabIds` filter (current tab only)
+
+**Implementation notes:**
+- We removed `Access-Control-Allow-Credentials: true` because it's mutually exclusive with `Access-Control-Allow-Origin: *` per CORS spec
+- Rules are automatically updated when tabs are created/removed/navigated (for tab/domain scopes)
+- Use the "🔍 Run Diagnostics" button in settings to verify rules are installed correctly
+- Error logging to console when rule installation fails
 
 ---
 

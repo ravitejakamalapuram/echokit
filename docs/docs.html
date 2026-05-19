@@ -66,7 +66,15 @@
     <p>Settings → URL Blocklist. Add any Chrome <code>urlFilter</code> pattern (e.g. <code>||analytics.example.com^</code>, <code>*tracking*</code>, <code>/ads/</code>). Blocked requests never hit the network, never get recorded. Implemented via <code>declarativeNetRequest</code> dynamic rules.</p>
 
     <h2 id="cors">CORS override</h2>
-    <p>Settings → CORS Override. Injects <code>Access-Control-Allow-Origin: *</code>, <code>*-Methods</code>, <code>*-Headers</code>, <code>*-Credentials: true</code> into every real response. Use only for local debugging.</p>
+    <p>Settings → CORS Override. Injects <code>Access-Control-Allow-Origin: *</code>, <code>Access-Control-Allow-Methods: *</code>, and <code>Access-Control-Allow-Headers: *</code> into real responses.</p>
+    <p><strong>Scope behavior:</strong></p>
+    <ul>
+      <li><strong>Global</strong>: Applies to all tabs in the browser (uses dynamic rules)</li>
+      <li><strong>Domain</strong>: Applies only to the current domain (uses session rules with domain filtering)</li>
+      <li><strong>Tab</strong>: Applies only to the current tab (uses session rules with tab filtering)</li>
+    </ul>
+    <p><strong>Note:</strong> We removed <code>Access-Control-Allow-Credentials: true</code> because it conflicts with wildcard origins per the CORS spec. Use only for local debugging.</p>
+    <p><strong>Diagnostics:</strong> Click "🔍 Run Diagnostics" in settings to verify CORS rules are installed correctly.</p>
 
     <h2 id="export">Export / Import mocks</h2>
     <p>Menu → Export JSON: downloads an <code>echokit-export-*.json</code> file containing every recorded interaction + overrides + match keys. Menu → Import JSON: paste/upload. Choose <strong>Merge</strong> (replace by id) or <strong>Override</strong> (wipe existing first). Perfect for committing mock sets into your repo.</p>

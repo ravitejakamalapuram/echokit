@@ -2226,9 +2226,17 @@ function showSettingsDialog() {
       </div>
 
       <div class="ek-settings-row">
-        <div>
+        <div style="flex: 1">
           <div class="ek-settings-title">CORS Override</div>
-          <div class="ek-settings-hint">Inject <span class="ek-tag">Access-Control-Allow-*</span> headers into real responses.</div>
+          <div class="ek-settings-hint">
+            Inject <span class="ek-tag">Access-Control-Allow-*</span> headers into responses.
+            <br>
+            <strong>Scope:</strong> ${s.scope === 'global' ? 'Browser-wide (all tabs)' : s.scope === 'domain' ? 'Current domain only' : 'Current tab only'}
+            <br>
+            <button class="ek-btn ek-btn-ghost" data-a="cors-diagnostics" style="margin-top: 4px; padding: 2px 8px; font-size: 11px;">
+              🔍 Run Diagnostics
+            </button>
+          </div>
         </div>
         <label class="ek-switch ${s.corsOverride?'on':''}">
           <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
@@ -2400,6 +2408,31 @@ function showSettingsDialog() {
   overlay.querySelector('[data-a="cors"]').addEventListener('change', async (e) => {
     await BG({ type: 'echokit:settings:update', patch: { corsOverride: e.target.checked } });
     await refresh(); overlay.remove(); render(); showSettingsDialog();
+  });
+  overlay.querySelector('[data-a="cors-diagnostics"]').addEventListener('click', async () => {
+    const diag = await BG({ type: 'echokit:cors:diagnostics' });
+    const msg = diag.ok
+      ? `✅ CORS Diagnostics:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORS Enabled: ${diag.corsEnabled}
+Scope: ${diag.scope}
+Rule Installed: ${diag.ruleInstalled}
+
+Active Tabs: ${diag.tabs.length}
+Dynamic Rules: ${diag.dynamicRulesCount}
+Session Rules: ${diag.sessionRulesCount}
+
+${diag.rule ? `Current CORS Rule (ID ${diag.rule.id}):
+  Priority: ${diag.rule.priority}
+  Condition: ${JSON.stringify(diag.rule.condition, null, 2)}
+  Action: ${JSON.stringify(diag.rule.action, null, 2)}` : 'No CORS rule active'}
+
+Open browser console for full details.`
+      : `❌ CORS Diagnostics Failed:
+${diag.error}`;
+
+    console.log('[EchoKit CORS Diagnostics]', diag);
+    alert(msg);
   });
   overlay.querySelector('[data-a="auto-open"]').addEventListener('change', async (e) => {
     await BG({ type: 'echokit:settings:update', patch: { autoOpenOnRefresh: e.target.checked } });
