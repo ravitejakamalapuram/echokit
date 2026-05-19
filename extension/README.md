@@ -15,7 +15,7 @@ Available in **two surfaces** (same data, same controls):
 
 1. Open `chrome://extensions` in Chrome / Edge / Brave / Arc.
 2. Toggle **Developer mode** ON (top-right).
-3. Click **Load unpacked** and pick the `/app/extension` folder.
+3. Click **Load unpacked** and pick the `extension/` folder from this repository.
 4. Pin the EchoKit icon from the toolbar puzzle menu.
 
 That's it — no backend, no accounts, no setup.

@@ -143,7 +143,7 @@ We welcome contributions from the community! 🎉
 
 1. **Read the guidelines** — [CONTRIBUTING.md](CONTRIBUTING.md)
 2. **Review the PR template** — [Pull Request Checklist](.github/pull_request_template.md)
-3. **Check code quality standards** — [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md)
+3. **Follow coding standards** — See [CONTRIBUTING.md](CONTRIBUTING.md) for code quality guidelines
 
 ### Contribution Workflow
 
@@ -186,8 +186,8 @@ git push origin feature/your-feature-name
 
 ## Support
 
-- 🐛 **Bug Reports** — [Open an issue](https://github.com/ravitejakamalapuram/echokit/issues/new?labels=bug&template=bug_report.md)
-- 💡 **Feature Requests** — [Request a feature](https://github.com/ravitejakamalapuram/echokit/issues/new?labels=enhancement&template=feature_request.md)
+- 🐛 **Bug Reports** — [Open an issue](https://github.com/ravitejakamalapuram/echokit/issues/new)
+- 💡 **Feature Requests** — [Request a feature](https://github.com/ravitejakamalapuram/echokit/issues/new)
 - 💬 **Questions** — [Start a discussion](https://github.com/ravitejakamalapuram/echokit/discussions)
 
 ## License

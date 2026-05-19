@@ -240,8 +240,8 @@ See detailed refactoring issues:
 
 - [README.md](README.md) - Project overview
 - [extension/README.md](extension/README.md) - Extension architecture
-- [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md) - Detailed code review
 - [memory/PRD.md](memory/PRD.md) - Product requirements
+- [TODO.md](TODO.md) - Project roadmap and backlog
 
 ---
 
