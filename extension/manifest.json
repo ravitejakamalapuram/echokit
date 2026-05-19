@@ -3,7 +3,7 @@
   "name": "EchoKit — API Recorder & Mocker",
   "short_name": "EchoKit",
   "version": "1.10.2",
-  "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once. Mock reliably.",
+  "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
   "homepage_url": "https://github.com/ravitejakamalapuram/echokit",
   "permissions": [
     "storage",
