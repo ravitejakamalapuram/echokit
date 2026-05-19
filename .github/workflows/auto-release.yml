@@ -87,6 +87,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Configure git to use PAT for pushing (required to trigger subsequent workflows)
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS || github.token }}@github.com/${{ github.repository }}
+
           if git diff --quiet extension/manifest.json; then
             echo "ℹ️ No version change needed"
           else
@@ -112,6 +115,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Configure git to use PAT for pushing (required to trigger subsequent workflows)
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS || github.token }}@github.com/${{ github.repository }}
 
           git tag -a "v${{ steps.new_version.outputs.version }}" -m "Release v${{ steps.new_version.outputs.version }}
 
