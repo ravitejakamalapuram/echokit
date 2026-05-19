@@ -31,6 +31,10 @@ credentials.json
 .credentials
 .emergent/
 
+# ── Cloudflare / Wrangler ─────────────────────────────────────────────
+# .wrangler/ contains cache files with account IDs — never commit
+.wrangler/
+
 # ── OS / editor noise ─────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

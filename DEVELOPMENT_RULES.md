@@ -441,6 +441,23 @@ Replay time (injected.js):  same computation → must produce the same hash
 
 Any change to `normalizeUrl`, `normalizeBody`, or `computeHash` in `shared/matcher.js` is a **breaking change** — all existing recorded mocks will stop matching. Such changes require a migration path.
 
+> ⚠️ **Dual maintenance**: `injected.js` contains a hand-inlined copy of the matcher (~100 lines) because the MAIN world cannot use ES module imports. **Any change to `shared/matcher.js` must be manually mirrored into `injected.js`**, and the unit tests in `tests/test-matcher.js` cover the `shared/` version only. Verify behavior parity with the smoke tests after any matcher change.
+
+### IndexedDB schema migrations
+
+`shared/store.js` uses DB version `1`. The `onupgradeneeded` callback only creates stores — there is no migration branch. If you need to add an index or change a store's `keyPath`:
+
+1. Increment `DB_VERSION`.
+2. Add a version-guarded migration block inside `onupgradeneeded`:
+   ```js
+   req.onupgradeneeded = (event) => {
+     const db = req.result;
+     const oldVersion = event.oldVersion;
+     if (oldVersion < 2) { /* migration from v1 to v2 */ }
+   };
+   ```
+3. Test that existing data survives the upgrade — never call `store.clear()` in a migration without explicit approval.
+
 ---
 
 ## 📄 Documentation Rules

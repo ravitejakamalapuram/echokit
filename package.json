@@ -3,6 +3,7 @@
   "version": "1.10.3",
   "description": "Record real API interactions and instantly mock them. Chrome extension + headless server.",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=18.0.0"
   },

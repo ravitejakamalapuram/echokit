@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Block google site-verification files from index
+Disallow: /google*.html
+
+Sitemap: https://echokit.dev/sitemap.xml
