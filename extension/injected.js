@@ -18,6 +18,10 @@
   window.__echokitState = state;
 
   // ---------- Matcher (inlined — MAIN world can't import shared modules) ----------
+  // NOTE: This is a hand-inlined copy of shared/matcher.js. Any changes to
+  // shared/matcher.js MUST be manually mirrored here. The only difference:
+  // this uses location.href as the base (page context), while shared/matcher.js
+  // takes a configurable base parameter.
   function normalizeUrl(url) {
     try {
       const u = new URL(url, location.href);

@@ -1,6 +1,11 @@
 // EchoKit — shared matcher.
 // Stable sync hashes for (method, url, body) across multiple match modes:
 // strict | ignore-query | ignore-body | path-wildcard | graphql
+//
+// NOTE: This module is used in background.js and is kept in sync with the
+// inlined copy in injected.js. Any changes here MUST be manually mirrored
+// to injected.js. The only difference: injected.js uses location.href as
+// the base (page context), while this uses a configurable base parameter.
 
 export function normalizeUrl(url, base) {
   try {

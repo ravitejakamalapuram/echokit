@@ -2431,7 +2431,8 @@ Open browser console for full details.`
       : `❌ CORS Diagnostics Failed:
 ${diag.error}`;
 
-    console.log('[EchoKit CORS Diagnostics]', diag);
+    // Log diagnostics for debugging (users can check console if alert doesn't show full details)
+    if (diag.ok) console.log('[EchoKit CORS Diagnostics]', diag);
     alert(msg);
   });
   overlay.querySelector('[data-a="auto-open"]').addEventListener('change', async (e) => {

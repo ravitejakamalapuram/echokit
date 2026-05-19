@@ -473,10 +473,10 @@ async function applyBlocklistRules() {
 
 // ---------- Messaging ----------
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  console.log('[BG] Received message:', msg?.type);
+  dbg('[BG] Received message:', msg?.type);
   handleMessage(msg, sender)
     .then(result => {
-      console.log('[BG] Sending response for', msg?.type, ':', result);
+      dbg('[BG] Sending response for', msg?.type, ':', result);
       sendResponse(result);
     })
     .catch(err => {
