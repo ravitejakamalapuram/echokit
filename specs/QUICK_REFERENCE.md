@@ -213,10 +213,10 @@ Rule 2: Authorization = "Bearer admin"   | URL: /admin
 
 ## 📚 Related Documentation
 
-- **Full Feature Spec**: `memory/FEATURE_GLOBAL_REQUEST_HEADERS.md`
-- **Implementation Guide**: `memory/IMPLEMENTATION_GUIDE_REQUEST_HEADERS.md`
-- **Config Examples**: `memory/DEVELOPER_CONFIG_EXAMPLES.md`
-- **Rollout Plan**: `memory/PRODUCT_STRATEGY_ROLLOUT.md`
+- **Full Feature Spec**: `docs/archive/FEATURE_GLOBAL_REQUEST_HEADERS.md`
+- **Implementation Guide**: `docs/archive/IMPLEMENTATION_GUIDE_REQUEST_HEADERS.md`
+- **Config Examples**: `specs/DEVELOPER_CONFIG_EXAMPLES.md`
+- **Rollout Plan**: `specs/PRODUCT_STRATEGY_ROLLOUT.md`
 
 ---
 

@@ -1,103 +1,140 @@
-## Description
+## What does this PR do?
 
-<!-- Provide a brief description of the changes in this PR -->
+<!-- One sentence. What is the user-visible or developer-visible change? -->
 
-## Type of Change
+## Why?
 
-<!-- Check the relevant option(s) -->
-
-- [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
-- [ ] ✨ New feature (non-breaking change that adds functionality)
-- [ ] 💥 Breaking change (fix or feature that causes existing functionality to break)
-- [ ] 📝 Documentation update
-- [ ] 🔧 Refactoring (code improvement without changing functionality)
-- [ ] 🎨 UI/UX improvement
-- [ ] ⚡ Performance improvement
-- [ ] 🧪 Test update
-
-## Related Issues
-
-<!-- Link related issues using #issue_number -->
+<!-- Link to issue, or explain the motivation if there's no issue -->
 
 Closes #
 
-## Changes Made
+## Type of change
 
-<!-- List the key changes made in this PR -->
+- [ ] 🐛 Bug fix
+- [ ] ✨ New feature
+- [ ] 💥 Breaking change ← requires explicit description below
+- [ ] ♻️ Refactor (no behavior change)
+- [ ] ⚡ Performance improvement
+- [ ] 📝 Documentation only
+- [ ] 🧪 Tests only
+- [ ] 🔧 Chore / tooling / CI
 
-- 
-- 
-- 
+---
 
-## Testing
+## Breaking change details
 
-<!-- Describe how you tested these changes -->
+<!-- Only fill in if you checked "Breaking change" above -->
 
-- [ ] Tested locally by loading extension unpacked
-- [ ] Ran smoke tests: `python3 tests/smoke_echokit.py`
-- [ ] Tested in Chrome/Edge
-- [ ] Verified backward compatibility
-- [ ] Tested edge cases
+**What breaks:**
 
-## Screenshots (if applicable)
+**Migration path for existing users:**
 
-<!-- Add screenshots/recordings to demonstrate UI changes -->
+---
 
-## Pre-Merge Checklist
+## Testing done
 
-**Required for ALL PRs:**
+<!-- Check everything you actually ran — don't check things you skipped -->
 
-- [ ] ✅ Code reviewed and approved
-- [ ] ✅ All CI checks passing
-- [ ] ✅ No merge conflicts
-- [ ] ✅ Branch is up-to-date with main
+- [ ] Loaded extension unpacked in Chrome (`chrome://extensions` → Load unpacked → `extension/`)
+- [ ] Ran smoke tests: `python3 tests/smoke_echokit.py` — all 87 assertions passing
+- [ ] Tested popup surface (400×600 toolbar icon)
+- [ ] Tested DevTools panel (DevTools → EchoKit tab)
+- [ ] Tested with 1000+ recorded interactions (no lag)
+- [ ] Tested scope modes: tab / domain / global (if any interaction logic changed)
+- [ ] Tested light and dark themes (if UI changed)
+- [ ] Tested error scenarios: network failure, invalid JSON, empty state
 
-**Required for RELEASES (merging to main):**
+---
 
-- [ ] 📦 **Version bump is automated!** Use conventional commit prefixes:
-  - `fix:` → Patch bump (1.6.4 → 1.6.5)
-  - `feat:` → Minor bump (1.6.4 → 1.7.0)
-  - `BREAKING:` → Major bump (1.6.4 → 2.0.0)
-  - Auto-release will detect and bump version automatically
-- [ ] 📝 CHANGELOG updated (optional but recommended)
-- [ ] 🧪 Smoke tests run locally and passing
-- [ ] 📚 Documentation updated (if needed)
+## Code quality checklist
 
-**Code Quality:**
+### Every PR
 
-- [ ] 🧹 No console.log/debugger statements left in code
-- [ ] 📏 Functions are < 50 lines (refactor if longer)
-- [ ] 📄 No single file > 500 lines (see refactoring issues #8, #9, #10)
-- [ ] 🔒 No hardcoded secrets or sensitive data
-- [ ] ✍️ JSDoc comments added for new functions (optional but recommended)
+- [ ] No magic numbers — all values extracted to named constants
+- [ ] All `JSON.parse`, storage reads, and network calls wrapped in try-catch
+- [ ] Text inputs debounced at `DEBOUNCE_DELAY` (300 ms)
+- [ ] List updates use `softRenderList()`, not full `render()`
+- [ ] No `console.log` left in production paths (or explained with a comment if intentional)
+- [ ] All new public functions have JSDoc (`@param`, `@returns`)
+- [ ] No function longer than 150 lines (warn at 100)
+- [ ] No file longer than 2000 lines (warn at 1000)
+- [ ] No secrets or credentials committed
 
-## Deployment Notes
+### If interactions are read or written
 
-<!-- Any special considerations for deployment? -->
+- [ ] Query uses `getVisibleInteractions(tabId, host, scope)` — **not** `getAllInteractions()`
+- [ ] Scope modes (tab / domain / global) all behave correctly
 
-- [ ] No special deployment steps required
-- [ ] Requires manual testing after deployment
-- [ ] Other: <!-- specify -->
+### If `manifest.json` is changed
 
-## Reviewer Notes
+- [ ] Version bumped (`fix:` → patch, `feat:` → minor, `BREAKING:` → major)
+- [ ] No new permissions added without justification in this PR description
+- [ ] Extension still loads without errors in `chrome://extensions`
+- [ ] No console errors in the background service worker
 
-<!-- Anything specific you want reviewers to focus on? -->
+### If `shared/matcher.js` is changed
+
+- [ ] Hash output is identical for the same inputs (record ↔ replay must match)
+- [ ] Existing recorded mocks still match after the change — or a migration is documented
+
+### If UI is changed
+
+- [ ] Works in both popup and DevTools panel
+- [ ] Feature flags (`FEATURES[mode]`) used for popup vs. DevTools differences
+- [ ] `echokit:category:action` message type convention followed for any new messages
+
+### If `cli/` is changed
+
+- [ ] CLI tests passing: `node cli/test/test.js`
+- [ ] No new npm dependencies introduced (CLI is intentionally zero-dependency)
+- [ ] `cli/README.md` updated if flags or behavior changed
+
+### If `worker/` is changed
+
+- [ ] Worker tests passing
+- [ ] License key format (`EK-{PLAN}-{EXPIRY}-{SIG}`) unchanged, or migration documented
+
+---
+
+## Documentation checklist
+
+- [ ] `extension/README.md` feature table updated (for new user-facing features)
+- [ ] `CHANGELOG.md` has an entry under `[Unreleased]`
+- [ ] `TODO.md` item marked `[x]` done (if this closes a backlog item)
+- [ ] No new unnecessary `.md` files created (use inline JSDoc or update existing docs)
+- [ ] No broken links introduced
+
+---
+
+## Screenshots / recordings
+
+<!-- For any UI change — before/after is ideal. Skip if no UI change. -->
+
+---
+
+## Reviewer focus
+
+<!-- What should reviewers pay particular attention to? Any areas of uncertainty? -->
 
 ---
 
 <!--
-🤖 Auto-Release & Auto-Version Bump:
+── VERSION BUMP GUIDE ────────────────────────────────────────────────────────
+Conventional commit prefixes control the auto-release version bump:
 
-When this PR is merged to main, the workflow will:
-1. ✅ Automatically detect version bump type from commit messages
-2. ✅ Bump version in manifest.json (patch/minor/major)
-3. ✅ Create a git tag (e.g., v1.7.0)
-4. ✅ Trigger the release workflow
-5. ✅ Create a GitHub Release
-6. ✅ Publish to Chrome Web Store (if configured)
+  fix:      → patch   (1.10.3 → 1.10.4)
+  feat:     → minor   (1.10.3 → 1.11.0)
+  BREAKING: → major   (1.10.3 → 2.0.0)
 
-Use conventional commits to control the bump:
-- fix: = patch (1.6.4 → 1.6.5)
-- feat: = minor (1.6.4 → 1.7.0)
-- BREAKING: = major (1.6.4 → 2.0.0)
+The CI workflow reads the commit prefix on merge to main and bumps
+manifest.json automatically, then creates a GitHub Release.
+
+── FOLDER RULES ─────────────────────────────────────────────────────────────
+website/   → public HTML/CSS (served by Cloudflare Pages)
+docs/      → contributor docs only (never served publicly)
+specs/     → product specs and feature designs
+extension/ → Chrome MV3 source only
+
+Never use: docs/internal/  memory/  /app/extension/
+──────────────────────────────────────────────────────────────────────────────
 -->

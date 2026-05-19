@@ -35,22 +35,63 @@ The giant amber **MOCKING ACTIVE** banner guarantees you always know which mode 
 
 ---
 
-## Feature map (PRD phases)
+## Feature map
 
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 1 | Record `fetch` + `XMLHttpRequest` per tab | ✅ |
-| 1 | Strict matching — `method` + normalized URL + normalized body (FNV-1a hash) | ✅ |
-| 1 | Per-API mock toggle + master toggle per tab | ✅ |
-| 1 | Raw JSON editor for response body, status code, headers | ✅ |
-| 1 | Domain grouping, API list UI, prominent Mock-Active banner | ✅ |
-| 2 | Search (URL substring) + method chips + status filter | ✅ |
-| 2 | Latency simulation (ms slider) per API | ✅ |
-| 2 | Error simulation per API: `4xx`, `5xx`, network failure, timeout | ✅ |
-| 3 | Export / Import mocks as JSON (merge or override strategy) | ✅ |
-| 3 | Conflict handling — multi-version badge + version dropdown (latest wins by default) | ✅ |
-| 3 | CORS override toggle (declarativeNetRequest dynamic rules) | ✅ |
-| future | GraphQL / WebSockets | schema is extensible (hash key is swappable) |
+### Core (v1.0–v1.3)
+
+| Feature | Status |
+|---------|--------|
+| Record `fetch` + `XMLHttpRequest` per tab | ✅ |
+| Strict matching — `method` + normalized URL + normalized body (FNV-1a hash) | ✅ |
+| Six match modes: strict, ignore-query, ignore-body, path-wildcard, graphql, graphql-op | ✅ |
+| Per-API mock toggle + master toggle per tab | ✅ |
+| Raw JSON editor — response body, status code, headers | ✅ |
+| Domain grouping, API list UI, prominent MOCKING ACTIVE amber banner | ✅ |
+| URL search + method chips + status bucket filter | ✅ |
+| Latency simulation (ms slider) | ✅ |
+| Error simulation: `4xx`, `5xx`, network failure, timeout | ✅ |
+| Export / Import mocks as JSON (merge or override strategy) | ✅ |
+| Conflict handling — multi-version badge + version dropdown (latest wins by default) | ✅ |
+| CORS override toggle (scope-aware `declarativeNetRequest` dynamic rules) | ✅ |
+| WebSocket / SSE mock replay (frame-timed, loop mode) | ✅ |
+
+### Pro features (v1.4–v1.5)
+
+| Feature | Status |
+|---------|--------|
+| Freemium gating — 50-request free limit; Pro unlocked via license key | ✅ |
+| 7-day Pro trial automatically granted on install | ✅ |
+| License key system — `chrome.storage.sync`, validated via Cloudflare Worker (HMAC-SHA256), 24h cache | ✅ |
+| HAR import — convert Chrome HAR exports into mock interactions | ✅ |
+| Postman Collection v2.1 export | ✅ |
+| OpenAPI / Swagger 2 import — auto-creates interactions from `paths × methods` | ✅ |
+| Conditional mock — `mockMaxCount` fires mock N times then passes through | ✅ |
+| Mock chaining — N response steps, cursor advances on each hit, optional loop | ✅ |
+| API blocking — block specific requests from reaching the network | ✅ |
+
+### Advanced / Debugging (v1.6+)
+
+| Feature | Status |
+|---------|--------|
+| Global request headers — inject/override/remove headers on all outgoing requests (supports URL pattern filtering) | ✅ |
+| URL rewrite rules — substring or `/regex/flags` applied to outgoing fetch URLs | ✅ |
+| Response transform rules — add/remove header, set body, regex-replace body on mocked responses | ✅ |
+| Network waterfall visualizer — timeline view with method, path, status, duration bars | ✅ |
+| API source visibility badges — distinguish mocked vs real vs blocked responses | ✅ |
+| GitHub Gist sync (Pro) — backup and share mock sets | ✅ |
+| Cookie read/write bridge, localStorage read/write bridge | ✅ |
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+Shift+R` | Toggle recording |
+| `Alt+Shift+M` | Toggle MOCK mode |
+| `Alt+Shift+E` | Open popup |
+
+### Non-goals (v1)
+
+Per the PRD — intentionally deferred: complex GraphQL rule engines, cloud sync backend, AI-generated mocks, visual rule builders.
 
 ---
 
@@ -109,26 +150,31 @@ Toggling CORS in Settings installs `declarativeNetRequest` rules that rewrite `A
 
 ```
 extension/
-├── manifest.json
-├── background.js          # service worker (module)
-├── content.js             # isolated-world bridge
-├── injected.js            # MAIN-world fetch/XHR hook
+├── manifest.json          # MV3 manifest — version, permissions, entry points
+├── background.js          # Service worker: IndexedDB, tab state, DNR rules, license
+├── content.js             # Isolated-world bridge (page ↔ background messaging)
+├── injected.js            # MAIN-world fetch/XHR hook + mock cache
 ├── popup/
-│   ├── popup.html
-│   └── popup.js
+│   ├── popup.html         # Toolbar popup (400×600px)
+│   ├── popup.js           # Initialises shared/app.js in popup mode
+│   └── diagnostic.js      # Connection diagnostics helper
 ├── devtools/
-│   ├── devtools.html      # creates the DevTools panel
-│   ├── devtools.js
-│   ├── panel.html
-│   └── panel.js
+│   ├── devtools.html      # Registers the DevTools panel
+│   ├── devtools.js        # chrome.devtools.panels.create()
+│   ├── panel.html         # Full-screen DevTools panel
+│   └── panel.js           # Initialises shared/app.js in devtools mode
 ├── shared/
-│   ├── app.js             # single UI module (both surfaces)
-│   ├── styles.css         # design tokens + components
-│   ├── matcher.js         # hash + normalization (used by background)
-│   └── store.js           # IndexedDB wrapper (used by background)
-├── icons/ (16/48/128.png)
-└── README.md
+│   ├── app.js             # Entire UI (~2800 lines) — mode-aware, both surfaces
+│   ├── styles.css         # Design tokens + all UI components
+│   ├── matcher.js         # FNV-1a hashing + URL/body normalisation
+│   ├── store.js           # IndexedDB wrapper (background-only)
+│   └── json-highlight.js  # JSON syntax highlighter for response viewer
+├── icons/                 # icon16.png, icon48.png, icon128.png
+└── onboarding/
+    └── welcome.html       # First-install welcome page
 ```
+
+> **Tech debt**: `shared/app.js` at ~2800 lines is slated for refactoring (Issue [#8](https://github.com/ravitejakamalapuram/echokit/issues/8)) into modules: `header.js`, `menu.js`, `settings-dialog.js`, `request-detail.js`, `waterfall.js`.
 
 ---
 
