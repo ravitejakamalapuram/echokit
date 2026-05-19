@@ -5,7 +5,6 @@
 // Set to true locally to see CORS / rule installation diagnostics in the SW console.
 // Must be false in production builds (verbose logging has a measurable overhead in SW).
 const DEBUG = false;
-// Test comment to verify auto-release pipeline triggers release.yml automatically
 /** @type {(...args: unknown[]) => void} */
 const dbg = DEBUG ? console.log.bind(console) : () => {};
 
