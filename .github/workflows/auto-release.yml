@@ -82,23 +82,6 @@ jobs:
 
           echo "✅ Updated manifest.json to ${NEW_VERSION}"
 
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Configure git to use PAT for pushing (required to trigger subsequent workflows)
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS || github.token }}@github.com/${{ github.repository }}
-
-          if git diff --quiet extension/manifest.json; then
-            echo "ℹ️ No version change needed"
-          else
-            git add extension/manifest.json
-            git commit -m "chore: Bump version to ${{ steps.new_version.outputs.version }} [skip ci]"
-            git push origin main
-            echo "✅ Committed and pushed version bump"
-          fi
-
       - name: Check if tag exists
         id: tag_check
         run: |
@@ -119,6 +102,10 @@ jobs:
           # Configure git to use PAT for pushing (required to trigger subsequent workflows)
           git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS || github.token }}@github.com/${{ github.repository }}
 
+          # IMPORTANT: Create tag on current commit (user's original push) BEFORE version bump.
+          # This ensures the tag points to a commit WITHOUT [skip ci], allowing the release
+          # workflow to trigger automatically. If we tag after the version bump commit, the
+          # tag would point to a commit with [skip ci] which prevents workflow triggers.
           git tag -a "v${{ steps.new_version.outputs.version }}" -m "Release v${{ steps.new_version.outputs.version }}
 
           Auto-tagged and auto-versioned from main branch push
@@ -131,6 +118,23 @@ jobs:
 
           echo "✅ Created and pushed tag v${{ steps.new_version.outputs.version }}"
           echo "🚀 This will trigger the release.yml workflow"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Configure git to use PAT for pushing (required to trigger subsequent workflows)
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS || github.token }}@github.com/${{ github.repository }}
+
+          if git diff --quiet extension/manifest.json; then
+            echo "ℹ️ No version change needed"
+          else
+            git add extension/manifest.json
+            git commit -m "chore: Bump version to ${{ steps.new_version.outputs.version }} [skip ci]"
+            git push origin main
+            echo "✅ Committed and pushed version bump"
+          fi
 
       - name: Skip message
         if: steps.tag_check.outputs.exists == 'true'
