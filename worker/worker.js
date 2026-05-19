@@ -127,7 +127,12 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
 
     if (url.pathname === '/__health') {
-      return Response.json({ ok: true, name: env.ECHOKIT_PUBLIC_NAME || 'echokit-license' }, { headers: corsHeaders() });
+      return Response.json({
+        ok: true,
+        name: env.ECHOKIT_PUBLIC_NAME || 'echokit-license',
+        version: '1.0.0',
+        timestamp: new Date().toISOString()
+      }, { headers: corsHeaders() });
     }
 
     if (url.pathname === '/v1/validate' && request.method === 'POST') {
