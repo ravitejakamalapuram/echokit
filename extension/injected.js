@@ -332,7 +332,7 @@ class MockEventSource {
     const rules = (state.requestHeaders || []).filter(r => r.enabled !== false);
     if (!rules.length) return headers;
 
-    let modified = { ...headers };
+    const modified = { ...headers };
 
     for (const rule of rules) {
       try {
