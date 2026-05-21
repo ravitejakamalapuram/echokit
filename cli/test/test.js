@@ -19,6 +19,7 @@ function fixture() {
   // WS/SSE: use the path that the server sees (req.url is just the path, not full URL)
   const ws1 = computeMatchKeys('WS', '/socket', '');
   const sse1 = computeMatchKeys('SSE', '/stream', '');
+  const sseError = computeMatchKeys('SSE', '/stream-error', '');
   const circular1 = computeMatchKeys('GET', 'http://_/api/circular', null);
   return {
     version: 2,
@@ -56,9 +57,12 @@ function fixture() {
           { dir: 'in', t: 30, data: 'tick-2' }
         ]}),
         mockEnabled: true, timestamp: Date.now() },
-      { id: 'int_circular', hash: circularKeys.strict, matchKeys: circularKeys, matchMode: 'strict',
-        method: 'GET', url: 'http://_/api/circular',
-        responseStatus: 200, responseHeaders: {}, responseBody: {},
+      { id: 'int_sse_error', hash: sseError.strict, matchKeys: sseError, matchMode: 'path-wildcard',
+        method: 'SSE', url: '/stream-error',
+        responseStatus: 200, responseHeaders: {},
+        responseBody: JSON.stringify({ frames: [
+          { dir: 'in', t: 0, data: 'tick-error-1' }
+        ]}),
         mockEnabled: true, timestamp: Date.now() },
       // Unused mock — should appear as unusedMocks in the coverage report
       { id: 'int_unused', hash: 'xyz', matchKeys: { strict: 'xyz', 'path-wildcard': 'xyz' }, matchMode: 'strict',
@@ -229,6 +233,26 @@ function sseStream(port, urlPath) {
     const sse = await sseStream(port, '/stream');
     expect('SSE returns text/event-stream', sse.ctype && sse.ctype.includes('text/event-stream'), JSON.stringify({ ctype: sse.ctype }));
     expect('SSE delivers frames', sse.body.includes('data: tick-1') && sse.body.includes('data: tick-2'), sse.body);
+
+    // SSE Error on res.write
+    const origWrite = http.ServerResponse.prototype.write;
+    let writeThrew = false;
+    http.ServerResponse.prototype.write = function() {
+      if (this.req && this.req.url === '/stream-error') {
+        writeThrew = true;
+        throw new Error('simulated res.write error');
+      }
+      return origWrite.apply(this, arguments);
+    };
+    try {
+      await sseStream(port, '/stream-error').catch(e => {
+        // It's expected to throw a socket hang up because the server stops writing
+        // and doesn't call res.end(), so the client timeout kicks in.
+      });
+      expect('SSE handles res.write error gracefully', writeThrew);
+    } finally {
+      http.ServerResponse.prototype.write = origWrite;
+    }
 
     // WS
     const wsMsgs = await wsConnect(port, '/socket');
