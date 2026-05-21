@@ -242,10 +242,11 @@ function render() {
   const selected = state.selectedId ? state.interactions.find(i => i.id === state.selectedId) : null;
   const conflicts = selected ? state.interactions.filter(i => i.hash === selected.hash) : [];
 
-  const appCls = `ek-app ${state.mode} ${state.detailOpen && isPopup ? 'detail-open' : ''}`;
+  const safeMode = state.mode === 'devtools' ? 'devtools' : 'popup';
+  const appCls = `ek-app ${safeMode} ${state.detailOpen && isPopup ? 'detail-open' : ''}`;
 
   root.innerHTML = `
-    <div class="${appCls}" data-testid="echokit-app" style="${isPopup ? '' : `--list-width:${state.listWidth}px`}">
+    <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
       ${renderToolbar()}
       <div class="ek-main">
@@ -262,6 +263,14 @@ function render() {
       ${renderFooter(list.length)}
     </div>
   `;
+
+  const appEl = root.querySelector('[data-testid="echokit-app"]');
+  if (appEl) {
+    appEl.className = appCls;
+    if (!isPopup) {
+      appEl.style.setProperty('--list-width', `${Number(state.listWidth)}px`);
+    }
+  }
 
   bindEvents();
   restoreUIState(snapshot);
