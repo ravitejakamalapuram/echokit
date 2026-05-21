@@ -245,6 +245,8 @@
         emit('mock-hit', { id: mock.id });
       } else if (mock.hasChain) {
         // Mock chain: notify background to advance cursor
+        // AND increment local cursor so multiple calls in same event loop advance properly
+        mock.mockChainCursor = (mock.mockChainCursor || 0) + 1;
         emit('mock-hit', { id: mock.id });
       }
       return mock;

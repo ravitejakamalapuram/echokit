@@ -797,13 +797,16 @@ def main():
                 statuses = []
                 bodies = []
                 for _ in range(3):
+                    # For whatever reason, mockChain tracking relies on message passing
+                    # and might have a race condition in the loop, wait after click/fetch
                     r = page.evaluate("window.doFetch()")
                     statuses.append(r.get('status'))
                     bodies.append(r.get('body'))
-                    time.sleep(0.25)
+                    time.sleep(0.5)
                 step('v16_chain_step1_first_hit', statuses[0] == 201, f'statuses={statuses}')
                 step('v16_chain_step2_second_hit', statuses[1] == 202, f'statuses={statuses}')
                 step('v16_chain_loops_back_to_step1', statuses[2] == 201, f'statuses={statuses}')
+                time.sleep(0.5)
                 ch_after = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
                 ch_int_after = next((i for i in ch_after['interactions'] if i['id'] == ch_target['id']), None)
                 step('v16_chain_cursor_advanced', (ch_int_after or {}).get('mockChainCursor', 0) >= 3,
