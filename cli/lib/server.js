@@ -7,8 +7,9 @@ const http = require('http');
 const crypto = require('crypto');
 const { computeMatchKeys, MODES } = require('./match');
 
-function loadInteractions(file) {
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+async function loadInteractions(file) {
+  const rawText = await fs.promises.readFile(file, 'utf8');
+  const raw = JSON.parse(rawText);
   const items = Array.isArray(raw) ? raw : (raw.interactions || []);
   return items.filter(i => i && i.method && i.url);
 }
@@ -407,7 +408,7 @@ async function startServer(opts) {
     file, port, host, defaultLatency, strict, ci, watch, quiet, reportPath, reportFormat
   } = opts;
 
-  let interactions = loadInteractions(file);
+  let interactions = await loadInteractions(file);
   let { httpIndex, wsIndex, sseIndex } = buildIndex(interactions);
   const cursors = {};
   const hits = {};
@@ -415,9 +416,9 @@ async function startServer(opts) {
   const startedAt = Date.now();
 
   if (watch) {
-    fs.watchFile(file, { interval: 500 }, () => {
+    fs.watchFile(file, { interval: 500 }, async () => {
       try {
-        interactions = loadInteractions(file);
+        interactions = await loadInteractions(file);
         ({ httpIndex, wsIndex, sseIndex } = buildIndex(interactions));
         Object.keys(cursors).forEach(k => delete cursors[k]);
         if (!quiet) console.log(`↻ reloaded ${interactions.length} mocks from ${file}`);
