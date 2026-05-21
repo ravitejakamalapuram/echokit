@@ -269,7 +269,7 @@ class MockEventSource {
 
   // ---------- Messaging ----------
   function emit(type, payload, requestId) {
-    window.postMessage({ source: SRC_INJECTED, type, payload, requestId }, '*');
+    window.postMessage({ source: SRC_INJECTED, type, payload, requestId }, '/');
   }
   window.addEventListener('message', (ev) => {
     const d = ev.data;
