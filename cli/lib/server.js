@@ -554,4 +554,4 @@ async function startServer(opts) {
   };
 }
 
-module.exports = { startServer, loadInteractions, buildIndex, buildReport, buildMarkdownReport };
+module.exports = { startServer, loadInteractions, buildIndex, buildReport, buildMarkdownReport, corsHeaders };
