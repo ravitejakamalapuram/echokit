@@ -10,7 +10,7 @@ const dbg = DEBUG ? console.log.bind(console) : () => {};
 
 import { computeHash, computeMatchKeys } from './shared/matcher.js';
 import {
-  putInteraction, getInteraction, deleteInteraction, getAllInteractions,
+  putInteraction, getInteraction, deleteInteraction, deleteInteractions, getAllInteractions,
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
 
@@ -588,8 +588,15 @@ async function handleMessage(msg, sender) {
       try { const t = await chrome.tabs.get(tabId); host = hostOf(t?.url || ''); } catch {}
       const ctx = { tabId, host, scope: settings.scope };
       const all = await getAllInteractions();
-      let deleted = 0;
-      for (const it of all) if (visibleInContext(it, ctx)) { await deleteInteraction(it.id); deleted++; }
+
+      const idsToDelete = [];
+      for (const it of all) {
+        if (visibleInContext(it, ctx)) {
+          idsToDelete.push(it.id);
+        }
+      }
+
+      const deleted = await deleteInteractions(idsToDelete);
       await pushAllTabs();
       return { ok: true, deleted };
     }
@@ -953,7 +960,7 @@ async function handleMessage(msg, sender) {
           const successCode = ['200', '201', '204'].find(c => responses[c]) || Object.keys(responses)[0] || '200';
           const resp = responses[successCode] || {};
           let resBody = '';
-          let resStatus = parseInt(successCode, 10) || 200;
+          const resStatus = parseInt(successCode, 10) || 200;
           if (isSwagger2) {
             const ex = resp.examples?.['application/json'];
             resBody = ex ? JSON.stringify(ex) : (resp.schema?.example ? JSON.stringify(resp.schema.example) : '');

@@ -55,7 +55,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-let state = {
+const state = {
   mode: 'popup',
   tabId: null,
   tab: { recording: false, mocking: false, sessionId: null, host: '' },

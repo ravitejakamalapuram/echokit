@@ -59,6 +59,13 @@ export async function deleteInteraction(id) {
   return req2promise(store.delete(id));
 }
 
+export async function deleteInteractions(ids) {
+  if (!ids || ids.length === 0) return 0;
+  const store = await tx(STORE_INTERACTIONS, 'readwrite');
+  await Promise.all(ids.map(id => req2promise(store.delete(id))));
+  return ids.length;
+}
+
 export async function getAllInteractions() {
   const store = await tx(STORE_INTERACTIONS);
   return req2promise(store.getAll());
@@ -98,6 +105,7 @@ export default {
   putInteraction,
   getInteraction,
   deleteInteraction,
+  deleteInteractions,
   getAllInteractions,
   getInteractionsByHash,
   clearSessionInteractions,
