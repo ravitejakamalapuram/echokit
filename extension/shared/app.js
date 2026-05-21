@@ -335,6 +335,7 @@ function restoreUIState(snap) {
  * when applicable, and a compact stats bar showing the number of recorded interactions.
  *
  * @returns {string} The header HTML string. Contains interactive elements with `data-action` attributes such as `start-recording`, `stop-recording`, `toggle-mocking`, `toggle-cors-master`, `toggle-waterfall`, `open-settings`, and `toggle-menu`.
+ */
 function renderHeader() {
   const { recording, mocking } = state.tab;
   const cors = state.settings.corsOverride;
@@ -888,8 +889,28 @@ function getActiveFilterCount() {
   return count;
 }
 
-function renderAdvancedFilterPanel() {
+function renderMethodFilter() {
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  return `
+    <!-- Method Filter -->
+    <div class="ek-filter-section">
+      <label class="ek-filter-label">HTTP Method</label>
+      <div class="ek-checkbox-group">
+        ${methods.map(method => `
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-method-toggle"
+                   data-method="${method}"
+                   ${state.filters.methods.includes(method) ? 'checked' : ''}/>
+            <span>${method}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderStatusFilter() {
   const statusOptions = [
     { value: '2xx', label: '2xx (Success)' },
     { value: '3xx', label: '3xx (Redirect)' },
@@ -897,123 +918,128 @@ function renderAdvancedFilterPanel() {
     { value: '5xx', label: '5xx (Server Error)' },
     { value: '0', label: 'Failed (Network/Timeout)' }
   ];
+  return `
+    <!-- Status Filter -->
+    <div class="ek-filter-section">
+      <label class="ek-filter-label">Response Status</label>
+      <div class="ek-checkbox-group">
+        ${statusOptions.map(({ value, label }) => `
+          <label class="ek-checkbox">
+            <input type="checkbox"
+                   data-action="filter-status-toggle"
+                   data-status="${value}"
+                   ${state.filters.statusCodes.includes(value) ? 'checked' : ''}/>
+            <span>${label}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
 
+function renderBodySearchFilter() {
+  return `
+    <!-- Body Search -->
+    <div class="ek-filter-section">
+      <label class="ek-filter-label">Search Body Content</label>
+      <input class="ek-input"
+             type="text"
+             placeholder="Request body contains…"
+             value="${escapeHtml(state.filters.requestBodyContains)}"
+             data-action="filter-request-body"
+             data-testid="filter-request-body"/>
+      <input class="ek-input"
+             type="text"
+             placeholder="Response body contains…"
+             value="${escapeHtml(state.filters.responseBodyContains)}"
+             data-action="filter-response-body"
+             data-testid="filter-response-body"/>
+    </div>
+  `;
+}
+
+function renderHeaderSearchFilter() {
+  return `
+    <!-- Header Search -->
+    <div class="ek-filter-section">
+      <label class="ek-filter-label">Search Headers</label>
+      <div class="ek-header-filters">
+        <div class="ek-row-inline">
+          <input class="ek-input"
+                 placeholder="Request header name"
+                 value="${escapeHtml(state.filters.requestHeader.name)}"
+                 data-action="filter-req-header-name"
+                 style="flex:1"/>
+          <input class="ek-input"
+                 placeholder="value"
+                 value="${escapeHtml(state.filters.requestHeader.value)}"
+                 data-action="filter-req-header-value"
+                 style="flex:1"/>
+        </div>
+        <div class="ek-row-inline">
+          <input class="ek-input"
+                 placeholder="Response header name"
+                 value="${escapeHtml(state.filters.responseHeader.name)}"
+                 data-action="filter-res-header-name"
+                 style="flex:1"/>
+          <input class="ek-input"
+                 placeholder="value"
+                 value="${escapeHtml(state.filters.responseHeader.value)}"
+                 data-action="filter-res-header-value"
+                 style="flex:1"/>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSourceFilter() {
+  return `
+    <!-- Source Filter (NEW) -->
+    <div class="ek-filter-section">
+      <label class="ek-filter-label">API Source</label>
+      <div class="ek-checkbox-group">
+        <label class="ek-checkbox">
+          <input type="checkbox"
+                 data-action="filter-source-toggle"
+                 data-source="thisTab"
+                 ${state.filters.sources.thisTab ? 'checked' : ''}/>
+          <span>This tab</span>
+        </label>
+        <label class="ek-checkbox">
+          <input type="checkbox"
+                 data-action="filter-source-toggle"
+                 data-source="otherTabs"
+                 ${state.filters.sources.otherTabs ? 'checked' : ''}/>
+          <span>Other tabs</span>
+        </label>
+        <label class="ek-checkbox">
+          <input type="checkbox"
+                 data-action="filter-source-toggle"
+                 data-source="closedTabs"
+                 ${state.filters.sources.closedTabs ? 'checked' : ''}/>
+          <span>Closed tabs</span>
+        </label>
+        <label class="ek-checkbox">
+          <input type="checkbox"
+                 data-action="filter-source-toggle"
+                 data-source="imported"
+                 ${state.filters.sources.imported ? 'checked' : ''}/>
+          <span>Imported</span>
+        </label>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdvancedFilterPanel() {
   return `
     <div class="ek-advanced-filters" data-testid="advanced-filters">
-      <!-- Method Filter -->
-      <div class="ek-filter-section">
-        <label class="ek-filter-label">HTTP Method</label>
-        <div class="ek-checkbox-group">
-          ${methods.map(method => `
-            <label class="ek-checkbox">
-              <input type="checkbox"
-                     data-action="filter-method-toggle"
-                     data-method="${method}"
-                     ${state.filters.methods.includes(method) ? 'checked' : ''}/>
-              <span>${method}</span>
-            </label>
-          `).join('')}
-        </div>
-      </div>
-
-      <!-- Status Filter -->
-      <div class="ek-filter-section">
-        <label class="ek-filter-label">Response Status</label>
-        <div class="ek-checkbox-group">
-          ${statusOptions.map(({ value, label }) => `
-            <label class="ek-checkbox">
-              <input type="checkbox"
-                     data-action="filter-status-toggle"
-                     data-status="${value}"
-                     ${state.filters.statusCodes.includes(value) ? 'checked' : ''}/>
-              <span>${label}</span>
-            </label>
-          `).join('')}
-        </div>
-      </div>
-
-      <!-- Body Search -->
-      <div class="ek-filter-section">
-        <label class="ek-filter-label">Search Body Content</label>
-        <input class="ek-input"
-               type="text"
-               placeholder="Request body contains…"
-               value="${escapeHtml(state.filters.requestBodyContains)}"
-               data-action="filter-request-body"
-               data-testid="filter-request-body"/>
-        <input class="ek-input"
-               type="text"
-               placeholder="Response body contains…"
-               value="${escapeHtml(state.filters.responseBodyContains)}"
-               data-action="filter-response-body"
-               data-testid="filter-response-body"/>
-      </div>
-
-      <!-- Header Search -->
-      <div class="ek-filter-section">
-        <label class="ek-filter-label">Search Headers</label>
-        <div class="ek-header-filters">
-          <div class="ek-row-inline">
-            <input class="ek-input"
-                   placeholder="Request header name"
-                   value="${escapeHtml(state.filters.requestHeader.name)}"
-                   data-action="filter-req-header-name"
-                   style="flex:1"/>
-            <input class="ek-input"
-                   placeholder="value"
-                   value="${escapeHtml(state.filters.requestHeader.value)}"
-                   data-action="filter-req-header-value"
-                   style="flex:1"/>
-          </div>
-          <div class="ek-row-inline">
-            <input class="ek-input"
-                   placeholder="Response header name"
-                   value="${escapeHtml(state.filters.responseHeader.name)}"
-                   data-action="filter-res-header-name"
-                   style="flex:1"/>
-            <input class="ek-input"
-                   placeholder="value"
-                   value="${escapeHtml(state.filters.responseHeader.value)}"
-                   data-action="filter-res-header-value"
-                   style="flex:1"/>
-          </div>
-        </div>
-      </div>
-
-      <!-- Source Filter (NEW) -->
-      <div class="ek-filter-section">
-        <label class="ek-filter-label">API Source</label>
-        <div class="ek-checkbox-group">
-          <label class="ek-checkbox">
-            <input type="checkbox"
-                   data-action="filter-source-toggle"
-                   data-source="thisTab"
-                   ${state.filters.sources.thisTab ? 'checked' : ''}/>
-            <span>This tab</span>
-          </label>
-          <label class="ek-checkbox">
-            <input type="checkbox"
-                   data-action="filter-source-toggle"
-                   data-source="otherTabs"
-                   ${state.filters.sources.otherTabs ? 'checked' : ''}/>
-            <span>Other tabs</span>
-          </label>
-          <label class="ek-checkbox">
-            <input type="checkbox"
-                   data-action="filter-source-toggle"
-                   data-source="closedTabs"
-                   ${state.filters.sources.closedTabs ? 'checked' : ''}/>
-            <span>Closed tabs</span>
-          </label>
-          <label class="ek-checkbox">
-            <input type="checkbox"
-                   data-action="filter-source-toggle"
-                   data-source="imported"
-                   ${state.filters.sources.imported ? 'checked' : ''}/>
-            <span>Imported</span>
-          </label>
-        </div>
-      </div>
+      ${renderMethodFilter()}
+      ${renderStatusFilter()}
+      ${renderBodySearchFilter()}
+      ${renderHeaderSearchFilter()}
+      ${renderSourceFilter()}
     </div>
   `;
 }
