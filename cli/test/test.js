@@ -18,6 +18,7 @@ function fixture() {
   // WS/SSE: use the path that the server sees (req.url is just the path, not full URL)
   const ws1 = computeMatchKeys('WS', '/socket', '');
   const sse1 = computeMatchKeys('SSE', '/stream', '');
+  const circular1 = computeMatchKeys('GET', 'http://_/api/circular', null);
   return {
     version: 2,
     interactions: [
@@ -57,6 +58,10 @@ function fixture() {
       // Unused mock — should appear as unusedMocks in the coverage report
       { id: 'int_unused', hash: 'xyz', matchKeys: { strict: 'xyz', 'path-wildcard': 'xyz' }, matchMode: 'strict',
         method: 'GET', url: 'http://_/never',
+        responseStatus: 200, responseHeaders: {}, responseBody: '{}',
+        mockEnabled: true, timestamp: Date.now() },
+      { id: 'int_circular', hash: circular1.strict, matchKeys: circular1, matchMode: 'strict',
+        method: 'GET', url: 'http://_/api/circular',
         responseStatus: 200, responseHeaders: {}, responseBody: '{}',
         mockEnabled: true, timestamp: Date.now() }
     ]
@@ -145,11 +150,27 @@ function sseStream(port, urlPath) {
   const reportFile = path.join(os.tmpdir(), `echokit-report-${Date.now()}.json`);
 
   const port = 19000 + Math.floor(Math.random() * 500);
+
+  const origParse = JSON.parse;
+  JSON.parse = function(str) {
+    const obj = origParse(str);
+    if (obj && obj.interactions) {
+      const int = obj.interactions.find(i => i.id === 'int_circular');
+      if (int) {
+        int.responseBody = {};
+        int.responseBody.self = int.responseBody;
+      }
+    }
+    return obj;
+  };
+
   const handle = await startServer({
     file: tmp, port, host: '127.0.0.1',
     defaultLatency: 0, strict: false, ci: false, watch: false, quiet: true,
     reportPath: reportFile
   });
+
+  JSON.parse = origParse;
 
   let pass = 0, fail = 0;
   const expect = (name, ok, detail = '') => {
@@ -181,7 +202,7 @@ function sseStream(port, urlPath) {
 
     // Health endpoint
     const h = await getJSON(`http://127.0.0.1:${port}/__health`);
-    expect('__health returns ok', h.status === 200 && h.body.ok === true && h.body.mocks === 6, JSON.stringify(h));
+    expect('__health returns ok', h.status === 200 && h.body.ok === true && h.body.mocks === 7, JSON.stringify(h));
 
     // SSE
     const sse = await sseStream(port, '/stream');
@@ -192,9 +213,12 @@ function sseStream(port, urlPath) {
     const wsMsgs = await wsConnect(port, '/socket');
     expect('WS handshake + frames replayed', wsMsgs.length >= 2 && wsMsgs[0] === 'hello' && wsMsgs[1] === 'world', JSON.stringify(wsMsgs));
 
+    const circ = await getJSON(`http://127.0.0.1:${port}/api/circular`);
+    expect('circular reference body stringified safely', circ.status === 200 && circ.body === '[object Object]', circ.body);
+
     // Live coverage endpoint
     const cov = await getJSON(`http://127.0.0.1:${port}/__coverage`);
-    expect('__coverage returns report', cov.status === 200 && cov.body.totalMocks === 6 && cov.body.usedMocks >= 5,
+    expect('__coverage returns report', cov.status === 200 && cov.body.totalMocks === 7 && cov.body.usedMocks >= 6,
       JSON.stringify({ totalMocks: cov.body.totalMocks, usedMocks: cov.body.usedMocks, unmatched: cov.body.unmatchedRequests }));
     expect('__coverage lists unused mock', cov.body.unusedMocks.some(m => m.id === 'int_unused'),
       JSON.stringify(cov.body.unusedMocks));
