@@ -405,32 +405,71 @@ function renderMenu() {
   const panel = document.createElement('div');
   panel.className = 'ek-menu-panel';
   panel.setAttribute('data-testid', 'menu-panel');
-  const pasteHint = state.clipboardPreview
-    ? `<span class="ek-subtle">${state.clipboardPreview.count} keys · ${escapeHtml(state.clipboardPreview.origin || '')}</span>`
-    : `<span class="ek-subtle">nothing in clipboard</span>`;
-  const proTag = `<span class="ek-pro-tag">PRO</span>`;
-  panel.innerHTML = `
-    <button class="ek-menu-item" data-menu="stop-all" data-testid="menu-stop-all">Stop all recordings <span class="ek-subtle">across all tabs</span></button>
-    <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="clear" data-testid="menu-clear">Clear recordings <span class="ek-subtle">${state.interactions.length}</span></button>
-    <button class="ek-menu-item" data-menu="export" data-testid="menu-export">Export JSON</button>
-    <button class="ek-menu-item" data-menu="import" data-testid="menu-import">Import JSON</button>
-    <button class="ek-menu-item" data-menu="import-har" data-testid="menu-import-har">Import HAR ${state.isPro ? '' : proTag}</button>
-    <button class="ek-menu-item" data-menu="export-har" data-testid="menu-export-har">Export HAR <span class="ek-subtle">DevTools-compatible</span>${state.isPro ? '' : proTag}</button>
-    <button class="ek-menu-item" data-menu="export-postman" data-testid="menu-export-postman">Export Postman Collection ${state.isPro ? '' : proTag}</button>
-    <button class="ek-menu-item" data-menu="import-openapi" data-testid="menu-import-openapi">Import OpenAPI / Swagger JSON</button>
-    <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="ls-copy" data-testid="menu-ls-copy">Copy localStorage ${state.isPro ? '<span class="ek-subtle">active tab</span>' : proTag}</button>
-    <button class="ek-menu-item" data-menu="ls-paste" data-testid="menu-ls-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'localStorage' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste localStorage ${state.isPro ? pasteHint : proTag}</button>
-    <button class="ek-menu-item" data-menu="ck-copy" data-testid="menu-ck-copy">Copy cookies ${state.isPro ? '<span class="ek-subtle">active tab</span>' : proTag}</button>
-    <button class="ek-menu-item" data-menu="ck-paste" data-testid="menu-ck-paste" ${state.clipboardPreview && state.clipboardPreview.kind === 'cookies' ? 'style="border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.06)"' : ''}>Paste cookies ${state.isPro ? '' : proTag}</button>
-    <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="gist-upload" data-testid="menu-gist-upload">Upload to GitHub Gist ${state.isPro ? '<span class="ek-subtle">share w/ team</span>' : proTag}</button>
-    <button class="ek-menu-item" data-menu="gist-import" data-testid="menu-gist-import">Import from Gist URL ${state.isPro ? '' : proTag}</button>
-    <div class="ek-menu-sep"></div>
-    <button class="ek-menu-item" data-menu="settings" data-testid="menu-settings">Settings <span class="ek-subtle">theme · scope · cors · headers</span></button>
-    <button class="ek-menu-item" data-menu="shortcuts" data-testid="menu-shortcuts">Keyboard shortcuts</button>
-  `;
+  const addSep = () => {
+    const sep = document.createElement('div');
+    sep.className = 'ek-menu-sep';
+    panel.appendChild(sep);
+  };
+
+  const addBtn = (menu, testId, text, highlight, ...suffixNodes) => {
+    const b = document.createElement('button');
+    b.className = 'ek-menu-item';
+    b.setAttribute('data-menu', menu);
+    b.setAttribute('data-testid', testId);
+    if (highlight) {
+      b.style.border = '1px solid rgba(251,191,36,0.4)';
+      b.style.background = 'rgba(251,191,36,0.06)';
+    }
+    b.textContent = text;
+    for (const node of suffixNodes) {
+      if (!node) continue;
+      b.appendChild(document.createTextNode(' '));
+      b.appendChild(node);
+    }
+    panel.appendChild(b);
+  };
+
+  const createSubtle = (text) => {
+    const s = document.createElement('span');
+    s.className = 'ek-subtle';
+    s.textContent = text;
+    return s;
+  };
+
+  const createProTag = () => {
+    const s = document.createElement('span');
+    s.className = 'ek-pro-tag';
+    s.textContent = 'PRO';
+    return s;
+  };
+
+  let pasteHintNode;
+  if (state.clipboardPreview) {
+    pasteHintNode = createSubtle(`${state.clipboardPreview.count} keys · ${state.clipboardPreview.origin || ''}`);
+  } else {
+    pasteHintNode = createSubtle('nothing in clipboard');
+  }
+
+  addBtn('stop-all', 'menu-stop-all', 'Stop all recordings', false, createSubtle('across all tabs'));
+  addSep();
+  addBtn('clear', 'menu-clear', 'Clear recordings', false, createSubtle(String(state.interactions.length)));
+  addBtn('export', 'menu-export', 'Export JSON', false);
+  addBtn('import', 'menu-import', 'Import JSON', false);
+  addBtn('import-har', 'menu-import-har', 'Import HAR', false, state.isPro ? null : createProTag());
+  addBtn('export-har', 'menu-export-har', 'Export HAR', false, createSubtle('DevTools-compatible'), state.isPro ? null : createProTag());
+  addBtn('export-postman', 'menu-export-postman', 'Export Postman Collection', false, state.isPro ? null : createProTag());
+  addBtn('import-openapi', 'menu-import-openapi', 'Import OpenAPI / Swagger JSON', false);
+  addSep();
+  addBtn('ls-copy', 'menu-ls-copy', 'Copy localStorage', false, state.isPro ? createSubtle('active tab') : createProTag());
+  addBtn('ls-paste', 'menu-ls-paste', 'Paste localStorage', state.clipboardPreview && state.clipboardPreview.kind === 'localStorage', state.isPro ? pasteHintNode : createProTag());
+  addBtn('ck-copy', 'menu-ck-copy', 'Copy cookies', false, state.isPro ? createSubtle('active tab') : createProTag());
+  addBtn('ck-paste', 'menu-ck-paste', 'Paste cookies', state.clipboardPreview && state.clipboardPreview.kind === 'cookies', state.isPro ? null : createProTag());
+  addSep();
+  addBtn('gist-upload', 'menu-gist-upload', 'Upload to GitHub Gist', false, state.isPro ? createSubtle('share w/ team') : createProTag());
+  addBtn('gist-import', 'menu-gist-import', 'Import from Gist URL', false, state.isPro ? null : createProTag());
+  addSep();
+  addBtn('settings', 'menu-settings', 'Settings', false, createSubtle('theme · scope · cors · headers'));
+  addBtn('shortcuts', 'menu-shortcuts', 'Keyboard shortcuts', false);
   document.body.appendChild(panel);
   const rect = anchor.getBoundingClientRect();
   panel.style.position = 'fixed';
