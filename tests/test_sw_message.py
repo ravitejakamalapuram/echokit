@@ -128,6 +128,14 @@ def main():
 
                   // Access the handleMessage function if available
                   // This is a hack - in production it's not exposed
+                  if (typeof self.__echokitHandle === 'function') {{
+                    try {{
+                      const res = await self.__echokitHandle(msg, sender);
+                      return res;
+                    }} catch (e) {{
+                      return "Error calling __echokitHandle: " + e;
+                    }}
+                  }}
                   return "handleMessage not directly accessible - checking console";
                 }})()
             """)
