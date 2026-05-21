@@ -12,6 +12,7 @@ const { startServer } = require('../lib/server');
 const { computeMatchKeys } = require('../lib/match');
 
 function fixture() {
+  const circularKeys = computeMatchKeys('GET', 'http://_/api/circular', null);
   const get1 = computeMatchKeys('GET', 'http://_/api/users', null);
   const post1 = computeMatchKeys('POST', 'http://_/api/login', JSON.stringify({ u: 'a' }));
   const chain1 = computeMatchKeys('GET', 'http://_/api/chain', null);
@@ -54,6 +55,10 @@ function fixture() {
           { dir: 'in', t: 0, data: 'tick-1' },
           { dir: 'in', t: 30, data: 'tick-2' }
         ]}),
+        mockEnabled: true, timestamp: Date.now() },
+      { id: 'int_circular', hash: circularKeys.strict, matchKeys: circularKeys, matchMode: 'strict',
+        method: 'GET', url: 'http://_/api/circular',
+        responseStatus: 200, responseHeaders: {}, responseBody: {},
         mockEnabled: true, timestamp: Date.now() },
       // Unused mock — should appear as unusedMocks in the coverage report
       { id: 'int_unused', hash: 'xyz', matchKeys: { strict: 'xyz', 'path-wildcard': 'xyz' }, matchMode: 'strict',
@@ -149,6 +154,19 @@ function sseStream(port, urlPath) {
   fs.writeFileSync(tmp, JSON.stringify(fixture(), null, 2));
   const reportFile = path.join(os.tmpdir(), `echokit-report-${Date.now()}.json`);
 
+  const originalParse = JSON.parse;
+  JSON.parse = function(str, reviver) {
+    const parsed = originalParse(str, reviver);
+    if (parsed && Array.isArray(parsed.interactions)) {
+      const circ = parsed.interactions.find(i => i.id === 'int_circular');
+      if (circ) {
+        const o = {};
+        o.self = o;
+        circ.responseBody = o;
+      }
+    }
+    return parsed;
+  };
   const port = 19000 + Math.floor(Math.random() * 500);
 
   const origParse = JSON.parse;
@@ -197,6 +215,9 @@ function sseStream(port, urlPath) {
     expect('chain step 2', c2.status === 201 && c2.body.v === 2, JSON.stringify(c2));
     expect('chain loops to step 1', c3.status === 200 && c3.body.v === 1, JSON.stringify(c3));
 
+    const r_circ = await getJSON(`http://127.0.0.1:${port}/api/circular`);
+    expect('circular response falls back to String()', r_circ.status === 200 && r_circ.body === '[object Object]', JSON.stringify(r_circ));
+
     const r4 = await getJSON(`http://127.0.0.1:${port}/api/users?ignored=true`);
     expect('strict mode does not match query variant', r4.status === 404, JSON.stringify(r4));
 
@@ -238,6 +259,7 @@ function sseStream(port, urlPath) {
       JSON.stringify(report.mocks.find(m => m.id === 'int_chain')));
     fs.unlinkSync(reportFile);
   }
+  JSON.parse = originalParse;
   fs.unlinkSync(tmp);
 
   console.log(`\nPassed: ${pass}  Failed: ${fail}`);
