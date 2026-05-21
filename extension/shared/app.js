@@ -2177,15 +2177,9 @@ function showImportDialog() {
  * User changes are persisted by sending background messages and the UI is refreshed after updates.
  * The modal can be closed with the Done button or by clicking the overlay.
  */
-function showSettingsDialog() {
-  const s = state.settings;
-  const isDevTools = state.mode === 'devtools';
-  const overlay = document.createElement('div');
-  overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
-    <div class="ek-modal" data-testid="settings-modal">
-      <div class="ek-modal-title">Settings</div>
 
+function renderSettingsGeneral(s, isDevTools) {
+  return `
       ${isDevTools ? `
         <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="color: #3b82f6; flex-shrink: 0;">
@@ -2260,7 +2254,11 @@ function showSettingsDialog() {
       <div style="margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-primary);">
         🔧 Advanced Features
       </div>
+  `;
+}
 
+function renderSettingsRequestHeaders(s) {
+  return `
       <div class="ek-settings-row" style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.3); border-radius: 8px; padding: 16px;">
         <div style="flex:1">
           <div class="ek-settings-title" style="display: flex; align-items: center; gap: 8px;">
@@ -2291,7 +2289,11 @@ function showSettingsDialog() {
           <button class="ek-btn ek-btn-primary" data-a="rh-add" style="margin-top:6px" data-testid="requestheader-add">＋ Add request header</button>
         </div>
       </div>
+  `;
+}
 
+function renderSettingsBlocklist(s) {
+  return `
       <div class="ek-settings-row">
         <div style="flex:1">
           <div class="ek-settings-title">URL Blocklist</div>
@@ -2308,7 +2310,11 @@ function showSettingsDialog() {
           <button class="ek-btn ek-btn-ghost" data-a="bl-add" style="margin-top:6px" data-testid="blocklist-add">＋ Add blocklist pattern</button>
         </div>
       </div>
+  `;
+}
 
+function renderSettingsRewriteRules(s) {
+  return `
       <div class="ek-settings-row">
         <div style="flex:1">
           <div class="ek-settings-title">URL Rewrite Rules</div>
@@ -2328,7 +2334,11 @@ function showSettingsDialog() {
           <button class="ek-btn ek-btn-ghost" data-a="rw-add" style="margin-top:6px" data-testid="rewrite-add">＋ Add rewrite rule</button>
         </div>
       </div>
+  `;
+}
 
+function renderSettingsTransformRules(s) {
+  return `
       <div class="ek-settings-row">
         <div style="flex:1">
           <div class="ek-settings-title">Response Transform Rules</div>
@@ -2357,7 +2367,11 @@ function showSettingsDialog() {
           <button class="ek-btn ek-btn-ghost" data-a="tr-add" style="margin-top:6px" data-testid="transform-add">＋ Add transform rule</button>
         </div>
       </div>
+  `;
+}
 
+function renderSettingsLicense() {
+  return `
       <div class="ek-settings-row">
         <div>
           <div class="ek-settings-title">Wipe ALL recordings</div>
@@ -2388,15 +2402,10 @@ function showSettingsDialog() {
           <button class="ek-btn ek-btn-ghost" data-a="test-endpoint" data-testid="test-endpoint-btn" style="padding:0 12px;white-space:nowrap">Test</button>
         </div>
       </div>
-
-      <div class="ek-modal-actions">
-        <button class="ek-btn ek-btn-primary" data-a="close">Done</button>
-      </div>
-    </div>
   `;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-  overlay.querySelector('[data-a="close"]').addEventListener('click', () => overlay.remove());
+}
+
+function bindSettingsGeneralEvents(overlay) {
   overlay.querySelector('[data-a="scope"]').addEventListener('change', async (e) => {
     await BG({ type: 'echokit:settings:update', patch: { scope: e.target.value } });
     await refresh(); render();
@@ -2431,7 +2440,6 @@ Open browser console for full details.`
       : `❌ CORS Diagnostics Failed:
 ${diag.error}`;
 
-    // Log diagnostics for debugging (users can check console if alert doesn't show full details)
     if (diag.ok) console.log('[EchoKit CORS Diagnostics]', diag);
     alert(msg);
   });
@@ -2446,9 +2454,9 @@ ${diag.error}`;
     state.selectedId = null; state.detailOpen = false;
     await refresh(); render();
   });
+}
 
-  // --- Blocklist handlers ---
-  const reopen = () => { overlay.remove(); showSettingsDialog(); };
+function bindSettingsBlocklistEvents(overlay, reopen) {
   overlay.querySelectorAll('[data-a="bl-pattern"]').forEach(el => el.addEventListener('change', async (e) => {
     const idx = Number(el.getAttribute('data-idx'));
     const bl = [...(state.settings.blocklist || [])];
@@ -2475,8 +2483,9 @@ ${diag.error}`;
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
     await refresh(); reopen();
   });
+}
 
-  // --- Rewrite rules handlers ---
+function bindSettingsRewriteRulesEvents(overlay, reopen) {
   overlay.querySelectorAll('[data-a="rw-from"]').forEach(el => el.addEventListener('change', async (e) => {
     const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.rewriteRules || [])];
@@ -2510,8 +2519,9 @@ ${diag.error}`;
     await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
     await refresh(); reopen();
   });
+}
 
-  // --- Transform rules handlers ---
+function bindSettingsTransformRulesEvents(overlay, reopen) {
   const trUpdate = async (idx, patch) => {
     const rules = [...(state.settings.transformRules || [])];
     rules[idx] = { phase: 'response', ...(rules[idx] || {}), ...patch };
@@ -2541,8 +2551,9 @@ ${diag.error}`;
     await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
     await refresh(); reopen();
   });
+}
 
-  // --- Request Headers handlers ---
+function bindSettingsRequestHeadersEvents(overlay, reopen) {
   const rhUpdate = async (idx, patch) => {
     const headers = [...(state.settings.requestHeaders || [])];
     headers[idx] = { mode: 'override', enabled: true, ...(headers[idx] || {}), ...patch };
@@ -2572,18 +2583,17 @@ ${diag.error}`;
     await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
     await refresh(); reopen();
   });
+}
 
-  // Pre-fill license key input
+function bindSettingsLicenseEvents(overlay) {
   BG({ type: 'echokit:license:check' }).then(res => {
     const input = overlay.querySelector('#ek-license-input');
     if (input && res?.key) input.value = res.key;
   });
-  // Pre-fill license endpoint input
   chrome.storage.sync.get('echokit_license_endpoint').then(res => {
     const input = overlay.querySelector('#ek-license-endpoint-input');
     if (input && res?.echokit_license_endpoint) input.value = res.echokit_license_endpoint;
   });
-  // License activation
   overlay.querySelector('[data-a="license-activate"]')?.addEventListener('click', async () => {
     const keyInput = overlay.querySelector('#ek-license-input');
     const key = keyInput?.value?.trim() || '';
@@ -2601,13 +2611,11 @@ ${diag.error}`;
     e.preventDefault();
     chrome.tabs.create({ url: 'https://echokit.dev/pricing' }).catch(() => window.open('https://echokit.dev/pricing', '_blank'));
   });
-  // License endpoint change handler
   overlay.querySelector('#ek-license-endpoint-input')?.addEventListener('change', async (e) => {
     const endpoint = e.target.value.trim();
     await BG({ type: 'echokit:license:setEndpoint', endpoint });
     toast('License endpoint updated');
   });
-  // Test endpoint button
   overlay.querySelector('[data-a="test-endpoint"]')?.addEventListener('click', async () => {
     const input = overlay.querySelector('#ek-license-endpoint-input');
     const endpoint = input?.value?.trim();
@@ -2623,6 +2631,46 @@ ${diag.error}`;
     }
   });
 }
+
+/**
+ * Shows the settings dialog.
+ * Features: theme selection, CORS override, scope selector, blocklist, rewrite rules, etc.
+ * The modal can be closed with the Done button or by clicking the overlay.
+ */
+function showSettingsDialog() {
+  const s = state.settings;
+  const isDevTools = state.mode === 'devtools';
+  const overlay = document.createElement('div');
+  overlay.className = 'ek-modal-overlay';
+  overlay.innerHTML = `
+    <div class="ek-modal" data-testid="settings-modal">
+      <div class="ek-modal-title">Settings</div>
+      ${renderSettingsGeneral(s, isDevTools)}
+      ${renderSettingsRequestHeaders(s)}
+      ${renderSettingsBlocklist(s)}
+      ${renderSettingsRewriteRules(s)}
+      ${renderSettingsTransformRules(s)}
+      ${renderSettingsLicense()}
+      <div class="ek-modal-actions">
+        <button class="ek-btn ek-btn-primary" data-a="close">Done</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const reopen = () => { overlay.remove(); showSettingsDialog(); };
+
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[data-a="close"]').addEventListener('click', () => overlay.remove());
+
+  bindSettingsGeneralEvents(overlay);
+  bindSettingsBlocklistEvents(overlay, reopen);
+  bindSettingsRewriteRulesEvents(overlay, reopen);
+  bindSettingsTransformRulesEvents(overlay, reopen);
+  bindSettingsRequestHeadersEvents(overlay, reopen);
+  bindSettingsLicenseEvents(overlay);
+}
+
 
 function showShortcutsDialog() {
   const overlay = document.createElement('div');
