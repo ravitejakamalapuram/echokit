@@ -402,116 +402,91 @@ function buildReport({ interactions, hits, unmatched, startedAt }) {
   };
 }
 
-async function startServer(opts) {
-  const {
-    file, port, host, defaultLatency, strict, ci, watch, quiet, reportPath, reportFormat
-  } = opts;
+async function handleHttpRequest(req, res, state, opts) {
+  const { quiet, defaultLatency } = opts;
 
-  let interactions = loadInteractions(file);
-  let { httpIndex, wsIndex, sseIndex } = buildIndex(interactions);
-  const cursors = {};
-  const hits = {};
-  const unmatched = [];
-  const startedAt = Date.now();
+  if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders()); return res.end(); }
 
-  if (watch) {
-    fs.watchFile(file, { interval: 500 }, () => {
-      try {
-        interactions = loadInteractions(file);
-        ({ httpIndex, wsIndex, sseIndex } = buildIndex(interactions));
-        Object.keys(cursors).forEach(k => delete cursors[k]);
-        if (!quiet) console.log(`↻ reloaded ${interactions.length} mocks from ${file}`);
-      } catch (e) {
-        console.error('✗ reload failed:', e.message);
-      }
-    });
+  if (req.url === '/__health' || req.url === '/__healthz') {
+    res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
+    return res.end(JSON.stringify({ ok: true, mocks: state.interactions.length }));
+  }
+  if (req.url === '/__coverage') {
+    res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
+    return res.end(JSON.stringify(buildReport({ interactions: state.interactions, hits: state.hits, unmatched: state.unmatched, startedAt: state.startedAt }), null, 2));
   }
 
-  const server = http.createServer(async (req, res) => {
-    if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders()); return res.end(); }
+  const body = await readBody(req);
+  const url = req.url;
+  const accept = req.headers['accept'] || '';
 
-    if (req.url === '/__health' || req.url === '/__healthz') {
-      res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
-      return res.end(JSON.stringify({ ok: true, mocks: interactions.length }));
-    }
-    if (req.url === '/__coverage') {
-      res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders() });
-      return res.end(JSON.stringify(buildReport({ interactions, hits, unmatched, startedAt }), null, 2));
-    }
+  // SSE detection: matched interaction has method=SSE OR client requested text/event-stream
+  if (accept.includes('text/event-stream')) {
+    const sseKeys = computeMatchKeys('SSE', url, '');
+    const sseMock = pickSSEMock(state.sseIndex, sseKeys, state.hits);
+    if (sseMock) return handleSSE(res, sseMock);
+  }
 
-    const body = await readBody(req);
-    const url = req.url;
-    const accept = req.headers['accept'] || '';
+  const keys = computeMatchKeys(req.method, url, body);
+  const m = pickHttpMock(state.httpIndex, keys, state.cursors, state.hits);
 
-    // SSE detection: matched interaction has method=SSE OR client requested text/event-stream
-    if (accept.includes('text/event-stream')) {
-      const sseKeys = computeMatchKeys('SSE', url, '');
-      const sseMock = pickSSEMock(sseIndex, sseKeys, hits);
-      if (sseMock) return handleSSE(res, sseMock);
-    }
+  if (!m) {
+    state.unmatched.push({ method: req.method, url, ts: Date.now() });
+    if (!quiet) console.log(`  ✗ ${req.method} ${url}  → no mock`);
+    res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders() });
+    return res.end(JSON.stringify({
+      error: 'echokit: no mock matched',
+      method: req.method,
+      url,
+      triedModes: MODES
+    }));
+  }
 
-    const keys = computeMatchKeys(req.method, url, body);
-    const m = pickHttpMock(httpIndex, keys, cursors, hits);
+  if (defaultLatency) await delay(defaultLatency);
+  if (m.latency) await delay(m.latency);
 
-    if (!m) {
-      unmatched.push({ method: req.method, url, ts: Date.now() });
-      if (!quiet) console.log(`  ✗ ${req.method} ${url}  → no mock`);
-      res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders() });
-      return res.end(JSON.stringify({
-        error: 'echokit: no mock matched',
-        method: req.method,
-        url,
-        triedModes: MODES
-      }));
-    }
+  if (m.errorMode === 'network') { req.destroy(); return; }
+  if (m.errorMode === 'timeout') { return; }
 
-    if (defaultLatency) await delay(defaultLatency);
-    if (m.latency) await delay(m.latency);
+  let status = m.status;
+  if (m.errorMode === '4xx') status = 400;
+  else if (m.errorMode === '5xx') status = 500;
 
-    if (m.errorMode === 'network') { req.destroy(); return; }
-    if (m.errorMode === 'timeout') { return; }
+  const headers = { ...corsHeaders(), ...(m.headers || {}) };
+  if (!Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
+    headers['Content-Type'] = 'application/json';
+  }
 
-    let status = m.status;
-    if (m.errorMode === '4xx') status = 400;
-    else if (m.errorMode === '5xx') status = 500;
+  let bodyOut = m.body;
+  if (typeof bodyOut !== 'string') {
+    try { bodyOut = JSON.stringify(bodyOut); } catch { bodyOut = String(bodyOut); }
+  }
 
-    const headers = { ...corsHeaders(), ...(m.headers || {}) };
-    if (!Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
-      headers['Content-Type'] = 'application/json';
-    }
+  if (!quiet) console.log(`  ✓ ${req.method} ${url}  → ${status} (${m.mode})`);
+  res.writeHead(status, headers);
+  res.end(bodyOut);
+}
 
-    let bodyOut = m.body;
-    if (typeof bodyOut !== 'string') {
-      try { bodyOut = JSON.stringify(bodyOut); } catch { bodyOut = String(bodyOut); }
-    }
+function handleWsUpgradeRequest(req, socket, state, opts) {
+  const { quiet } = opts;
+  const wsKeys = computeMatchKeys('WS', req.url, '');
+  const mock = pickWSMock(state.wsIndex, wsKeys, state.hits);
+  if (!mock) {
+    state.unmatched.push({ method: 'WS', url: req.url, ts: Date.now() });
+    if (!quiet) console.log(`  ✗ WS ${req.url}  → no mock`);
+    socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  if (!quiet) console.log(`  ✓ WS ${req.url}  → mocked`);
+  handleWSUpgrade(req, socket, mock, opts);
+}
 
-    if (!quiet) console.log(`  ✓ ${req.method} ${url}  → ${status} (${m.mode})`);
-    res.writeHead(status, headers);
-    res.end(bodyOut);
-  });
-
-  // WebSocket upgrade
-  server.on('upgrade', (req, socket) => {
-    const wsKeys = computeMatchKeys('WS', req.url, '');
-    const mock = pickWSMock(wsIndex, wsKeys, hits);
-    if (!mock) {
-      unmatched.push({ method: 'WS', url: req.url, ts: Date.now() });
-      if (!quiet) console.log(`  ✗ WS ${req.url}  → no mock`);
-      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-    if (!quiet) console.log(`  ✓ WS ${req.url}  → mocked`);
-    handleWSUpgrade(req, socket, mock, opts);
-  });
-
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, host, resolve);
-  });
+function setupLifecycle(server, state, opts) {
+  const { host, port, file, defaultLatency, strict, watch, reportPath, reportFormat, ci, quiet } = opts;
 
   console.log(`✓ echokit-server listening on http://${host}:${port}`);
-  console.log(`  loaded ${interactions.length} interactions from ${file}`);
+  console.log(`  loaded ${state.interactions.length} interactions from ${file}`);
   if (defaultLatency) console.log(`  +${defaultLatency}ms latency`);
   if (strict) console.log(`  strict mode: will exit non-zero if any unmatched requests`);
   if (watch) console.log(`  watching ${file} for changes`);
@@ -520,7 +495,7 @@ async function startServer(opts) {
   const writeReport = () => {
     if (!reportPath) return;
     try {
-      const report = buildReport({ interactions, hits, unmatched, startedAt });
+      const report = buildReport({ interactions: state.interactions, hits: state.hits, unmatched: state.unmatched, startedAt: state.startedAt });
       const format = (reportFormat || 'json').toLowerCase();
       if (format === 'markdown' || format === 'md') {
         const md = buildMarkdownReport(report);
@@ -535,21 +510,66 @@ async function startServer(opts) {
 
   const onExit = (code) => {
     writeReport();
-    if (ci && unmatched.length) {
-      console.error(`\n✗ ${unmatched.length} unmatched request(s):`);
-      for (const u of unmatched) console.error(`  ${u.method} ${u.url}`);
+    if (ci && state.unmatched.length) {
+      console.error(`\n✗ ${state.unmatched.length} unmatched request(s):`);
+      for (const u of state.unmatched) console.error(`  ${u.method} ${u.url}`);
     }
-    if (strict && unmatched.length) process.exit(code || 3);
+    if (strict && state.unmatched.length) process.exit(code || 3);
   };
   process.on('SIGINT', () => { console.log('\n↓ shutting down'); onExit(0); process.exit(0); });
   process.on('SIGTERM', () => { onExit(0); process.exit(0); });
   process.on('beforeExit', () => writeReport());
 
+  return { writeReport };
+}
+
+function setupState(opts) {
+  const { file, watch, quiet } = opts;
+  const state = {
+    interactions: loadInteractions(file),
+    cursors: {},
+    hits: {},
+    unmatched: [],
+    startedAt: Date.now()
+  };
+  Object.assign(state, buildIndex(state.interactions));
+
+  if (watch) {
+    fs.watchFile(file, { interval: 500 }, () => {
+      try {
+        state.interactions = loadInteractions(file);
+        Object.assign(state, buildIndex(state.interactions));
+        Object.keys(state.cursors).forEach(k => delete state.cursors[k]);
+        if (!quiet) console.log(`↻ reloaded ${state.interactions.length} mocks from ${file}`);
+      } catch (e) {
+        console.error('✗ reload failed:', e.message);
+      }
+    });
+  }
+
+  return state;
+}
+
+async function startServer(opts) {
+  const { port, host } = opts;
+
+  const state = setupState(opts);
+
+  const server = http.createServer((req, res) => handleHttpRequest(req, res, state, opts));
+  server.on('upgrade', (req, socket) => handleWsUpgradeRequest(req, socket, state, opts));
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, host, resolve);
+  });
+
+  const lifecycle = setupLifecycle(server, state, opts);
+
   return {
     server,
-    getUnmatched: () => unmatched.slice(),
-    getReport: () => buildReport({ interactions, hits, unmatched, startedAt }),
-    writeReport
+    getUnmatched: () => state.unmatched.slice(),
+    getReport: () => buildReport({ interactions: state.interactions, hits: state.hits, unmatched: state.unmatched, startedAt: state.startedAt }),
+    writeReport: lifecycle.writeReport
   };
 }
 
