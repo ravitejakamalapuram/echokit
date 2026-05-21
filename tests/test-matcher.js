@@ -126,6 +126,20 @@ test('handles URLSearchParams', () => {
   assert.equal(sorted[0][0], 'a', 'params sorted alphabetically');
 });
 
+test('handles FormData', () => {
+  const fd = new FormData();
+  fd.append('z', 'value1');
+  fd.append('a', 'value2');
+  fd.append('file', new Blob(['test']), 'test.txt');
+  const result = normalizeBody(fd);
+  const parsed = JSON.parse(result);
+  assert.deepEqual(parsed, [
+    ['a', 'value2'],
+    ['file', '[file]'],
+    ['z', 'value1']
+  ], 'FormData parsed, files marked as [file], and keys sorted alphabetically');
+});
+
 test('handles ArrayBuffer', () => {
   const buf = new ArrayBuffer(16);
   const result = normalizeBody(buf);
