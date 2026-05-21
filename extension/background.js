@@ -566,13 +566,15 @@ async function handleMessage(msg, sender) {
     }
     case 'echokit:recording:stopAll': {
       let stoppedCount = 0;
+      const promises = [];
       for (const [tabId, st] of tabState.entries()) {
         if (st.recording) {
           st.recording = false;
           stoppedCount++;
-          await updateBadge(tabId);
+          promises.push(updateBadge(tabId));
         }
       }
+      await Promise.all(promises);
       await persistTabState();
       await pushAllTabs();
       return { ok: true, stoppedCount };
