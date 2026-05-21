@@ -9,7 +9,7 @@
   "main": "lib/server.js",
   "scripts": {
     "start": "node bin/echokit-server.js",
-    "test": "node test/test.js"
+    "test": "node test/unit.js && node test/test.js"
   },
   "files": [
     "bin/",
