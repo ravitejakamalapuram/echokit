@@ -2166,6 +2166,72 @@ function showImportDialog() {
   });
 }
 
+function renderRequestHeaderRule(r, idx) {
+  return `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;background:var(--bg-secondary)" data-testid="requestheader-row">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
+                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="rh-key" data-idx="${idx}" placeholder="Header name (e.g., Authorization)" style="flex:2" data-testid="requestheader-key-${idx}"/>
+                  <select class="ek-select" data-a="rh-mode" data-idx="${idx}" style="max-width:120px" data-testid="requestheader-mode-${idx}">
+                    <option value="add" ${r.mode==='add'?'selected':''}>Add</option>
+                    <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
+                    <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
+                  </select>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
+                </div>
+                <div class="ek-row-inline" style="gap:6px">
+                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
+                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="rh-url" data-idx="${idx}" placeholder="URL contains… (blank = all)" style="flex:1" data-testid="requestheader-url-${idx}"/>
+                </div>
+              </div>
+            `;
+}
+
+function renderBlocklistRule(b, idx) {
+  return `
+              <div class="ek-kv-row">
+                <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
+                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" aria-label="remove">×</button>
+              </div>
+            `;
+}
+
+function renderRewriteRule(r, idx) {
+  return `
+              <div class="ek-kv-row" data-testid="rewrite-row">
+                <input class="ek-input" value="${escapeHtml(r.from || '')}" data-a="rw-from" data-idx="${idx}" placeholder="from (substring or /regex/flags)" data-testid="rewrite-from-${idx}"/>
+                <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" aria-label="remove">×</button>
+                </div>
+              </div>
+            `;
+}
+
+function renderTransformRule(r, idx) {
+  return `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px" data-testid="transform-row">
+                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
+                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="tr-url" data-idx="${idx}" placeholder="url contains… (blank = all)" style="flex:1" data-testid="transform-url-${idx}"/>
+                  <select class="ek-select" data-a="tr-action" data-idx="${idx}" style="max-width:160px" data-testid="transform-action-${idx}">
+                    <option value="add-header" ${r.action==='add-header'?'selected':''}>add header</option>
+                    <option value="remove-header" ${r.action==='remove-header'?'selected':''}>remove header</option>
+                    <option value="set-body" ${r.action==='set-body'?'selected':''}>set body</option>
+                    <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
+                  </select>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" aria-label="remove">×</button>
+                </div>
+                <div class="ek-row-inline" style="gap:6px">
+                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
+                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="tr-value" data-idx="${idx}" placeholder="${r.action === 'remove-header' ? '(unused)' : (r.action === 'set-body' ? 'new body (string/JSON)' : (r.action === 'regex-replace-body' ? 'replacement' : 'header value'))}" style="flex:2" data-testid="transform-value-${idx}"/>
+                </div>
+              </div>
+            `;
+}
+
 /**
  * Open a settings modal that lets the user view and edit EchoKit configuration.
  *
@@ -2269,24 +2335,7 @@ function showSettingsDialog() {
           </div>
           <div class="ek-settings-hint">Inject, override, or remove headers on <strong>all outgoing requests</strong>. Perfect for auth tokens, tenant IDs, API keys, feature flags, etc.</div>
           <div id="ek-requestheaders" style="margin-top:12px" data-testid="requestheaders">
-            ${(s.requestHeaders || []).map((r, idx) => `
-              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;background:var(--bg-secondary)" data-testid="requestheader-row">
-                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
-                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="rh-key" data-idx="${idx}" placeholder="Header name (e.g., Authorization)" style="flex:2" data-testid="requestheader-key-${idx}"/>
-                  <select class="ek-select" data-a="rh-mode" data-idx="${idx}" style="max-width:120px" data-testid="requestheader-mode-${idx}">
-                    <option value="add" ${r.mode==='add'?'selected':''}>Add</option>
-                    <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
-                    <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
-                  </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
-                </div>
-                <div class="ek-row-inline" style="gap:6px">
-                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
-                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="rh-url" data-idx="${idx}" placeholder="URL contains… (blank = all)" style="flex:1" data-testid="requestheader-url-${idx}"/>
-                </div>
-              </div>
-            `).join('')}
+            ${(s.requestHeaders || []).map(renderRequestHeaderRule).join('')}
           </div>
           <button class="ek-btn ek-btn-primary" data-a="rh-add" style="margin-top:6px" data-testid="requestheader-add">＋ Add request header</button>
         </div>
@@ -2297,13 +2346,7 @@ function showSettingsDialog() {
           <div class="ek-settings-title">URL Blocklist</div>
           <div class="ek-settings-hint">Block any network request whose URL matches. Uses Chrome's <span class="ek-tag">urlFilter</span> syntax (substring or <span class="ek-tag">||domain.com</span> / <span class="ek-tag">^</span> / <span class="ek-tag">*</span>).</div>
           <div id="ek-blocklist" style="margin-top:8px" data-testid="blocklist">
-            ${(s.blocklist || []).map((b, idx) => `
-              <div class="ek-kv-row">
-                <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
-                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
-                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" aria-label="remove">×</button>
-              </div>
-            `).join('')}
+            ${(s.blocklist || []).map(renderBlocklistRule).join('')}
           </div>
           <button class="ek-btn ek-btn-ghost" data-a="bl-add" style="margin-top:6px" data-testid="blocklist-add">＋ Add blocklist pattern</button>
         </div>
@@ -2314,16 +2357,7 @@ function showSettingsDialog() {
           <div class="ek-settings-title">URL Rewrite Rules</div>
           <div class="ek-settings-hint">Rewrite outgoing URLs before they hit the network. <span class="ek-tag">From</span> can be a substring or a JS regex like <span class="ek-tag">/api\\/v1/g</span>.</div>
           <div id="ek-rewritelist" style="margin-top:8px" data-testid="rewritelist">
-            ${(s.rewriteRules || []).map((r, idx) => `
-              <div class="ek-kv-row" data-testid="rewrite-row">
-                <input class="ek-input" value="${escapeHtml(r.from || '')}" data-a="rw-from" data-idx="${idx}" placeholder="from (substring or /regex/flags)" data-testid="rewrite-from-${idx}"/>
-                <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" aria-label="remove">×</button>
-                </div>
-              </div>
-            `).join('')}
+            ${(s.rewriteRules || []).map(renderRewriteRule).join('')}
           </div>
           <button class="ek-btn ek-btn-ghost" data-a="rw-add" style="margin-top:6px" data-testid="rewrite-add">＋ Add rewrite rule</button>
         </div>
@@ -2334,25 +2368,7 @@ function showSettingsDialog() {
           <div class="ek-settings-title">Response Transform Rules</div>
           <div class="ek-settings-hint">Mutate mocked responses on the fly: add/remove headers, replace body, or run a regex over the body.</div>
           <div id="ek-transformlist" style="margin-top:8px" data-testid="transformlist">
-            ${(s.transformRules || []).map((r, idx) => `
-              <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px" data-testid="transform-row">
-                <div class="ek-row-inline" style="gap:6px;margin-bottom:6px">
-                  <input class="ek-input" value="${escapeHtml(r.urlPattern || '')}" data-a="tr-url" data-idx="${idx}" placeholder="url contains… (blank = all)" style="flex:1" data-testid="transform-url-${idx}"/>
-                  <select class="ek-select" data-a="tr-action" data-idx="${idx}" style="max-width:160px" data-testid="transform-action-${idx}">
-                    <option value="add-header" ${r.action==='add-header'?'selected':''}>add header</option>
-                    <option value="remove-header" ${r.action==='remove-header'?'selected':''}>remove header</option>
-                    <option value="set-body" ${r.action==='set-body'?'selected':''}>set body</option>
-                    <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
-                  </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" aria-label="remove">×</button>
-                </div>
-                <div class="ek-row-inline" style="gap:6px">
-                  <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
-                  <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="tr-value" data-idx="${idx}" placeholder="${r.action === 'remove-header' ? '(unused)' : (r.action === 'set-body' ? 'new body (string/JSON)' : (r.action === 'regex-replace-body' ? 'replacement' : 'header value'))}" style="flex:2" data-testid="transform-value-${idx}"/>
-                </div>
-              </div>
-            `).join('')}
+            ${(s.transformRules || []).map(renderTransformRule).join('')}
           </div>
           <button class="ek-btn ek-btn-ghost" data-a="tr-add" style="margin-top:6px" data-testid="transform-add">＋ Add transform rule</button>
         </div>
