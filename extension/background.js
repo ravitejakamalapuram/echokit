@@ -645,7 +645,11 @@ async function handleMessage(msg, sender) {
       const target = await getInteraction(msg.id);
       if (!target) return { ok: false };
       const all = await getAllInteractions();
-      for (const it of all) if (it.hash === target.hash) await putInteraction({ ...it, activeVersionId: msg.id });
+      const promises = [];
+      for (const it of all) {
+        if (it.hash === target.hash) promises.push(putInteraction({ ...it, activeVersionId: msg.id }));
+      }
+      await Promise.all(promises);
       await pushAllTabs();
       return { ok: true };
     }
