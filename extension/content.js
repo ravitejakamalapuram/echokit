@@ -106,7 +106,7 @@
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'echokit:mockIndex' || msg.type === 'echokit:tabState' || msg.type === 'echokit:settings') {
-      window.postMessage({ source: SRC_CONTENT, type: msg.type, payload: msg.payload }, '*');
+      window.postMessage({ source: SRC_CONTENT, type: msg.type, payload: msg.payload }, '/');
     }
   });
 
