@@ -706,7 +706,7 @@ function showPasteDialog(count, origin, payload) {
   overlay.innerHTML = `
     <div class="ek-modal" data-testid="paste-modal">
       <div class="ek-modal-title">Paste localStorage</div>
-      <div class="ek-subtle">${count} keys · from <span class="ek-tag">${escapeHtml(origin)}</span> → into <span class="ek-tag">${escapeHtml(state.tab.host || 'active tab')}</span></div>
+      <div class="ek-subtle">${escapeHtml(count)} keys · from <span class="ek-tag">${escapeHtml(origin)}</span> → into <span class="ek-tag">${escapeHtml(state.tab.host || 'active tab')}</span></div>
       ${origin && state.tab.host && !origin.includes(state.tab.host) ? `<div class="ek-subtle" style="color:var(--amber)">⚠ Origins differ — paste will write into the current tab's origin, which may overwrite unrelated data.</div>` : ''}
       <div style="max-height:220px;overflow:auto">${preview}${more}</div>
       <label class="ek-row-inline" style="gap:6px;margin-top:4px">
