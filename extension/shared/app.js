@@ -701,12 +701,12 @@ function showGistUploadDialog() {
       <div class="ek-subtle">Uploads your full mock set as a JSON file to a new gist. Teammates can import from the URL.</div>
       <div class="ek-field">
         <div class="ek-label">GitHub Personal Access Token <span class="ek-subtle">(gist scope)</span></div>
-        <input class="ek-input" type="password" value="${lastToken}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off"/>
+        <input class="ek-input" type="password" value="" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off"/>
         <div class="ek-subtle" style="margin-top:4px">Create at <span class="ek-tag">github.com/settings/tokens</span> with just <span class="ek-tag">gist</span> scope. Stored locally in this extension only.</div>
       </div>
       <div class="ek-field">
         <div class="ek-label">Description</div>
-        <input class="ek-input" type="text" value="EchoKit mock set — ${state.tab.host || ''}" data-a="desc" data-testid="gist-desc"/>
+        <input class="ek-input" type="text" value="" data-a="desc" data-testid="gist-desc"/>
       </div>
       <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
       <div class="ek-modal-actions">
@@ -715,6 +715,12 @@ function showGistUploadDialog() {
       </div>
     </div>
   `;
+  const tokenInput = overlay.querySelector('[data-a="token"]');
+  if (tokenInput) tokenInput.value = lastToken;
+  const descInput = overlay.querySelector('[data-a="desc"]');
+  if (descInput) {
+    descInput.value = `EchoKit mock set — ${state.tab.host || ''}`;
+  }
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
