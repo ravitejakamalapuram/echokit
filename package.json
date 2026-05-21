@@ -8,8 +8,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "npm run test:matcher && npm run test:cli",
+    "test": "npm run test:matcher && npm run test:store && npm run test:cli",
     "test:matcher": "node tests/test-matcher.js",
+    "test:store": "node tests/test-store.js",
     "test:cli": "node cli/test/test.js",
     "test:smoke": "python3 tests/smoke_echokit.py",
     "lint": "eslint extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js cli/bin/echokit-server.js cli/lib --ext .js",
@@ -18,7 +19,8 @@
     "build:bump": "bash scripts/build-store-zip.sh --bump"
   },
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "eslint": "^8.57.0",
+    "fake-indexeddb": "^6.2.5"
   },
   "repository": {
     "type": "git",
