@@ -706,7 +706,7 @@ function showGistUploadDialog() {
       </div>
       <div class="ek-field">
         <div class="ek-label">Description</div>
-        <input class="ek-input" type="text" value="EchoKit mock set — ${state.tab.host || ''}" data-a="desc" data-testid="gist-desc"/>
+        <input class="ek-input" type="text" value="EchoKit mock set — ${escapeHtml(state.tab.host || '')}" data-a="desc" data-testid="gist-desc"/>
       </div>
       <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
       <div class="ek-modal-actions">
@@ -1280,7 +1280,7 @@ function renderInteractionRow(i) {
          data-id="${i.id}"
          data-testid="interaction-row">
       <div class="ek-col" style="width:80px">
-        <span class="ek-method-badge ek-method-${method.toLowerCase()}">${method}</span>
+        <span class="ek-method-badge ek-method-${escapeHtml(method.toLowerCase())}">${escapeHtml(method)}</span>
         ${i.mockEnabled ? '<span class="ek-mock-badge" title="Mock enabled">⚡</span>' : ''}
       </div>
       <div class="ek-col ek-url-col" style="flex:2" title="${escapeHtml(i.url)}">
@@ -1360,7 +1360,7 @@ function renderDetail(i, conflicts) {
           <div class="ek-row-inline-end ek-version-picker">
             <select class="ek-select" data-action="set-active-version" data-testid="version-select">
               ${conflicts.sort((a,b)=>b.timestamp-a.timestamp).map(c =>
-                `<option value="${c.id}" ${c.id === activeId ? 'selected' : ''}>${new Date(c.timestamp).toLocaleString()} — ${c.responseStatus}</option>`
+                `<option value="${escapeHtml(c.id)}" ${c.id === activeId ? 'selected' : ''}>${escapeHtml(new Date(c.timestamp).toLocaleString())} — ${escapeHtml(String(c.responseStatus))}</option>`
               ).join('')}
             </select>
           </div>
@@ -2675,19 +2675,60 @@ function showSettingsDialog() {
 function showShortcutsDialog() {
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
-    <div class="ek-modal" data-testid="shortcuts-modal">
-      <div class="ek-modal-title">Keyboard shortcuts</div>
-      <div class="ek-settings-row"><div class="ek-settings-title">Toggle recording</div><span class="ek-kbd">Alt+Shift+R</span></div>
-      <div class="ek-settings-row"><div class="ek-settings-title">Toggle mock mode</div><span class="ek-kbd">Alt+Shift+M</span></div>
-      <div class="ek-settings-row"><div class="ek-settings-title">Open popup</div><span class="ek-kbd">Alt+Shift+E</span></div>
-      <div class="ek-subtle">Customize these at <span class="ek-tag">chrome://extensions/shortcuts</span>.</div>
-      <div class="ek-modal-actions"><button class="ek-btn ek-btn-primary" data-a="close">Done</button></div>
-    </div>
-  `;
+
+  const modal = document.createElement('div');
+  modal.className = 'ek-modal';
+  modal.setAttribute('data-testid', 'shortcuts-modal');
+
+  const title = document.createElement('div');
+  title.className = 'ek-modal-title';
+  title.textContent = 'Keyboard shortcuts';
+  modal.appendChild(title);
+
+  const shortcuts = [
+    { label: 'Toggle recording', kbd: 'Alt+Shift+R' },
+    { label: 'Toggle mock mode', kbd: 'Alt+Shift+M' },
+    { label: 'Open popup', kbd: 'Alt+Shift+E' }
+  ];
+
+  for (const sc of shortcuts) {
+    const row = document.createElement('div');
+    row.className = 'ek-settings-row';
+    const scTitle = document.createElement('div');
+    scTitle.className = 'ek-settings-title';
+    scTitle.textContent = sc.label;
+    const scKbd = document.createElement('span');
+    scKbd.className = 'ek-kbd';
+    scKbd.textContent = sc.kbd;
+    row.appendChild(scTitle);
+    row.appendChild(scKbd);
+    modal.appendChild(row);
+  }
+
+  const subtle = document.createElement('div');
+  subtle.className = 'ek-subtle';
+  subtle.appendChild(document.createTextNode('Customize these at '));
+  const tag = document.createElement('span');
+  tag.className = 'ek-tag';
+  tag.textContent = 'chrome://extensions/shortcuts';
+  subtle.appendChild(tag);
+  subtle.appendChild(document.createTextNode('.'));
+  modal.appendChild(subtle);
+
+  const actions = document.createElement('div');
+  actions.className = 'ek-modal-actions';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'ek-btn ek-btn-primary';
+  closeBtn.setAttribute('data-a', 'close');
+  closeBtn.textContent = 'Done';
+  actions.appendChild(closeBtn);
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
   document.body.appendChild(overlay);
+
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-  overlay.querySelector('[data-a="close"]').addEventListener('click', () => overlay.remove());
+  closeBtn.addEventListener('click', () => overlay.remove());
 }
 
 // ---------- filters & helpers ----------
