@@ -8,9 +8,10 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "npm run test:matcher && npm run test:json-highlight && npm run test:cli",
+    "test": "npm run test:matcher && npm run test:json-highlight && npm run test:store && npm run test:cli",
     "test:matcher": "node tests/test-matcher.js",
     "test:json-highlight": "node tests/test-json-highlight.js",
+    "test:store": "node tests/test-store.js",
     "test:cli": "node cli/test/test.js",
     "test:smoke": "python3 tests/smoke_echokit.py",
     "lint": "eslint extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js cli/bin/echokit-server.js cli/lib --ext .js",
