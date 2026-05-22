@@ -3,6 +3,7 @@
 
 import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
+import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -317,7 +318,7 @@ function render() {
       ${renderToolbar()}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
-          ${state.waterfall ? renderWaterfall(list) : ''}
+          ${state.waterfall ? renderWaterfallNew(list, { selectedId: state.selectedId }) : ''}
         </div>
         ${isPopup ? '' : '<div class="ek-resizer" data-action="resize" data-testid="pane-resizer"></div>'}
         <div class="ek-detail" data-testid="api-detail">
