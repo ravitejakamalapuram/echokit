@@ -186,7 +186,7 @@ export const INTERACTION_COLUMNS = {
     render: (i, mode) => {
       if (mode === 'popup') {
         // Popup uses toggle switch
-        const isActive = i.mockActive || false;
+        const isActive = i.mockEnabled || false;
         const toggleClass = isActive ? 'active' : '';
 
         return `<div class="ek-actions">` +
