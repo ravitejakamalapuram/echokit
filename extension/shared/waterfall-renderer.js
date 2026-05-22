@@ -110,6 +110,7 @@ export function renderWaterfallRow(interaction, scale, options = {}) {
   const safeId = escapeHtml(interaction.id);
   const safeMethod = escapeHtml(method);
   const safeMethodClass = method.toLowerCase().replace(/[^a-z0-9-]/g, ''); // Safe for CSS class
+  const safeStatus = escapeHtml(String(status ?? '—'));
 
   return `
     <div class="ek-waterfall-row ${selected ? 'selected' : ''}"
@@ -125,7 +126,7 @@ export function renderWaterfallRow(interaction, scale, options = {}) {
         ${escapeHtml(path)}
       </span>
       <span class="ek-waterfall-col-status" style="color: ${statusColor}">
-        ${status || '—'}
+        ${safeStatus}
       </span>
       <span class="ek-waterfall-col-size ek-mono">
         ${size}
