@@ -2,6 +2,7 @@
 // Used by both popup + devtools panel. Mode-switches layout, preserves scroll & cursor.
 
 import { highlightJSON, isValidJSON } from './json-highlight.js';
+import { createLayout } from './layouts.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -100,6 +101,9 @@ const state = {
   listWidth: 360,
   clipboardPreview: null,
 };
+
+// Layout instance for new componentized rendering (Phase 4)
+let layoutInstance = null;
 
 let root;
 
@@ -231,6 +235,68 @@ function applyTheme() {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
+// ---------- New Componentized Rendering (Phase 4) ----------
+
+/**
+ * Render interaction list using new componentized system.
+ * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
+ */
+function renderInteractionListNew() {
+  const container = root.querySelector('[data-testid="api-list"]');
+  if (!container) return;
+
+  // Create layout instance if it doesn't exist or mode changed
+  if (!layoutInstance || layoutInstance.mode !== state.mode) {
+    // Cleanup old instance
+    if (layoutInstance) {
+      layoutInstance.destroy();
+    }
+
+    // Create new instance for current mode
+    layoutInstance = createLayout(container, state.mode);
+
+    // Wire up event handlers
+    container.addEventListener('interaction-selected', (e) => {
+      state.selectedId = e.detail.id;
+      state.detailOpen = true;
+      render(); // Re-render to show detail panel
+    });
+
+    if (state.mode === 'popup') {
+      container.addEventListener('mock-toggled', async (e) => {
+        const { id, enabled } = e.detail;
+        await BG({ type: 'echokit:mock:toggle', id, enabled });
+        await refresh();
+      });
+    } else {
+      container.addEventListener('interaction-action', async (e) => {
+        const { action, id } = e.detail;
+        if (action === 'edit') {
+          state.selectedId = id;
+          state.detailOpen = true;
+          render();
+        } else if (action === 'delete') {
+          await BG({ type: 'echokit:interaction:delete', id });
+          await refresh();
+        }
+      });
+    }
+  }
+
+  // Update layout with current data
+  const filtered = filteredInteractions();
+  layoutInstance.setInteractions(filtered);
+  layoutInstance.setSearchTerm(state.search);
+
+  if (state.mode === 'devtools' && layoutInstance.setSorting) {
+    layoutInstance.setSorting(state.sortBy, state.sortOrder);
+  }
+
+  if (state.mode === 'popup' && layoutInstance.setGroupByDomain) {
+    layoutInstance.setGroupByDomain(true); // Always grouped in popup for now
+  }
+}
+
 // ---------- render ----------
 function render() {
   applyTheme();
@@ -251,9 +317,7 @@ function render() {
       ${renderToolbar()}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
-          ${state.waterfall
-            ? renderWaterfall(list)
-            : renderListView(list, isPopup)}
+          ${state.waterfall ? renderWaterfall(list) : ''}
         </div>
         ${isPopup ? '' : '<div class="ek-resizer" data-action="resize" data-testid="pane-resizer"></div>'}
         <div class="ek-detail" data-testid="api-detail">
@@ -270,6 +334,11 @@ function render() {
     if (!isPopup) {
       appEl.style.setProperty('--list-width', `${Number(state.listWidth)}px`);
     }
+  }
+
+  // Use new componentized rendering for list view (not waterfall)
+  if (!state.waterfall) {
+    renderInteractionListNew();
   }
 
   bindEvents();
