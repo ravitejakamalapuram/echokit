@@ -1344,19 +1344,37 @@ function renderEmpty() {
   `;
 }
 
+const _popupHashCountsCache = new WeakMap();
+
+function getPopupHashCounts(interactions) {
+  if (!interactions) return new Map();
+  if (_popupHashCountsCache.has(interactions)) {
+    return _popupHashCountsCache.get(interactions);
+  }
+  const counts = new Map();
+  for (const i of interactions) {
+    if (i.hash) {
+      counts.set(i.hash, (counts.get(i.hash) || 0) + 1);
+    }
+  }
+  _popupHashCountsCache.set(interactions, counts);
+  return counts;
+}
+
 function renderDomainGroup(g) {
+  const counts = getPopupHashCounts(state.interactions);
   return `
     <div class="ek-domain" data-testid="domain-group">
       <span class="ek-domain-icon"></span>
       <span class="ek-domain-name">${escapeHtml(g.domain)}</span>
       <span class="ek-domain-count">${g.items.length}</span>
     </div>
-    ${g.items.map(renderRow).join('')}
+    ${g.items.map(i => renderRow(i, counts)).join('')}
   `;
 }
 
-function renderRow(i) {
-  const versionCount = state.interactions.filter(x => x.hash === i.hash).length;
+function renderRow(i, counts) {
+  const versionCount = counts ? (counts.get(i.hash) || 1) : state.interactions.filter(x => x.hash === i.hash).length;
   const conflict = versionCount > 1;
   const active = state.selectedId === i.id ? 'active' : '';
   const method = (i.method || 'GET').toUpperCase();

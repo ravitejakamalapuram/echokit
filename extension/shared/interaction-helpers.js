@@ -132,6 +132,23 @@ export function getModeBadgeText(mode) {
   return mapping[mode] || mode;
 }
 
+const _conflictHashCountsCache = new WeakMap();
+
+function getConflictHashCounts(allInteractions) {
+  if (!allInteractions) return new Map();
+  if (_conflictHashCountsCache.has(allInteractions)) {
+    return _conflictHashCountsCache.get(allInteractions);
+  }
+  const counts = new Map();
+  for (const i of allInteractions) {
+    if (i.hash) {
+      counts.set(i.hash, (counts.get(i.hash) || 0) + 1);
+    }
+  }
+  _conflictHashCountsCache.set(allInteractions, counts);
+  return counts;
+}
+
 /**
  * Check if interaction has conflict (multiple versions with same hash).
  *
@@ -140,7 +157,8 @@ export function getModeBadgeText(mode) {
  * @returns {boolean} True if conflict exists
  */
 export function hasConflict(interaction, allInteractions) {
-  const count = allInteractions.filter(x => x.hash === interaction.hash).length;
+  const counts = getConflictHashCounts(allInteractions);
+  const count = counts.get(interaction.hash) || 0;
   return count > 1;
 }
 
@@ -152,7 +170,8 @@ export function hasConflict(interaction, allInteractions) {
  * @returns {number} Number of versions
  */
 export function getConflictCount(interaction, allInteractions) {
-  return allInteractions.filter(x => x.hash === interaction.hash).length;
+  const counts = getConflictHashCounts(allInteractions);
+  return counts.get(interaction.hash) || 0;
 }
 
 /**
