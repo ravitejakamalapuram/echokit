@@ -185,24 +185,36 @@ export const INTERACTION_COLUMNS = {
     visibleIn: ['popup', 'devtools'],
     render: (i, mode) => {
       if (mode === 'popup') {
-        // Popup uses toggle switch
+        // Popup uses toggle switch + block button
         const isActive = i.mockEnabled || false;
         const toggleClass = isActive ? 'active' : '';
+        const isBlocked = i.blocked || false;
 
         return `<div class="ek-actions">` +
           `<label class="ek-mock-toggle ${toggleClass}">` +
           `<input type="checkbox" ${isActive ? 'checked' : ''} data-id="${i.id}">` +
           `<span class="ek-toggle-slider"></span>` +
           `</label>` +
+          `<button class="ek-block-btn ${isBlocked ? 'on' : ''}" ` +
+          `data-action="toggle-block" data-id="${i.id}" ` +
+          `title="${isBlocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" ` +
+          `data-testid="block-btn" ` +
+          `aria-label="${isBlocked ? 'Unblock API' : 'Block API'}">⊘</button>` +
           `</div>`;
       } else {
         // DevTools uses icon buttons
         const editIcon = `<svg class="ek-icon" viewBox="0 0 16 16"><path d="M11 0l5 5-9 9H2v-5z"/></svg>`;
         const deleteIcon = `<svg class="ek-icon" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg>`;
+        const isBlocked = i.blocked || false;
 
         return `<div class="ek-actions">` +
           `<button class="ek-icon-btn" data-action="edit" data-id="${i.id}" title="Edit">${editIcon}</button>` +
           `<button class="ek-icon-btn" data-action="delete" data-id="${i.id}" title="Delete">${deleteIcon}</button>` +
+          `<button class="ek-icon-btn ${isBlocked ? 'on' : ''}" ` +
+          `data-action="toggle-block" data-id="${i.id}" ` +
+          `title="${isBlocked ? 'Blocked' : 'Block'}" ` +
+          `data-testid="block-btn" ` +
+          `aria-label="${isBlocked ? 'Unblock API' : 'Block API'}">⊘</button>` +
           `</div>`;
       }
     }

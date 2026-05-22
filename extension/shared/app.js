@@ -296,6 +296,27 @@ function renderInteractionListNew() {
         }
       });
     }
+
+    // Both modes need block button handler
+    container.addEventListener('interaction-action', async (e) => {
+      const { action, id } = e.detail;
+      if (action === 'toggle-block') {
+        if (!state.isPro) {
+          // Show pro gate (would need to implement this properly)
+          console.warn('[EchoKit] API Blocking requires Pro');
+          return;
+        }
+        try {
+          const current = state.interactions.find(x => x.id === id);
+          if (!current) return;
+          await BG({ type: 'echokit:interaction:update', id, patch: { blocked: !current.blocked } });
+          await refresh();
+        } catch (error) {
+          console.error('[EchoKit] Block toggle failed:', error);
+          await refresh().catch(err => console.error('[EchoKit] Refresh failed:', err));
+        }
+      }
+    });
   }
 
   // Update layout with current data
