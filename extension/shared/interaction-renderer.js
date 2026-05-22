@@ -30,7 +30,7 @@ export function renderInteractionRow(interaction, mode, allInteractions = []) {
       .map(col => col.render(interaction, mode, allInteractions))
       .join('');
 
-    return `<div class="ek-row${isSelected ? ' selected' : ''}" data-id="${interaction.id}">
+    return `<div class="ek-row${isSelected ? ' selected' : ''}" data-id="${interaction.id}" data-action="select" data-testid="api-row">
       ${cells}
     </div>`;
   } else {
@@ -43,7 +43,7 @@ export function renderInteractionRow(interaction, mode, allInteractions = []) {
       })
       .join('');
 
-    return `<tr class="ek-table-row${isSelected ? ' selected' : ''}" data-id="${interaction.id}">
+    return `<tr class="ek-table-row${isSelected ? ' selected' : ''}" data-id="${interaction.id}" data-action="select" data-testid="interaction-row">
       ${cells}
     </tr>`;
   }
