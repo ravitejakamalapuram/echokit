@@ -86,10 +86,29 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 ## 🟡 P2 — Quality & UX improvements
 
-- [ ] **Refactor `extension/shared/app.js`** (currently ~1700 LOC)
+- [ ] **Componentize interaction list rendering** 🎯 **HIGH PRIORITY**
+  - **Problem**: Duplicate rendering logic for popup (grouped list) vs DevTools (sortable table)
+  - **Solution**: Single source of truth with column-based configuration
+  - **Implementation**:
+    1. Create `extension/shared/columns.js` — define all columns once with `INTERACTION_COLUMNS` config
+    2. Create `extension/shared/interaction-renderer.js` — core rendering components (renderInteractionCell, renderTableRow, etc.)
+    3. Create `extension/shared/layouts.js` — layout adaptors (renderTableLayout, renderGroupedLayout)
+    4. Update `extension/shared/app.js` — replace renderListView() to use new modules
+    5. Remove deprecated functions: renderDomainGroup, renderRow, renderSortableTable, renderInteractionRow
+  - **Benefits**: 40% code reduction, zero duplication, easy to add columns, consistent UX
+  - **Design docs**:
+    - `specs/UI_COMPONENTIZATION_SUMMARY.md` — executive summary
+    - `specs/UI_COMPONENTIZATION_DESIGN.md` — architecture overview
+    - `specs/UI_COMPONENTIZATION_IMPLEMENTATION.md` — step-by-step plan
+    - `specs/UI_COMPONENTIZATION_COMPARISON.md` — before/after comparison
+  - **Estimated effort**: 4-6 hours
+  - **Risk**: Low (incremental, testable, reversible)
+
+- [ ] **Refactor `extension/shared/app.js`** (currently ~3000 LOC)
   - Suggested split: `header.js` · `menu.js` · `settings-dialog.js` · `request-detail.js` · `waterfall.js` · `gist-sync.js`
   - Use ES modules; `popup.js` and `panel.js` import the entry point
   - Each module < 250 LOC
+  - **NOTE**: Do the componentization refactor above FIRST — it will reduce app.js by ~80 lines and establish the pattern
 
 - [ ] **Mock-templating** (Pro)
   - Allow `{{faker.name}}`, `{{request.body.userId}}`, `{{$randomInt(1,100)}}` in mock body
