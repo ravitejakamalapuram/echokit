@@ -73,14 +73,14 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - Logs for manual email follow-up (Resend integration ready)
   - See: `worker/worker.js` lines 105-169
 
-- [ ] **LemonSqueezy integration** 🌍 **RECOMMENDED for global sales**
-  - Add `POST /v1/lemonsqueezy-webhook` endpoint
-  - Easier than Stripe: Merchant of Record handles ALL tax/VAT globally
-  - No need to register in 50+ countries, no tax compliance headaches
-  - Better webhooks, simpler API, faster to production
-  - Can run alongside Stripe (dual webhooks for gradual migration)
-  - Implementation guide: `worker/LEMONSQUEEZY_INTEGRATION.md`
-  - Estimated time: 30 minutes (vs hours for Stripe tax setup)
+- [x] **LemonSqueezy integration** 🌍 ✅ **LIVE IN PRODUCTION**
+  - Endpoint `POST /v1/lemonsqueezy-webhook` deployed and working
+  - Handles `subscription_created` and `order_created` events
+  - Auto-detects plan from price: $5=PRO, $49=YEAR, $199=LTD
+  - Auto-issues cryptographically-signed license keys (EK-{PLAN}-{EXPIRY}-{SIG})
+  - Emails keys via Resend API to customer email
+  - Verified working with test payments
+  - See: `worker/worker.js` lines 164-310
 
 ---
 
