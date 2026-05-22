@@ -227,7 +227,7 @@ function sseStream(port, urlPath) {
 
     // Health endpoint
     const h = await getJSON(`http://127.0.0.1:${port}/__health`);
-    expect('__health returns ok', h.status === 200 && h.body.ok === true && h.body.mocks === 7, JSON.stringify(h));
+    expect('__health returns ok', h.status === 200 && h.body.ok === true && h.body.mocks === 8, JSON.stringify(h));
 
     // SSE
     const sse = await sseStream(port, '/stream');
@@ -263,7 +263,7 @@ function sseStream(port, urlPath) {
 
     // Live coverage endpoint
     const cov = await getJSON(`http://127.0.0.1:${port}/__coverage`);
-    expect('__coverage returns report', cov.status === 200 && cov.body.totalMocks === 7 && cov.body.usedMocks >= 6,
+    expect('__coverage returns report', cov.status === 200 && cov.body.totalMocks === 8 && cov.body.usedMocks >= 6,
       JSON.stringify({ totalMocks: cov.body.totalMocks, usedMocks: cov.body.usedMocks, unmatched: cov.body.unmatchedRequests }));
     expect('__coverage lists unused mock', cov.body.unusedMocks.some(m => m.id === 'int_unused'),
       JSON.stringify(cov.body.unusedMocks));
