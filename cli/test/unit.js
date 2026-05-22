@@ -1,6 +1,6 @@
 'use strict';
 
-const { corsHeaders } = require('../lib/server');
+const { corsHeaders, delay } = require('../lib/server');
 
 let pass = 0;
 let fail = 0;
@@ -25,16 +25,49 @@ function testCorsHeaders() {
   expect('Access-Control-Max-Age is 86400', headers['Access-Control-Max-Age'] === '86400');
 }
 
-console.log('--- Running Unit Tests ---');
+async function testDelay() {
+  // Test 1: Positive delay
+  const start1 = Date.now();
+  await delay(100);
+  const end1 = Date.now();
+  const duration1 = end1 - start1;
+  // We expect it to take at least ~90ms (allowing for slight timer inaccuracy)
+  expect('delay(100) waits ~100ms', duration1 >= 90, `took ${duration1}ms`);
 
-try {
-  testCorsHeaders();
-} catch (e) {
-  fail++;
-  console.error('[FAIL] Exception during tests:', e.message);
+  // Test 2: Negative delay falls back to 0
+  const start2 = Date.now();
+  await delay(-50);
+  const end2 = Date.now();
+  const duration2 = end2 - start2;
+  expect('delay(-50) falls back to 0', duration2 < 20, `took ${duration2}ms`);
+
+  // Test 3: Non-numeric/string inputs handled by bitwise OR
+  const start3 = Date.now();
+  await delay('100');
+  const end3 = Date.now();
+  const duration3 = end3 - start3;
+  expect("delay('100') parses string correctly", duration3 >= 90, `took ${duration3}ms`);
+
+  const start4 = Date.now();
+  await delay('invalid');
+  const end4 = Date.now();
+  const duration4 = end4 - start4;
+  expect("delay('invalid') falls back to 0", duration4 < 20, `took ${duration4}ms`);
 }
 
-console.log(`\nUnit Tests Passed: ${pass}  Failed: ${fail}`);
-if (fail > 0) {
-  process.exit(1);
-}
+(async () => {
+  console.log('--- Running Unit Tests ---');
+
+  try {
+    testCorsHeaders();
+    await testDelay();
+  } catch (e) {
+    fail++;
+    console.error('[FAIL] Exception during tests:', e.message);
+  }
+
+  console.log(`\nUnit Tests Passed: ${pass}  Failed: ${fail}`);
+  if (fail > 0) {
+    process.exit(1);
+  }
+})();
