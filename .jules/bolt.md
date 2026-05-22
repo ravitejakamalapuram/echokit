@@ -1,0 +1,3 @@
+## 2025-03-09 - UI Render Bottleneck
+**Learning:** The UI rendering logic in `extension/shared/app.js` can suffer from O(N²) bottlenecks when calculating derived metrics like `versionCount` (duplicate hash checks) inline for every single row via `.filter().length` on the main state array. Since this occurs inside mapping loops (`g.items.map(renderRow)`), rendering thousands of network items becomes significantly slow.
+**Action:** When working on UI render functions that iterate over large arrays, precompute frequency counts or dependent data into a `Map` prior to rendering. Pass this dictionary down to row-level components to ensure O(N) linear time overall.

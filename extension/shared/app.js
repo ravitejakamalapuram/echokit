@@ -238,7 +238,6 @@ function render() {
 
   const isPopup = state.mode === 'popup';
   const list = filteredInteractions();
-  const grouped = groupByDomain(list);
   const selected = state.selectedId ? state.interactions.find(i => i.id === state.selectedId) : null;
   const conflicts = selected ? state.interactions.filter(i => i.hash === selected.hash) : [];
 
@@ -1240,19 +1239,20 @@ function renderEmpty() {
   `;
 }
 
-function renderDomainGroup(g) {
+function renderDomainGroup(g, hashCounts) {
   return `
     <div class="ek-domain" data-testid="domain-group">
       <span class="ek-domain-icon"></span>
       <span class="ek-domain-name">${escapeHtml(g.domain)}</span>
       <span class="ek-domain-count">${g.items.length}</span>
     </div>
-    ${g.items.map(renderRow).join('')}
+    ${g.items.map(i => renderRow(i, hashCounts)).join('')}
   `;
 }
 
-function renderRow(i) {
-  const versionCount = state.interactions.filter(x => x.hash === i.hash).length;
+function renderRow(i, hashCounts) {
+  // Precomputed hash count to avoid O(N^2) inline filter in render loops
+  const versionCount = hashCounts ? (hashCounts.get(i.hash) || 1) : state.interactions.filter(x => x.hash === i.hash).length;
   const conflict = versionCount > 1;
   const active = state.selectedId === i.id ? 'active' : '';
   const method = (i.method || 'GET').toUpperCase();
@@ -1288,7 +1288,11 @@ function renderListView(interactions, isPopup) {
   // Popup or DevTools without sortable columns: use grouped list
   if (isPopup || !features.sortableColumns) {
     const grouped = groupByDomain(interactions);
-    return grouped.map(renderDomainGroup).join('');
+    const hashCounts = new Map();
+    for (const i of state.interactions) {
+      hashCounts.set(i.hash, (hashCounts.get(i.hash) || 0) + 1);
+    }
+    return grouped.map(g => renderDomainGroup(g, hashCounts)).join('');
   }
 
   // DevTools with sortable columns: use table view
@@ -2141,7 +2145,11 @@ function softRenderList() {
   if (isPopup || !features.sortableColumns) {
     // Grouped list view
     const grouped = groupByDomain(items);
-    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('');
+    const hashCounts = new Map();
+    for (const i of state.interactions) {
+      hashCounts.set(i.hash, (hashCounts.get(i.hash) || 0) + 1);
+    }
+    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(g => renderDomainGroup(g, hashCounts)).join('');
   } else {
     // Table view
     list.innerHTML = renderSortableTable(items);
