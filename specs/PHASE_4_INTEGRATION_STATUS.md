@@ -13,13 +13,13 @@
 #### 1. Added Import (Line 5)
 ```javascript
 import { createLayout } from './layouts.js';
-```
+```text
 
 #### 2. Added Layout Instance Variable (Line 106)
 ```javascript
 // Layout instance for new componentized rendering (Phase 4)
 let layoutInstance = null;
-```
+```text
 
 #### 3. Created Integration Bridge Function (Lines 238-298)
 ```javascript
@@ -28,7 +28,7 @@ function renderInteractionListNew() {
   // Wires up events (selection, mock toggle, edit/delete)
   // Updates layout with current state
 }
-```
+```text
 
 #### 4. Modified Main Render Function (Lines 314-348)
 ```javascript
@@ -42,7 +42,7 @@ function render() {
   
   // ... existing event binding/state restoration ...
 }
-```
+```text
 
 ---
 
@@ -72,7 +72,7 @@ layoutInstance.render()
   Which calls → helper functions (Phase 0.9)
   ↓
 Complete HTML rendered via event delegation
-```
+```text
 
 ---
 
@@ -91,7 +91,7 @@ container.addEventListener('mock-toggled', async (e) => {
   await BG({ type: 'echokit:mock:toggle', id, enabled });
   await refresh();
 });
-```
+```text
 
 ### DevTools Mode Events
 
@@ -106,7 +106,7 @@ container.addEventListener('interaction-action', async (e) => {
   if (action === 'edit') { /* ... */ }
   else if (action === 'delete') { /* ... */ }
 });
-```
+```text
 
 ---
 
@@ -119,7 +119,7 @@ if (state.waterfall) {
 } else {
   // Uses new renderInteractionListNew()
 }
-```
+```text
 
 This means:
 - ✅ Zero risk to waterfall view
@@ -213,12 +213,12 @@ if (!state.waterfall) {
 ${state.waterfall
   ? renderWaterfall(list)
   : renderListView(list, isPopup)}  // ← Restore this
-```
+```text
 
 Then:
 ```bash
 git checkout extension/shared/app.js
-```
+```text
 
 ---
 

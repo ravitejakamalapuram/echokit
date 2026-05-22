@@ -36,7 +36,7 @@
   },
   listeners: []
 }
-```
+```text
 
 **Methods**:
 - `setInteractions(interactions)` - Update data
@@ -59,7 +59,7 @@
 {
   groupByDomain: true  // Toggle domain grouping
 }
-```
+```text
 
 **Additional Methods**:
 - `setGroupByDomain(enabled)` - Toggle grouping
@@ -88,7 +88,7 @@ container.addEventListener('change', (e) => {
     handleMockToggle(e.target);
   }
 });
-```
+```text
 
 ---
 
@@ -102,7 +102,7 @@ container.addEventListener('change', (e) => {
   sortBy: 'timestamp',
   sortOrder: 'desc'
 }
-```
+```text
 
 **Additional Methods**:
 - `setSorting(sortBy, sortOrder)` - Update sort state
@@ -137,7 +137,7 @@ container.addEventListener('click', (e) => {
   const btn = e.target.closest('.ek-icon-btn');
   if (btn) handleActionClick(btn);
 });
-```
+```text
 
 **Sorting Logic**:
 - Click header → toggle asc/desc if same column
@@ -157,7 +157,7 @@ container.addEventListener('click', (e) => {
 const layout = createLayout(containerEl, 'popup');
 // OR
 const layout = createLayout(containerEl, 'devtools');
-```
+```text
 
 **Returns**: `PopupLayout` or `DevToolsLayout` instance
 
@@ -191,7 +191,7 @@ layout.setGroupByDomain(false);
 
 // 6. Cleanup when done
 layout.destroy();
-```
+```text
 
 ### DevTools Mode
 
@@ -223,7 +223,7 @@ layout.setSorting('status', 'desc');
 
 // 6. Cleanup when done
 layout.destroy();
-```
+```text
 
 ---
 
@@ -268,7 +268,7 @@ render()
 renderInteractionList() ← Phase 2
   ↓
 DOM Update
-```
+```text
 
 ---
 

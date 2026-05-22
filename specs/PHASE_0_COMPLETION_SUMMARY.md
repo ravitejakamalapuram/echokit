@@ -132,7 +132,7 @@ const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
 const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
 
 // Problem: Two different places define status colors!
-```
+```text
 
 ### After (New - Mistake-Proof)
 
@@ -146,7 +146,7 @@ export function getStatusColor(status) {
 
 // Both popup and DevTools use this function
 // Change it once → both update automatically
-```
+```text
 
 ---
 
@@ -169,7 +169,7 @@ jobs:
       - run: npm test -- consistency/
         name: Run consistency enforcement tests
         # FAILS if popup and DevTools diverge
-```
+```text
 
 **Result**: Cannot merge if tests fail → Divergence impossible
 
@@ -198,7 +198,7 @@ Phase 3: Layout Adaptors
 Phase 4: Integration
 Phase 5: Testing
 Phase 6: Cleanup
-```
+```text
 
 ---
 
@@ -248,7 +248,7 @@ export const INTERACTION_COLUMNS = {
     }
   }
 };
-```
+```text
 
 ---
 

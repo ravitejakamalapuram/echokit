@@ -24,7 +24,7 @@
 
 ### Architecture: Mistake-Proof by Design
 
-```
+```text
 Phase 4: app.js Integration
   ↓
 Phase 3: Layout Adaptors (PopupLayout, DevToolsLayout)

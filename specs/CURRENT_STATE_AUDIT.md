@@ -27,7 +27,7 @@
 
 ### 1.1 Layout Structure
 
-```
+```html
 <div class="ek-domain">          ← Domain group header (sticky)
   <span class="ek-domain-icon">  ← Amber square icon
   <span class="ek-domain-name">  ← e.g., "api.example.com"
@@ -78,7 +78,7 @@
   border-left: 2px solid var(--amber);
   padding-left: calc(var(--space-lg) - 2px); /* 14px */
 }
-```
+```text
 
 ### 1.4 Method Badge (`.ek-method`)
 
@@ -101,7 +101,7 @@
 .ek-method.PUT    { color: var(--amber);  background: var(--amber-dim); }
 .ek-method.DELETE { color: var(--red);    background: var(--red-dim); }
 .ek-method.PATCH  { color: var(--purple); background: var(--purple-dim); }
-```
+```text
 
 ### 1.5 Status Badge (`.ek-status`)
 
@@ -110,7 +110,7 @@
 ```javascript
 const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
 // Returns: 's2' (200s), 's3' (300s), 's4' (400s), 's5' (500s)
-```
+```text
 
 ```css
 .ek-status {
@@ -126,7 +126,7 @@ const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
 .ek-status.s3 { color: var(--blue);    background: var(--blue-dim);    border: 1px solid var(--blue-border); }
 .ek-status.s4 { color: var(--amber);   background: var(--amber-dim);   border: 1px solid rgba(251,191,36,0.3); }
 .ek-status.s5 { color: var(--red);     background: var(--red-dim);     border: 1px solid var(--red-border); }
-```
+```text
 
 ### 1.6 Mock Toggle Button (`.ek-mock-toggle`)
 
@@ -164,14 +164,14 @@ const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
   transform: translateX(14px);
   background: #000;
 }
-```
+```text
 
 ### 1.7 Additional Badges (Conditional)
 
 **Mode Badge** (appears when `matchMode !== 'strict'`):
 ```html
 <span class="ek-mode-badge" title="match mode: ignore-query">NOQ</span>
-```
+```text
 ```css
 .ek-mode-badge {
   font-family: var(--font-mono);
@@ -185,13 +185,13 @@ const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
   color: var(--text-muted);
   text-transform: uppercase;
 }
-```
+```text
 Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}`
 
 **Conflict Badge** (appears when `versionCount > 1`):
 ```html
 <span class="ek-conflict-badge" title="3 versions">×3</span>
-```
+```text
 ```css
 .ek-conflict-badge {
   font-family: var(--font-mono);
@@ -205,7 +205,7 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
   border: 1px solid rgba(251,191,36,0.3);
   text-transform: uppercase;
 }
-```
+```text
 
 **Source Badge** (conditional - when `features.sourceBadges` enabled):
 - Rendered by `renderSourceBadge(i, state.tabId)`
@@ -239,7 +239,7 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
   border-radius: 3px;
   background: var(--amber);
 }
-```
+```text
 
 ---
 
@@ -267,7 +267,7 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
   [optional: source badge]
   <div class="ek-col">            ← Action buttons (icon style)
 </div>
-```
+```text
 
 ### 2.2 Visible Columns (Left to Right)
 
@@ -312,7 +312,7 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-```
+```text
 
 ### 2.4 Method Badge (`.ek-method-badge`)
 
@@ -338,12 +338,12 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
 .ek-method-badge.ek-method-put { background: var(--amber-dim); color: var(--amber); }
 .ek-method-badge.ek-method-patch { background: var(--amber-dim); color: var(--amber-light); }
 .ek-method-badge.ek-method-delete { background: var(--red-dim); color: var(--red); }
-```
+```html
 
 **Mock Indicator Badge** (appears next to method when `mockEnabled`):
 ```html
 <span class="ek-mock-badge" title="Mock enabled">⚡</span>
-```
+```text
 ```css
 .ek-mock-badge {
   margin-left: 4px;
@@ -351,7 +351,7 @@ Mapping: `{'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH'}
   color: var(--amber);
   filter: drop-shadow(0 0 2px var(--amber-glow));
 }
-```
+```text
 
 ### 2.5 Status Display (INLINE STYLES, NOT BADGE)
 
@@ -365,7 +365,7 @@ const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--e
 <div class="ek-col" style="width:80px;color:${stColor}">
   ${st ?? '—'}
 </div>
-```
+```text
 
 **This is a MAJOR difference from popup!**
 
@@ -400,7 +400,7 @@ const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--e
   border-color: var(--amber);
   color: var(--amber);
 }
-```
+```text
 
 **Mock button content:**
 - OFF: `○` (empty circle)
@@ -414,7 +414,7 @@ const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--e
 **Duration:**
 ```javascript
 ${i.durationMs ? i.durationMs + 'ms' : '—'}
-```
+```text
 
 **Timestamp:**
 ```javascript
@@ -426,7 +426,7 @@ function formatTimestamp(ts) {
   if (diff < 86400_000) return Math.floor(diff / 3600_000) + 'h ago';
   return Math.floor(diff / 86400_000) + 'd ago';
 }
-```
+```text
 
 ---
 
@@ -470,12 +470,12 @@ function formatTimestamp(ts) {
 **Popup:**
 ```html
 <span class="ek-status s2">200</span>
-```
+```html
 
 **DevTools:**
 ```html
 <div class="ek-col" style="width:80px;color:var(--emerald)">200</div>
-```
+```text
 
 ### 3.4 Action Button Differences
 
@@ -493,12 +493,12 @@ function formatTimestamp(ts) {
 **Popup:** Badges appear AFTER the URL:
 ```
 [METHOD] [URL------] [MODE?] [CONFLICT?] [SOURCE?] [STATUS] [TOGGLE] [BLOCK]
-```
+```text
 
 **DevTools:** Mock badge appears NEXT TO method:
 ```
 [METHOD ⚡?] [URL------] [STATUS] [DURATION] [TIMESTAMP] [SOURCE?] [BUTTONS]
-```
+```text
 
 ### 3.6 Columns Unique to DevTools
 
@@ -522,7 +522,7 @@ function formatTimestamp(ts) {
 --space-sm: 8px
 --space-md: 12px
 --space-lg: 16px
-```
+```text
 
 ### 4.2 Colors
 
@@ -536,7 +536,7 @@ function formatTimestamp(ts) {
 --emerald, --blue, --red: Status colors
 --text-muted, --text-secondary: Text shades
 --border, --border-strong, --border-subtle: Border shades
-```
+```text
 
 ### 4.3 Typography
 
@@ -544,13 +544,13 @@ function formatTimestamp(ts) {
 --font-mono: Monospace font
 --fw-bold: 700
 --fw-semibold: 600
-```
+```text
 
 ### 4.4 Timing
 
 ```css
 --transition-fast: 120ms ease
-```
+```text
 
 ---
 

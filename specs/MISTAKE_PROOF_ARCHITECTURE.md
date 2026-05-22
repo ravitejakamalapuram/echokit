@@ -9,7 +9,7 @@
 
 ### Layer 1: Code Structure (Prevents Mistakes)
 
-```
+```text
 interaction-helpers.js     ← ALL business logic (SINGLE FUNCTIONS)
          ↓
      columns.js            ← Column config calls helpers
@@ -43,7 +43,7 @@ describe('CONSISTENCY ENFORCEMENT', () => {
     });
   });
 });
-```
+```text
 
 **This test runs on EVERY commit. Divergence = build fails.**
 
@@ -78,7 +78,7 @@ export function getStatusColor(status) {
   if (status >= 300) return 'var(--blue)';
   return 'var(--emerald)';
 }
-```
+```text
 
 ---
 
@@ -90,21 +90,21 @@ export function getStatusColor(status) {
 ```javascript
 const statusClass = 's' + String(Math.floor((i.responseStatus || 0) / 100));
 return `<span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>`;
-```
+```text
 
 **File 2: DevTools rendering (app.js line 1345)**
 ```javascript
 const st = i.overrideStatus ?? i.responseStatus;
 const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
 return `<div class="ek-col" style="color:${stColor}">${st ?? '—'}</div>`;
-```
+```text
 
 **File 3: CSS (styles.css line 932)**
 ```css
 .ek-status.s2 { color: var(--emerald); }
 .ek-status.s4 { color: var(--amber); }
 .ek-status.s5 { color: var(--red); }
-```
+```text
 
 **Problem**: 3 separate files define status colors. Easy to forget one!
 
@@ -129,7 +129,7 @@ export function getStatusValue(interaction) {
 export function getStatusClass(status) {
   return 's' + Math.floor((status || 0) / 100);
 }
-```
+```text
 
 **File 2: Column config uses helpers (columns.js)**
 ```javascript
@@ -151,7 +151,7 @@ export const INTERACTION_COLUMNS = {
     }
   }
 };
-```
+```text
 
 **File 3: CSS documents dependency (styles.css)**
 ```css
@@ -159,7 +159,7 @@ export const INTERACTION_COLUMNS = {
 .ek-status.s2 { color: var(--emerald); } /* getStatusColor(200) */
 .ek-status.s4 { color: var(--amber); }   /* getStatusColor(400) */
 .ek-status.s5 { color: var(--red); }     /* getStatusColor(500) */
-```
+```text
 
 **Guarantee**: 
 - Change `getStatusColor()` → Both modes update

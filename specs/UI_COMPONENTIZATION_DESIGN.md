@@ -173,7 +173,7 @@ const INTERACTION_COLUMNS = {
 
 ## Core Component Implementation
 
-See `IMPLEMENTATION_PLAN.md` for the full refactoring plan.
+See `UI_COMPONENTIZATION_IMPLEMENTATION.md` for the full refactoring plan.
 
 ---
 
