@@ -1681,232 +1681,240 @@ function renderAllCodeEditors() {
  * trigger selective or full re-renders, and open dialogs/menus as appropriate (e.g., selection, recording
  * controls, filtering, sorting, mock editing, header edits, chain operations, import/export, and settings).
  */
-function bindEvents() {
-  root.querySelectorAll('[data-action]').forEach(el => {
-    const action = el.getAttribute('data-action');
-    const id = el.getAttribute('data-id');
-
-    if (action === 'select') el.addEventListener('click', (e) => {
+function bindGlobalEvents(el, action, id) {
+  if (action === 'select') {
+    el.addEventListener('click', (e) => {
       if (e.target.closest('[data-action="toggle-mock"]')) return;
-      state.selectedId = el.getAttribute('data-id');
+      state.selectedId = id;
       state.detailOpen = true; render();
     });
-    else if (action === 'start-recording') el.addEventListener('click', onStartRecording);
-    else if (action === 'stop-recording') el.addEventListener('click', onStopRecording);
-    else if (action === 'toggle-mocking') el.addEventListener('change', onToggleMocking);
-    else if (action === 'toggle-cors-master') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'start-recording') { el.addEventListener('click', onStartRecording); return true; }
+  if (action === 'stop-recording') { el.addEventListener('click', onStopRecording); return true; }
+  if (action === 'toggle-mocking') { el.addEventListener('change', onToggleMocking); return true; }
+  if (action === 'toggle-cors-master') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:settings:update', patch: { corsOverride: e.target.checked } });
       await refresh(); render();
     });
-    else if (action === 'toggle-waterfall') el.addEventListener('click', () => {
-      state.waterfall = !state.waterfall; render();
-    });
-    else if (action === 'toggle-block') el.addEventListener('click', async (e) => {
+    return true;
+  }
+  if (action === 'toggle-waterfall') {
+    el.addEventListener('click', () => { state.waterfall = !state.waterfall; render(); });
+    return true;
+  }
+  if (action === 'toggle-block') {
+    el.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!state.isPro) { showProGate('API Blocking'); return; }
-      const tid = el.getAttribute('data-id');
-      const current = state.interactions.find(x => x.id === tid);
+      const current = state.interactions.find(x => x.id === id);
       if (!current) return;
-      await BG({ type: 'echokit:interaction:update', id: tid, patch: { blocked: !current.blocked } });
+      await BG({ type: 'echokit:interaction:update', id, patch: { blocked: !current.blocked } });
       await refresh(); render();
     });
-    else if (action === 'toggle-menu') el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
-    else if (action === 'toggle-cors') el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); });
-    else if (action === 'open-settings') el.addEventListener('click', () => {
-      // In popup mode, guide users to DevTools for better settings experience
-      // In DevTools mode, open settings dialog directly
-      if (state.mode === 'popup') {
-        showDevToolsGuide();
-      } else {
-        showSettingsDialog();
-      }
+    return true;
+  }
+  if (action === 'toggle-menu') {
+    el.addEventListener('click', async (e) => { e.stopPropagation(); state.menuOpen = !state.menuOpen; if (state.menuOpen) await tryReadClipboardPreview(); renderMenu(); });
+    return true;
+  }
+  if (action === 'toggle-cors') { el.addEventListener('click', () => { state.menuOpen = false; showSettingsDialog(); }); return true; }
+  if (action === 'open-settings') {
+    el.addEventListener('click', () => {
+      if (state.mode === 'popup') showDevToolsGuide(); else showSettingsDialog();
     });
-    else if (action === 'cycle-scope') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'cycle-scope') {
+    el.addEventListener('click', async () => {
       const order = ['domain', 'tab', 'global'];
       const next = order[(order.indexOf(state.settings.scope || 'domain') + 1) % order.length];
       await BG({ type: 'echokit:settings:update', patch: { scope: next } });
       await refresh(); render();
     });
-    else if (action === 'search') {
-      // Soft update: do not full-render on every keystroke. Update state + only
-      // re-render the list/footer so the search input itself is untouched.
-      let t;
-      el.addEventListener('input', (e) => {
-        state.search = e.target.value;
-        clearTimeout(t);
-        t = setTimeout(() => softRenderList(), SOFT_RENDER_DEBOUNCE);
-      });
-    }
-    else if (action === 'filter-method') el.addEventListener('click', () => {
+    return true;
+  }
+  if (action === 'switch-to-tab') {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
+      if (Number.isNaN(tabId)) return;
+      try { await chrome.tabs.update(tabId, { active: true }); } catch (err) { console.error('Failed to switch to tab:', err); }
+    });
+    return true;
+  }
+  if (action === 'delete-interaction') {
+    el.addEventListener('click', async () => {
+      if (!confirm('Delete this recorded API? This cannot be undone.')) return;
+      await BG({ type: 'echokit:interaction:delete', id });
+      state.selectedId = null; state.detailOpen = false;
+      await refresh(); render();
+    });
+    return true;
+  }
+  if (action === 'open-devtools-guide') { el.addEventListener('click', (e) => { e.preventDefault(); showDevToolsGuide(); }); return true; }
+  if (action === 'set-active-version') {
+    el.addEventListener('change', async (e) => {
+      await BG({ type: 'echokit:interaction:setActiveVersion', id: e.target.value });
+      await refresh(); render();
+    });
+    return true;
+  }
+  if (action === 'close-detail') { el.addEventListener('click', () => { state.detailOpen = false; state.selectedId = null; render(); }); return true; }
+  if (action === 'resize') { bindResizer(el); return true; }
+  return false;
+}
+
+function bindFilterEvents(el, action, id) {
+  if (action === 'search') {
+    let t;
+    el.addEventListener('input', (e) => {
+      state.search = e.target.value;
+      clearTimeout(t);
+      t = setTimeout(() => softRenderList(), SOFT_RENDER_DEBOUNCE);
+    });
+    return true;
+  }
+  if (action === 'filter-method') {
+    el.addEventListener('click', () => {
       const m = el.getAttribute('data-method');
       state.methodFilter = state.methodFilter === m ? null : m;
       render();
     });
-    else if (action === 'filter-status') el.addEventListener('change', (e) => { state.statusFilter = e.target.value || null; render(); });
-    // Advanced filter handlers (DevTools only)
-    else if (action === 'toggle-advanced-filters') el.addEventListener('click', () => {
-      state.advancedFilterOpen = !state.advancedFilterOpen;
-      render();
-    });
-    else if (action === 'filter-method-toggle') el.addEventListener('change', (e) => {
+    return true;
+  }
+  if (action === 'filter-status') { el.addEventListener('change', (e) => { state.statusFilter = e.target.value || null; render(); }); return true; }
+  if (action === 'toggle-advanced-filters') { el.addEventListener('click', () => { state.advancedFilterOpen = !state.advancedFilterOpen; render(); }); return true; }
+  if (action === 'filter-method-toggle') {
+    el.addEventListener('change', (e) => {
       const method = el.getAttribute('data-method');
       if (e.target.checked) {
-        if (!state.filters.methods.includes(method)) {
-          state.filters.methods.push(method);
-        }
+        if (!state.filters.methods.includes(method)) state.filters.methods.push(method);
       } else {
         state.filters.methods = state.filters.methods.filter(m => m !== method);
       }
       softRenderList();
     });
-    else if (action === 'filter-status-toggle') el.addEventListener('change', (e) => {
+    return true;
+  }
+  if (action === 'filter-status-toggle') {
+    el.addEventListener('change', (e) => {
       const status = el.getAttribute('data-status');
       if (e.target.checked) {
-        if (!state.filters.statusCodes.includes(status)) {
-          state.filters.statusCodes.push(status);
-        }
+        if (!state.filters.statusCodes.includes(status)) state.filters.statusCodes.push(status);
       } else {
         state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== status);
       }
       softRenderList();
     });
-    else if (action === 'filter-source-toggle') el.addEventListener('change', (e) => {
+    return true;
+  }
+  if (action === 'filter-source-toggle') {
+    el.addEventListener('change', (e) => {
       const source = el.getAttribute('data-source');
       state.filters.sources[source] = e.target.checked;
       softRenderList();
     });
-    else if (action === 'filter-request-body') {
-      debounceInput(el, (value) => {
-        state.filters.requestBodyContains = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'filter-response-body') {
-      debounceInput(el, (value) => {
-        state.filters.responseBodyContains = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'filter-req-header-name') {
-      debounceInput(el, (value) => {
-        state.filters.requestHeader.name = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'filter-req-header-value') {
-      debounceInput(el, (value) => {
-        state.filters.requestHeader.value = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'filter-res-header-name') {
-      debounceInput(el, (value) => {
-        state.filters.responseHeader.name = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'filter-res-header-value') {
-      debounceInput(el, (value) => {
-        state.filters.responseHeader.value = value;
-        softRenderList();
-      }, DEBOUNCE_DELAY);
-    }
-    else if (action === 'remove-filter') el.addEventListener('click', () => {
+    return true;
+  }
+  if (action === 'filter-request-body') { debounceInput(el, (value) => { state.filters.requestBodyContains = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'filter-response-body') { debounceInput(el, (value) => { state.filters.responseBodyContains = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'filter-req-header-name') { debounceInput(el, (value) => { state.filters.requestHeader.name = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'filter-req-header-value') { debounceInput(el, (value) => { state.filters.requestHeader.value = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'filter-res-header-name') { debounceInput(el, (value) => { state.filters.responseHeader.name = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'filter-res-header-value') { debounceInput(el, (value) => { state.filters.responseHeader.value = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
+  if (action === 'remove-filter') {
+    el.addEventListener('click', () => {
       const type = el.getAttribute('data-type');
       const value = el.getAttribute('data-value');
-
-      if (type === 'method') {
-        state.filters.methods = state.filters.methods.filter(m => m !== value);
-      } else if (type === 'status') {
-        state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== value);
-      } else if (type === 'request-body') {
-        state.filters.requestBodyContains = '';
-      } else if (type === 'response-body') {
-        state.filters.responseBodyContains = '';
-      } else if (type === 'request-header-name') {
-        state.filters.requestHeader.name = '';
-      } else if (type === 'request-header-value') {
-        state.filters.requestHeader.value = '';
-      } else if (type === 'response-header-name') {
-        state.filters.responseHeader.name = '';
-      } else if (type === 'response-header-value') {
-        state.filters.responseHeader.value = '';
-      }
-
+      if (type === 'method') { state.filters.methods = state.filters.methods.filter(m => m !== value); }
+      else if (type === 'status') { state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== value); }
+      else if (type === 'request-body') { state.filters.requestBodyContains = ''; }
+      else if (type === 'response-body') { state.filters.responseBodyContains = ''; }
+      else if (type === 'request-header-name') { state.filters.requestHeader.name = ''; }
+      else if (type === 'request-header-value') { state.filters.requestHeader.value = ''; }
+      else if (type === 'response-header-name') { state.filters.responseHeader.name = ''; }
+      else if (type === 'response-header-value') { state.filters.responseHeader.value = ''; }
       render();
     });
-    else if (action === 'sort-by') el.addEventListener('click', () => {
-      const column = el.getAttribute('data-column');
-      applySort(column);
-    });
-    else if (action === 'switch-to-tab') el.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
-      if (Number.isNaN(tabId)) return;
-      try {
-        await chrome.tabs.update(tabId, { active: true });
-      } catch (err) {
-        console.error('Failed to switch to tab:', err);
-      }
-    });
-    else if (action === 'clear-all-filters') el.addEventListener('click', () => {
+    return true;
+  }
+  if (action === 'sort-by') { el.addEventListener('click', () => { applySort(el.getAttribute('data-column')); }); return true; }
+  if (action === 'clear-all-filters') {
+    el.addEventListener('click', () => {
       state.filters = {
-        methods: [],
-        statusCodes: [],
-        requestBodyContains: '',
-        responseBodyContains: '',
-        requestHeader: { name: '', value: '' },
-        responseHeader: { name: '', value: '' },
-        mockEnabled: null,
-        blocked: null,
-        hasNotes: null,
+        methods: [], statusCodes: [], requestBodyContains: '', responseBodyContains: '',
+        requestHeader: { name: '', value: '' }, responseHeader: { name: '', value: '' },
+        mockEnabled: null, blocked: null, hasNotes: null,
         sources: { thisTab: true, otherTabs: true, closedTabs: false, imported: true }
       };
       state.search = '';
       render();
     });
-    else if (action === 'toggle-mock') {
-      const handler = async () => {
-        const current = state.interactions.find(x => x.id === id);
-        if (!current) return;
-        await BG({ type: 'echokit:interaction:update', id, patch: { mockEnabled: !current.mockEnabled } });
-        await refresh(); render();
-      };
-      if (el.tagName === 'INPUT') el.addEventListener('change', handler);
-      else el.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
-    }
-    else if (action === 'update-latency' || action === 'update-latency-input') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  return false;
+}
+
+function bindMockEvents(el, action, id) {
+  if (action === 'toggle-mock') {
+    const handler = async () => {
+      const current = state.interactions.find(x => x.id === id);
+      if (!current) return;
+      await BG({ type: 'echokit:interaction:update', id, patch: { mockEnabled: !current.mockEnabled } });
+      await refresh(); render();
+    };
+    if (el.tagName === 'INPUT') el.addEventListener('change', handler);
+    else el.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
+    return true;
+  }
+  if (action === 'update-latency' || action === 'update-latency-input') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockLatency: Number(e.target.value) || 0 } });
       await refresh(); render();
     });
-    else if (action === 'update-error-mode') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-error-mode') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockErrorMode: e.target.value } });
       await refresh(); render();
     });
-    else if (action === 'update-match-mode') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-match-mode') {
+    el.addEventListener('change', async (e) => {
       if (e.target.value !== 'strict' && !state.isPro) { showProGate('Advanced Match Modes'); e.target.value = 'strict'; return; }
       await BG({ type: 'echokit:interaction:update', id, patch: { matchMode: e.target.value } });
       await refresh(); render();
     });
-    else if (action === 'update-status') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-status') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideStatus: Number(e.target.value) || 200 } });
       await refresh(); render();
     });
-    else if (action === 'update-body') {
-      let t;
-      el.addEventListener('input', (e) => {
-        const v = e.target.value;
-        const saveStatus = root.querySelector('[data-testid="body-save-status"]');
-        if (saveStatus) saveStatus.textContent = 'saving…';
-        clearTimeout(t);
-        t = setTimeout(async () => {
-          await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: v } });
-          await refresh();
-          if (saveStatus) saveStatus.textContent = 'saved';
-        }, 400);
-      });
-    }
-    else if (action === 'format-json') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'update-body') {
+    let t;
+    el.addEventListener('input', (e) => {
+      const v = e.target.value;
+      const saveStatus = root.querySelector('[data-testid="body-save-status"]');
+      if (saveStatus) saveStatus.textContent = 'saving…';
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: v } });
+        await refresh();
+        if (saveStatus) saveStatus.textContent = 'saved';
+      }, 400);
+    });
+    return true;
+  }
+  if (action === 'format-json') {
+    el.addEventListener('click', async () => {
       const ta = root.querySelector('textarea[data-action="update-body"]');
       if (!ta) return;
       try {
@@ -1917,30 +1925,52 @@ function bindEvents() {
         await refresh(); render();
       } catch {}
     });
-    else if (action === 'reset-body') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'reset-body') {
+    el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideBody: null } });
       await refresh(); render();
     });
-    else if (action === 'update-max-count') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-max-count') {
+    el.addEventListener('change', async (e) => {
       const v = e.target.value.trim();
       await BG({ type: 'echokit:interaction:update', id, patch: { mockMaxCount: v === '' ? null : (Number(v) || 0) } });
       await refresh(); render();
     });
-    else if (action === 'update-ws-loop') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-ws-loop') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:update', id, patch: { wsLoop: e.target.checked } });
       await refresh(); render();
     });
-    else if (action === 'reset-mock-count') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'reset-mock-count') {
+    el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockCallCount: 0 } });
       await refresh(); render();
     });
-    else if (action === 'chain-add') el.addEventListener('click', async () => {
+    return true;
+  }
+  return false;
+}
+
+function bindChainEvents(el, action, id) {
+  if (action === 'chain-add') {
+    el.addEventListener('click', async () => {
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || []), { status: 200, body: '', headers: {} }];
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
       await refresh(); render();
     });
-    else if (action === 'chain-remove') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'chain-remove') {
+    el.addEventListener('click', async () => {
       const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
@@ -1949,7 +1979,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain.length ? chain : null, mockChainCursor: cursor } });
       await refresh(); render();
     });
-    else if (action === 'chain-status') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'chain-status') {
+    el.addEventListener('change', async (e) => {
       const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
@@ -1957,7 +1990,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
       await refresh();
     });
-    else if (action === 'chain-body') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'chain-body') {
+    el.addEventListener('change', async (e) => {
       const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
@@ -1965,15 +2001,28 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChain: chain } });
       await refresh();
     });
-    else if (action === 'update-chain-loop') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'update-chain-loop') {
+    el.addEventListener('change', async (e) => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChainLoop: e.target.checked } });
       await refresh(); render();
     });
-    else if (action === 'reset-chain-cursor') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'reset-chain-cursor') {
+    el.addEventListener('click', async () => {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockChainCursor: 0 } });
       await refresh(); render();
     });
-    else if (action === 'header-add') el.addEventListener('click', async () => {
+    return true;
+  }
+  return false;
+}
+
+function bindHeaderEvents(el, action, id) {
+  if (action === 'header-add') {
+    el.addEventListener('click', async () => {
       const curr = state.interactions.find(x => x.id === id);
       const headers = { ...(curr.overrideHeaders || curr.responseHeaders || {}) };
       let k = 'x-custom-header', i2 = 1;
@@ -1982,7 +2031,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideHeaders: headers } });
       await refresh(); render();
     });
-    else if (action === 'header-remove') el.addEventListener('click', async () => {
+    return true;
+  }
+  if (action === 'header-remove') {
+    el.addEventListener('click', async () => {
       const key = el.getAttribute('data-key');
       const curr = state.interactions.find(x => x.id === id);
       const headers = { ...(curr.overrideHeaders || curr.responseHeaders || {}) };
@@ -1990,7 +2042,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideHeaders: headers } });
       await refresh(); render();
     });
-    else if (action === 'header-key') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'header-key') {
+    el.addEventListener('change', async (e) => {
       const orig = el.getAttribute('data-orig');
       const next = e.target.value.trim();
       if (!next || next === orig) return;
@@ -2000,7 +2055,10 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideHeaders: headers } });
       await refresh(); render();
     });
-    else if (action === 'header-val') el.addEventListener('change', async (e) => {
+    return true;
+  }
+  if (action === 'header-val') {
+    el.addEventListener('change', async (e) => {
       const key = el.getAttribute('data-key');
       const curr = state.interactions.find(x => x.id === id);
       const headers = { ...(curr.overrideHeaders || curr.responseHeaders || {}) };
@@ -2008,22 +2066,21 @@ function bindEvents() {
       await BG({ type: 'echokit:interaction:update', id, patch: { overrideHeaders: headers } });
       await refresh();
     });
-    else if (action === 'delete-interaction') el.addEventListener('click', async () => {
-      if (!confirm('Delete this recorded API? This cannot be undone.')) return;
-      await BG({ type: 'echokit:interaction:delete', id });
-      state.selectedId = null; state.detailOpen = false;
-      await refresh(); render();
-    });
-    else if (action === 'open-devtools-guide') el.addEventListener('click', (e) => {
-      e.preventDefault();
-      showDevToolsGuide();
-    });
-    else if (action === 'set-active-version') el.addEventListener('change', async (e) => {
-      await BG({ type: 'echokit:interaction:setActiveVersion', id: e.target.value });
-      await refresh(); render();
-    });
-    else if (action === 'close-detail') el.addEventListener('click', () => { state.detailOpen = false; state.selectedId = null; render(); });
-    else if (action === 'resize') bindResizer(el);
+    return true;
+  }
+  return false;
+}
+
+function bindEvents() {
+  root.querySelectorAll('[data-action]').forEach(el => {
+    const action = el.getAttribute('data-action');
+    const id = el.getAttribute('data-id');
+
+    if (bindGlobalEvents(el, action, id)) return;
+    if (bindFilterEvents(el, action, id)) return;
+    if (bindMockEvents(el, action, id)) return;
+    if (bindChainEvents(el, action, id)) return;
+    if (bindHeaderEvents(el, action, id)) return;
   });
 }
 
