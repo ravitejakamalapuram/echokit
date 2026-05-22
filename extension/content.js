@@ -40,13 +40,11 @@
     }
 
     if (type === 'mock-hit') {
-      // Expected shape: { requestId, hash, mode }
-      const { requestId, hash, mode } = payload;
-      if (typeof requestId !== 'string' || typeof hash !== 'string') return null;
+      // Expected shape: { id } for chain/conditional mocks
+      const { id } = payload;
+      if (typeof id !== 'string') return null;
       return {
-        requestId: requestId.slice(0, 64),
-        hash:      hash.slice(0, 128),
-        mode:      typeof mode === 'string' ? mode.slice(0, 32) : '',
+        id: id.slice(0, 128)
       };
     }
 
