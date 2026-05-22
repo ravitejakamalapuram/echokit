@@ -246,8 +246,10 @@ function renderInteractionListNew() {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
-  // Create layout instance if it doesn't exist or mode changed
-  if (!layoutInstance || layoutInstance.mode !== state.mode) {
+  // Create layout instance if it doesn't exist, mode changed, or container detached
+  if (!layoutInstance ||
+      layoutInstance.mode !== state.mode ||
+      layoutInstance.container !== container) {
     // Cleanup old instance
     if (layoutInstance) {
       layoutInstance.destroy();
@@ -266,8 +268,14 @@ function renderInteractionListNew() {
     if (state.mode === 'popup') {
       container.addEventListener('mock-toggled', async (e) => {
         const { id, enabled } = e.detail;
-        await BG({ type: 'echokit:mock:toggle', id, enabled });
-        await refresh();
+        try {
+          await BG({ type: 'echokit:mock:toggle', id, enabled });
+          await refresh();
+        } catch (error) {
+          console.error('[EchoKit] Mock toggle failed:', error);
+          // Refresh anyway to restore consistent state
+          await refresh().catch(err => console.error('[EchoKit] Refresh failed:', err));
+        }
       });
     } else {
       container.addEventListener('interaction-action', async (e) => {
@@ -277,8 +285,14 @@ function renderInteractionListNew() {
           state.detailOpen = true;
           render();
         } else if (action === 'delete') {
-          await BG({ type: 'echokit:interaction:delete', id });
-          await refresh();
+          try {
+            await BG({ type: 'echokit:interaction:delete', id });
+            await refresh();
+          } catch (error) {
+            console.error('[EchoKit] Delete failed:', error);
+            // Restore previous state if delete failed
+            await refresh().catch(err => console.error('[EchoKit] Refresh failed:', err));
+          }
         }
       });
     }

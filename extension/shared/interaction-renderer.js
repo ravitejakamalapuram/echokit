@@ -174,7 +174,13 @@ function renderGroupedList(interactions, mode) {
   // Group by domain
   const groups = {};
   interactions.forEach(i => {
-    const domain = new URL(i.url).hostname;
+    let domain;
+    try {
+      domain = new URL(i.url).hostname;
+    } catch (error) {
+      // Fallback for malformed or missing URLs
+      domain = 'invalid';
+    }
     if (!groups[domain]) groups[domain] = [];
     groups[domain].push(i);
   });

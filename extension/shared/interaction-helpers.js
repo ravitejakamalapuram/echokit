@@ -76,6 +76,7 @@ export function normalizeMethod(method) {
  * @returns {string} Formatted duration (e.g., '45ms' or '—')
  */
 export function formatDuration(ms) {
+  if (ms === 0) return '0ms';
   return ms ? ms + 'ms' : '—';
 }
 
@@ -89,7 +90,7 @@ export function formatDuration(ms) {
  */
 export function formatTimestamp(timestamp) {
   const now = Date.now();
-  const diff = now - timestamp;
+  const diff = Math.max(0, now - timestamp); // Clamp to zero for future timestamps
   if (diff < 60_000) return Math.floor(diff / 1000) + 's ago';
   if (diff < 3600_000) return Math.floor(diff / 60_000) + 'm ago';
   if (diff < 86400_000) return Math.floor(diff / 3600_000) + 'h ago';
