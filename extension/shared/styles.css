@@ -1283,7 +1283,8 @@ a {
   min-width: 280px;
 }
 
-.ek-waterfall-row:hover .ek-waterfall-tooltip {
+.ek-waterfall-row:hover .ek-waterfall-tooltip,
+.ek-waterfall-row:focus-within .ek-waterfall-tooltip {
   display: block;
 }
 

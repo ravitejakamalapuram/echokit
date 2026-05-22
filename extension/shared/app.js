@@ -302,8 +302,7 @@ function renderInteractionListNew() {
       const { action, id } = e.detail;
       if (action === 'toggle-block') {
         if (!state.isPro) {
-          // Show pro gate (would need to implement this properly)
-          console.warn('[EchoKit] API Blocking requires Pro');
+          showProGate('API Blocking');
           return;
         }
         try {

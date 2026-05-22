@@ -190,13 +190,14 @@ export const INTERACTION_COLUMNS = {
         const toggleClass = isActive ? 'active' : '';
         const isBlocked = i.blocked || false;
 
+        const safeId = escapeHtml(i.id);
         return `<div class="ek-actions">` +
           `<label class="ek-mock-toggle ${toggleClass}">` +
-          `<input type="checkbox" ${isActive ? 'checked' : ''} data-id="${i.id}">` +
+          `<input type="checkbox" ${isActive ? 'checked' : ''} data-id="${safeId}">` +
           `<span class="ek-toggle-slider"></span>` +
           `</label>` +
           `<button class="ek-block-btn ${isBlocked ? 'on' : ''}" ` +
-          `data-action="toggle-block" data-id="${i.id}" ` +
+          `data-action="toggle-block" data-id="${safeId}" ` +
           `title="${isBlocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" ` +
           `data-testid="block-btn" ` +
           `aria-label="${isBlocked ? 'Unblock API' : 'Block API'}">⊘</button>` +
@@ -206,12 +207,13 @@ export const INTERACTION_COLUMNS = {
         const editIcon = `<svg class="ek-icon" viewBox="0 0 16 16"><path d="M11 0l5 5-9 9H2v-5z"/></svg>`;
         const deleteIcon = `<svg class="ek-icon" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg>`;
         const isBlocked = i.blocked || false;
+        const safeId = escapeHtml(i.id);
 
         return `<div class="ek-actions">` +
-          `<button class="ek-icon-btn" data-action="edit" data-id="${i.id}" title="Edit">${editIcon}</button>` +
-          `<button class="ek-icon-btn" data-action="delete" data-id="${i.id}" title="Delete">${deleteIcon}</button>` +
+          `<button class="ek-icon-btn" data-action="edit" data-id="${safeId}" title="Edit">${editIcon}</button>` +
+          `<button class="ek-icon-btn" data-action="delete" data-id="${safeId}" title="Delete">${deleteIcon}</button>` +
           `<button class="ek-icon-btn ${isBlocked ? 'on' : ''}" ` +
-          `data-action="toggle-block" data-id="${i.id}" ` +
+          `data-action="toggle-block" data-id="${safeId}" ` +
           `title="${isBlocked ? 'Blocked' : 'Block'}" ` +
           `data-testid="block-btn" ` +
           `aria-label="${isBlocked ? 'Unblock API' : 'Block API'}">⊘</button>` +

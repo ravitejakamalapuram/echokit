@@ -106,19 +106,25 @@ export function renderWaterfallRow(interaction, scale, options = {}) {
   // Tooltip content
   const tooltipHtml = renderTimingTooltip(interaction);
 
+  // Sanitize fields for HTML injection safety
+  const safeId = escapeHtml(interaction.id);
+  const safeMethod = escapeHtml(method);
+  const safeMethodClass = method.toLowerCase().replace(/[^a-z0-9-]/g, ''); // Safe for CSS class
+
   return `
     <div class="ek-waterfall-row ${selected ? 'selected' : ''}"
          data-action="select"
-         data-id="${interaction.id}"
+         data-id="${safeId}"
          data-testid="waterfall-row"
+         tabindex="0"
          title="${escapeHtml(interaction.url)}">
       <span class="ek-waterfall-col-method">
-        <span class="ek-method-badge ek-method-${method.toLowerCase()}">${method}</span>
+        <span class="ek-method-badge ek-method-${safeMethodClass}">${safeMethod}</span>
       </span>
       <span class="ek-waterfall-col-path ek-mono" title="${escapeHtml(interaction.url)}">
         ${escapeHtml(path)}
       </span>
-      <span class="ek-waterfall-col-status" style="color: var(--${statusColor})">
+      <span class="ek-waterfall-col-status" style="color: ${statusColor}">
         ${status || '—'}
       </span>
       <span class="ek-waterfall-col-size ek-mono">

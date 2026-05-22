@@ -172,7 +172,7 @@ Need to ADD (from Performance API):
 
 ### **Tooltip Design**
 
-```
+```text
 ┌─────────────────────────────────┐
 │ GET /api/users                  │
 │ Status: 200                     │
@@ -192,7 +192,7 @@ Need to ADD (from Performance API):
 
 ### **Grid Lines & Markers**
 
-```
+```text
 0ms     100ms    200ms    300ms    400ms    500ms
 │        │        │        │        │        │
 ├────────┼────────┼────────┼────────┼────────┤

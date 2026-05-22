@@ -630,11 +630,13 @@ def main():
             # Valid format key is accepted (format: EK-PLAN-EXPIRY-SIG)
             # Set invalid endpoint to bypass remote HMAC validation (for testing)
             # This will cause remote.ok=false, allowing local format-only validation
-            sw_send(sw, {'type': 'echokit:license:setEndpoint', 'endpoint': 'http://localhost:1/invalid'})
-            good_lic = sw_send(sw, {'type': 'echokit:license:set', 'key': 'EK-LTD-0-0000000000000000'})
-            step('license_set_accepts_valid', good_lic.get('ok') is True and good_lic.get('pro') is True, good_lic)
-            # Restore default endpoint
-            sw_send(sw, {'type': 'echokit:license:setEndpoint', 'endpoint': ''})
+            try:
+                sw_send(sw, {'type': 'echokit:license:setEndpoint', 'endpoint': 'http://localhost:1/invalid'})
+                good_lic = sw_send(sw, {'type': 'echokit:license:set', 'key': 'EK-LTD-0-0000000000000000'})
+                step('license_set_accepts_valid', good_lic.get('ok') is True and good_lic.get('pro') is True, good_lic)
+            finally:
+                # Always restore default endpoint, even if test fails
+                sw_send(sw, {'type': 'echokit:license:setEndpoint', 'endpoint': ''})
 
             # After activating Pro, getState returns isPro=True
             state_pro = sw_send(sw, {'type': 'echokit:getState', 'tabId': tab_id})
