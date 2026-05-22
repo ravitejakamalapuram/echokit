@@ -1240,19 +1240,19 @@ function renderEmpty() {
   `;
 }
 
-function renderDomainGroup(g) {
+function renderDomainGroup(g, hashCounts) {
   return `
     <div class="ek-domain" data-testid="domain-group">
       <span class="ek-domain-icon"></span>
       <span class="ek-domain-name">${escapeHtml(g.domain)}</span>
       <span class="ek-domain-count">${g.items.length}</span>
     </div>
-    ${g.items.map(renderRow).join('')}
+    ${g.items.map(i => renderRow(i, hashCounts)).join('')}
   `;
 }
 
-function renderRow(i) {
-  const versionCount = state.interactions.filter(x => x.hash === i.hash).length;
+function renderRow(i, hashCounts) {
+  const versionCount = hashCounts ? hashCounts.get(i.hash) : state.interactions.filter(x => x.hash === i.hash).length;
   const conflict = versionCount > 1;
   const active = state.selectedId === i.id ? 'active' : '';
   const method = (i.method || 'GET').toUpperCase();
@@ -1285,22 +1285,29 @@ function renderListView(interactions, isPopup) {
 
   const features = getFeatures();
 
+  // Precompute hash counts to optimize renderRow from O(N^2) to O(N)
+  const hashCounts = new Map();
+  for (let i = 0; i < state.interactions.length; i++) {
+    const hash = state.interactions[i].hash;
+    hashCounts.set(hash, (hashCounts.get(hash) || 0) + 1);
+  }
+
   // Popup or DevTools without sortable columns: use grouped list
   if (isPopup || !features.sortableColumns) {
     const grouped = groupByDomain(interactions);
-    return grouped.map(renderDomainGroup).join('');
+    return grouped.map(g => renderDomainGroup(g, hashCounts)).join('');
   }
 
   // DevTools with sortable columns: use table view
-  return renderSortableTable(interactions);
+  return renderSortableTable(interactions, hashCounts);
 }
 
 // Renders sortable table view (DevTools only)
-function renderSortableTable(interactions) {
+function renderSortableTable(interactions, hashCounts) {
   return `
     ${renderSortableListHeader()}
     <div class="ek-list-body" data-testid="list-body">
-      ${interactions.map(renderInteractionRow).join('')}
+      ${interactions.map(i => renderInteractionRow(i, hashCounts)).join('')}
     </div>
   `;
 }
@@ -1340,7 +1347,9 @@ function renderSortableListHeader() {
 }
 
 // Renders individual interaction row for table
-function renderInteractionRow(i) {
+function renderInteractionRow(i, hashCounts) {
+  const versionCount = hashCounts ? hashCounts.get(i.hash) : state.interactions.filter(x => x.hash === i.hash).length;
+  const conflict = versionCount > 1;
   const st = i.overrideStatus ?? i.responseStatus;
   const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
   const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
@@ -1355,6 +1364,7 @@ function renderInteractionRow(i) {
          data-testid="interaction-row">
       <div class="ek-col" style="width:80px">
         <span class="ek-method-badge ek-method-${escapeHtml(method.toLowerCase())}">${escapeHtml(method)}</span>
+        ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions" style="margin-left: 4px;">×${versionCount}</span>` : ''}
         ${i.mockEnabled ? '<span class="ek-mock-badge" title="Mock enabled">⚡</span>' : ''}
       </div>
       <div class="ek-col ek-url-col" style="flex:2" title="${escapeHtml(i.url)}">
@@ -2137,14 +2147,21 @@ function softRenderList() {
   const isPopup = state.mode === 'popup';
   const features = getFeatures();
 
+  // Precompute hash counts to optimize renderRow from O(N^2) to O(N)
+  const hashCounts = new Map();
+  for (let i = 0; i < state.interactions.length; i++) {
+    const hash = state.interactions[i].hash;
+    hashCounts.set(hash, (hashCounts.get(hash) || 0) + 1);
+  }
+
   // Render based on view mode
   if (isPopup || !features.sortableColumns) {
     // Grouped list view
     const grouped = groupByDomain(items);
-    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('');
+    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(g => renderDomainGroup(g, hashCounts)).join('');
   } else {
     // Table view
-    list.innerHTML = renderSortableTable(items);
+    list.innerHTML = renderSortableTable(items, hashCounts);
   }
 
   list.scrollTop = scrollTop;
