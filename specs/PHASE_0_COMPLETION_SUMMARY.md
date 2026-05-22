@@ -181,7 +181,7 @@ jobs:
 
 **New Plan**: 7 phases (Phase 0.9 inserted)
 
-```
+```text
 Phase 0: Deep Analysis ✅ COMPLETE
   ├─ 0.1: Visual Inventory ✅
   ├─ 0.2: Behavioral Inventory ✅
@@ -198,7 +198,7 @@ Phase 3: Layout Adaptors
 Phase 4: Integration
 Phase 5: Testing
 Phase 6: Cleanup
-```text
+```
 
 ---
 

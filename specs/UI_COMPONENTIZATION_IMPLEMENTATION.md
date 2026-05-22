@@ -67,11 +67,11 @@ export const INTERACTION_COLUMNS = {
     width: '80px',
     sortable: true,
     visibleIn: ['popup', 'devtools'],
-    render: (i, mode) => {
+    render: (i, config) => {
       const st = i.overrideStatus ?? i.responseStatus;
       const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
       const statusClass = st ? `s${Math.floor(st / 100)}` : '';
-      return mode === 'popup'
+      return config.mode === 'popup'
         ? `<span class="ek-status ${statusClass}">${st || 'ERR'}</span>`
         : `<span style="color:${stColor}">${st ?? '—'}</span>`;
     }

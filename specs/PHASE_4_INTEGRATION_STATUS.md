@@ -50,7 +50,7 @@ function render() {
 
 ### Data Flow
 
-```
+```text
 User opens popup/DevTools
   ↓
 initEchoKitUI() → render()
@@ -72,7 +72,7 @@ layoutInstance.render()
   Which calls → helper functions (Phase 0.9)
   ↓
 Complete HTML rendered via event delegation
-```text
+```
 
 ---
 

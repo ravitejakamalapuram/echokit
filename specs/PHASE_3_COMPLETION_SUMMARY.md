@@ -249,7 +249,7 @@ layout.destroy();
 
 ## Data Flow
 
-```
+```text
 User Action (click, type, etc.)
   ↓
 Event Listener (delegation)
@@ -268,7 +268,7 @@ render()
 renderInteractionList() ← Phase 2
   ↓
 DOM Update
-```text
+```
 
 ---
 
