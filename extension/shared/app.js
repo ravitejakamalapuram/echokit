@@ -4,6 +4,7 @@
 import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
 import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
+import { getConflictCount } from './interaction-helpers.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -1356,7 +1357,7 @@ function renderDomainGroup(g) {
 }
 
 function renderRow(i) {
-  const versionCount = state.interactions.filter(x => x.hash === i.hash).length;
+  const versionCount = getConflictCount(i, state.interactions);
   const conflict = versionCount > 1;
   const active = state.selectedId === i.id ? 'active' : '';
   const method = (i.method || 'GET').toUpperCase();
