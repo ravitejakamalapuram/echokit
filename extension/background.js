@@ -35,14 +35,33 @@ async function hydrate() {
     const s = await chrome.storage.session.get(SESSION_KEY);
     const raw = s[SESSION_KEY];
     if (raw && typeof raw === 'object') for (const [tid, v] of Object.entries(raw)) tabState.set(Number(tid), v);
-  } catch {}
-  const stored = await getMeta(SETTINGS_KEY, null);
-  if (stored) settings = {
-    ...settings,
-    ...stored
-  };
-  await applyCorsRules();
-  await applyBlocklistRules();
+  } catch (err) {
+    // Edge case fix: Log session storage errors but don't fail hydration
+    console.warn('[EchoKit] Failed to restore tab state from session storage:', err);
+  }
+
+  try {
+    const stored = await getMeta(SETTINGS_KEY, null);
+    if (stored) settings = {
+      ...settings,
+      ...stored
+    };
+  } catch (err) {
+    // Edge case fix: Fall back to defaults if IndexedDB fails
+    console.warn('[EchoKit] Failed to load settings from IndexedDB, using defaults:', err);
+  }
+
+  try {
+    await applyCorsRules();
+  } catch (err) {
+    console.error('[EchoKit] Failed to apply CORS rules during hydration:', err);
+  }
+
+  try {
+    await applyBlocklistRules();
+  } catch (err) {
+    console.error('[EchoKit] Failed to apply blocklist rules during hydration:', err);
+  }
 }
 async function persistTabState() {
   try {
@@ -316,47 +335,66 @@ function buildMockIndexFor(interactions, ctx) {
  * @param {number} tabId
  * @param {Array|null} [cachedInteractions] - Pre-loaded interactions, or null to load fresh.
  */
+// Edge case fix: Track in-flight pushes to prevent race conditions
+const pushInFlight = new Map(); // tabId -> Promise
+
 async function pushTabMeta(tabId, cachedInteractions = null) {
-  const st = getTab(tabId);
-  let tab;
-  try {
-    tab = await chrome.tabs.get(tabId);
-  } catch {
+  // Edge case fix: Debounce concurrent pushes for the same tab
+  if (pushInFlight.has(tabId)) {
+    dbg('[EchoKit] Push already in flight for tab', tabId, '— waiting');
+    await pushInFlight.get(tabId);
     return;
   }
-  if (!tab) return;
-  st.host = hostOf(tab.url || '');
-  const ctx = {
-    tabId,
-    host: st.host,
-    scope: settings.scope
-  };
-  // Use the caller-supplied snapshot if available; otherwise load from IDB.
-  const all = cachedInteractions ?? (await getAllInteractions());
-  const {
-    index,
-    blockedKeys
-  } = buildMockIndexFor(all, ctx);
-  safeSend(tabId, {
-    type: 'echokit:tabState',
-    payload: {
-      ...st,
-      corsOverride: settings.corsOverride,
-      scope: settings.scope,
-      blocklist: settings.blocklist,
-      rewriteRules: settings.rewriteRules || [],
-      transformRules: settings.transformRules || [],
-      requestHeaders: settings.requestHeaders || []
+
+  const pushPromise = (async () => {
+    try {
+      const st = getTab(tabId);
+      let tab;
+      try {
+        tab = await chrome.tabs.get(tabId);
+      } catch {
+        return;
+      }
+      if (!tab) return;
+      st.host = hostOf(tab.url || '');
+      const ctx = {
+        tabId,
+        host: st.host,
+        scope: settings.scope
+      };
+      // Use the caller-supplied snapshot if available; otherwise load from IDB.
+      const all = cachedInteractions ?? (await getAllInteractions());
+      const {
+        index,
+        blockedKeys
+      } = buildMockIndexFor(all, ctx);
+      safeSend(tabId, {
+        type: 'echokit:tabState',
+        payload: {
+          ...st,
+          corsOverride: settings.corsOverride,
+          scope: settings.scope,
+          blocklist: settings.blocklist,
+          rewriteRules: settings.rewriteRules || [],
+          transformRules: settings.transformRules || [],
+          requestHeaders: settings.requestHeaders || []
+        }
+      });
+      safeSend(tabId, {
+        type: 'echokit:mockIndex',
+        payload: {
+          mocks: index,
+          blocked: blockedKeys
+        }
+      });
+      await updateBadge(tabId);
+    } finally {
+      pushInFlight.delete(tabId);
     }
-  });
-  safeSend(tabId, {
-    type: 'echokit:mockIndex',
-    payload: {
-      mocks: index,
-      blocked: blockedKeys
-    }
-  });
-  await updateBadge(tabId);
+  })();
+
+  pushInFlight.set(tabId, pushPromise);
+  return pushPromise;
 }
 
 /**
@@ -415,7 +453,18 @@ async function updateBadge(tabId) {
  * because these are mutually exclusive per CORS spec. For credentialed
  * requests, the server must specify an exact origin, not wildcard.
  */
+// Debounce CORS rule updates to prevent rapid-fire calls during tab navigation storms
+let corsUpdateTimeout = null;
+let corsUpdatePending = false;
+
 async function applyCorsRules() {
+  // Edge case fix: Debounce rapid updates (e.g., many tabs navigating simultaneously)
+  if (corsUpdatePending) {
+    dbg('[EchoKit CORS] Update already pending, skipping duplicate call');
+    return;
+  }
+
+  corsUpdatePending = true;
   try {
     // Clear existing CORS rules (both dynamic and session)
     const currentDynamic = await chrome.declarativeNetRequest.getDynamicRules();
@@ -438,6 +487,7 @@ async function applyCorsRules() {
     // If CORS override is disabled, we're done
     if (!settings.corsOverride) {
       dbg('[EchoKit CORS] CORS override disabled');
+      corsUpdatePending = false;
       return;
     }
 
@@ -495,6 +545,9 @@ async function applyCorsRules() {
         });
       }
     }
+  } finally {
+    // Edge case fix: Always clear pending flag even if error occurs
+    corsUpdatePending = false;
   }
 }
 
@@ -1682,18 +1735,46 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
     }
     await updateBadge(tabId);
   }
-  // Update CORS rules if URL changed and we're in domain scope
+  // Edge case fix: Debounce CORS updates to prevent rapid-fire during tab storms
   if (info.url && settings.corsOverride && settings.scope === 'domain') {
-    applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on navigation:', err));
+    if (corsUpdateTimeout) clearTimeout(corsUpdateTimeout);
+    corsUpdateTimeout = setTimeout(() => {
+      applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on navigation:', err));
+    }, 150); // Debounce 150ms
   }
 });
 chrome.tabs.onActivated.addListener(({
   tabId
 }) => updateBadge(tabId).catch(() => {}));
 chrome.tabs.onCreated.addListener(tab => {
-  // Update CORS rules when new tab is created in tab/domain scope
+  // Edge case fix: Debounce CORS updates for new tab creation
   if (settings.corsOverride && (settings.scope === 'tab' || settings.scope === 'domain')) {
-    applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on tab creation:', err));
+    if (corsUpdateTimeout) clearTimeout(corsUpdateTimeout);
+    corsUpdateTimeout = setTimeout(() => {
+      applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on tab creation:', err));
+    }, 150); // Debounce 150ms
+  }
+});
+
+// Edge case fix: Clean up state for closed tabs to prevent memory leaks
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  // Remove from in-memory state
+  if (tabState.has(tabId)) {
+    tabState.delete(tabId);
+    await persistTabState();
+  }
+
+  // Remove from in-flight push tracking
+  if (pushInFlight.has(tabId)) {
+    pushInFlight.delete(tabId);
+  }
+
+  // Update CORS rules if tab-scoped (tab no longer exists in tabIds array)
+  if (settings.corsOverride && settings.scope === 'tab') {
+    if (corsUpdateTimeout) clearTimeout(corsUpdateTimeout);
+    corsUpdateTimeout = setTimeout(() => {
+      applyCorsRules().catch(err => console.error('[EchoKit] Failed to update CORS rules on tab close:', err));
+    }, 150);
   }
 });
 

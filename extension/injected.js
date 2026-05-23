@@ -269,24 +269,34 @@ class MockEventSource {
 
   // ---------- Messaging ----------
   function emit(type, payload, requestId) {
-    window.postMessage({ source: SRC_INJECTED, type, payload, requestId }, '/');
+    // Edge case fix: Wrap in try-catch to prevent postMessage errors from breaking page
+    try {
+      window.postMessage({ source: SRC_INJECTED, type, payload, requestId }, '/');
+    } catch (err) {
+      console.warn('[EchoKit] Failed to emit message:', type, err);
+    }
   }
   window.addEventListener('message', (ev) => {
-    const d = ev.data;
-    if (!d || d.source !== SRC_CONTENT) return;
-    if (d.type === 'echokit:mockIndex') {
-      // payload may be { mocks, blocked } (new) or the bare index (legacy)
-      const p = d.payload || {};
-      if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
-      else { state.mockIndex = p; }
-    }
-    else if (d.type === 'echokit:tabState') {
-      const p = d.payload || {};
-      state.recording = !!p.recording;
-      state.mocking = !!p.mocking;
-      state.rewriteRules = p.rewriteRules || [];
-      state.transformRules = p.transformRules || [];
-      state.requestHeaders = p.requestHeaders || [];
+    // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
+    try {
+      const d = ev.data;
+      if (!d || d.source !== SRC_CONTENT) return;
+      if (d.type === 'echokit:mockIndex') {
+        // payload may be { mocks, blocked } (new) or the bare index (legacy)
+        const p = d.payload || {};
+        if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
+        else { state.mockIndex = p; }
+      }
+      else if (d.type === 'echokit:tabState') {
+        const p = d.payload || {};
+        state.recording = !!p.recording;
+        state.mocking = !!p.mocking;
+        state.rewriteRules = p.rewriteRules || [];
+        state.transformRules = p.transformRules || [];
+        state.requestHeaders = p.requestHeaders || [];
+      }
+    } catch (err) {
+      console.warn('[EchoKit] Error processing message:', err);
     }
   }, false);
   emit('ready');
