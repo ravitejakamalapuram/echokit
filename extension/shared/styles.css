@@ -459,6 +459,17 @@ a {
   box-shadow: 0 0 0 3px var(--amber-dim);
 }
 
+.ek-icon-btn:focus-visible,
+.ek-close:focus-visible,
+.ek-kv-remove:focus-visible,
+.ek-mock-toggle:focus-visible,
+.ek-block-btn:focus-visible,
+.ek-chip:focus-visible,
+button.ek-source-badge:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 .ek-btn:active {
   transform: translateY(1px);
 }

@@ -215,17 +215,20 @@ function renderSourceBadge(interaction, currentTabId) {
   const c = config[source];
   const escapedLabel = escapeHtml(c.label);
   const escapedTitle = escapeHtml(c.title);
+  const tag = c.clickable ? 'button' : 'span';
   const clickAttr = c.clickable
-    ? `data-action="switch-to-tab" data-tab-id="${tabId}" style="cursor:pointer" role="button" tabindex="0"`
+    ? `data-action="switch-to-tab" data-tab-id="${tabId}" style="cursor:pointer"`
     : '';
 
+  const typeAttr = c.clickable ? ' type="button"' : '';
+
   return `
-    <span class="ek-source-badge ${source}"
+    <${tag}${typeAttr} class="ek-source-badge ${source}"
           title="${escapedTitle}"
           data-testid="source-badge-${source}"
           ${clickAttr}>
       ${c.icon} ${escapedLabel}
-    </span>
+    </${tag}>
   `;
 }
 
