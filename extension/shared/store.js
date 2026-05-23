@@ -28,19 +28,52 @@ function openDB() {
 }
 
 let _dbPromise = null;
+let _dbRetryCount = 0;
+const MAX_DB_RETRIES = 3;
+
 function db() {
-  if (!_dbPromise) _dbPromise = openDB();
+  if (!_dbPromise) {
+    _dbPromise = openDB().catch(async (err) => {
+      console.error('[EchoKit Store] IndexedDB open failed:', err);
+      _dbPromise = null; // Reset so next call retries
+
+      // Edge case fix: Retry on transient failures (quota, browser issues)
+      if (_dbRetryCount < MAX_DB_RETRIES) {
+        _dbRetryCount++;
+        console.warn(`[EchoKit Store] Retrying IndexedDB open (attempt ${_dbRetryCount}/${MAX_DB_RETRIES})...`);
+        await new Promise(r => setTimeout(r, 500 * _dbRetryCount)); // Exponential backoff
+        return openDB();
+      }
+
+      _dbRetryCount = 0;
+      throw new Error(`IndexedDB failed after ${MAX_DB_RETRIES} retries: ${err.message}`);
+    });
+  }
   return _dbPromise;
 }
 
 function tx(storeName, mode = 'readonly') {
-  return db().then(d => d.transaction(storeName, mode).objectStore(storeName));
+  return db().then(d => {
+    // Edge case fix: Catch transaction creation errors (e.g., if DB was closed)
+    try {
+      return d.transaction(storeName, mode).objectStore(storeName);
+    } catch (err) {
+      console.error('[EchoKit Store] Transaction creation failed:', err);
+      // Reset DB promise so next call reopens
+      _dbPromise = null;
+      throw err;
+    }
+  });
 }
 
 function req2promise(r) {
   return new Promise((resolve, reject) => {
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
+    // Edge case fix: Handle transaction abort (e.g., quota exceeded)
+    if (r.transaction) {
+      r.transaction.onabort = () => reject(new Error('Transaction aborted: ' + (r.error?.message || 'unknown')));
+    }
   });
 }
 
