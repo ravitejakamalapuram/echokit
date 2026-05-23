@@ -16,23 +16,26 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - Helper scripts created: `worker/issue-license.sh`, `worker/verify-deployment.sh`
   - Documentation: `docs/architecture/WORKER_EXPLAINED.md`
 
-- [ ] **Mint real license keys** for paying customers
-  - Hit `POST <worker-url>/v1/issue` with `Authorization: Bearer <ECHOKIT_ADMIN_TOKEN>` and `{plan:"PRO"|"YEAR"|"LTD", expiresAt:<unix>}`. For LTD set `expiresAt:0`.
-  - Hook this into the payment flow (Stripe webhook → call `/v1/issue` → email key).
-  - **NEW**: Consider LemonSqueezy integration (easier global payments, tax handling, better UX)
-    - Already has Stripe webhook implemented in `worker.js`
-    - LemonSqueezy webhook would be similar: `POST /v1/lemonsqueezy-webhook`
-    - Benefits: Merchant of Record, automatic tax/VAT, better for global SaaS
-    - See: `worker/LEMONSQUEEZY_INTEGRATION.md` (to be created)
+- [x] **Mint real license keys** for paying customers ✅ **AUTOMATED**
+  - Stripe webhook: Auto-issues keys on successful payment
+  - LemonSqueezy webhook: Auto-issues keys on successful payment
+  - Both webhooks email keys to customers via Resend API
+  - Manual issuing: `POST <worker-url>/v1/issue` with admin token
+  - All working in production
+  - See: `worker/worker.js` lines 105-310
 
 - [x] **Publish `echokit-server` to npm** ✅
   - Published: `echokit-server@1.0.0` live on npm
   - Link: https://www.npmjs.com/package/echokit-server
   - Users can install: `npx echokit-server --help`
 
-- [ ] **Upload `/app/store/echokit-api-recorder-mocker-v1.6.0.zip` to Chrome Web Store**
-  - Dev console: <https://chrome.google.com/webstore/devconsole>
-  - Listing copy lives in `/app/store/chrome-web-store.md`
+- [x] **Upload to Chrome Web Store** ✅ **AUTOMATED & UPLOADED**
+  - Fully automated CI/CD pipeline working
+  - Latest: v1.10.20 uploaded (awaiting Chrome review)
+  - Auto-uploads on every push to `main`
+  - Auto-publishes when review completes (1-2 days)
+  - Dev console: https://chrome.google.com/webstore/devconsole
+  - See: `.github/workflows/auto-release.yml`, `.github/workflows/release.yml`
 
 ---
 
@@ -86,23 +89,19 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 ## 🟡 P2 — Quality & UX improvements
 
-- [ ] **Componentize interaction list rendering** 🎯 **HIGH PRIORITY**
-  - **Problem**: Duplicate rendering logic for popup (grouped list) vs DevTools (sortable table)
-  - **Solution**: Single source of truth with column-based configuration
-  - **Implementation**:
-    1. Create `extension/shared/columns.js` — define all columns once with `INTERACTION_COLUMNS` config
-    2. Create `extension/shared/interaction-renderer.js` — core rendering components (renderInteractionCell, renderTableRow, etc.)
-    3. Create `extension/shared/layouts.js` — layout adaptors (renderTableLayout, renderGroupedLayout)
-    4. Update `extension/shared/app.js` — replace renderListView() to use new modules
-    5. Remove deprecated functions: renderDomainGroup, renderRow, renderSortableTable, renderInteractionRow
-  - **Benefits**: 40% code reduction, zero duplication, easy to add columns, consistent UX
-  - **Design docs**:
-    - `specs/UI_COMPONENTIZATION_SUMMARY.md` — executive summary
-    - `specs/UI_COMPONENTIZATION_DESIGN.md` — architecture overview
-    - `specs/UI_COMPONENTIZATION_IMPLEMENTATION.md` — step-by-step plan
-    - `specs/UI_COMPONENTIZATION_COMPARISON.md` — before/after comparison
-  - **Estimated effort**: 4-6 hours
-  - **Risk**: Low (incremental, testable, reversible)
+- [x] **Componentize interaction list rendering** ✅ **COMPLETE (PR #56)**
+  - **Merged**: 2026-05-22 — Single Source of Truth Architecture
+  - **Delivered**:
+    - ✅ `extension/shared/columns.js` — Unified column configuration (INTERACTION_COLUMNS)
+    - ✅ `extension/shared/interaction-helpers.js` — Business logic helpers (301 LOC)
+    - ✅ `extension/shared/interaction-renderer.js` — Core rendering functions (299 LOC)
+    - ✅ `extension/shared/layouts.js` — Layout adaptors (PopupLayout, DevToolsLayout, 323 LOC)
+    - ✅ `extension/shared/waterfall-renderer.js` — Waterfall mode with Chrome Network tab parity (243 LOC)
+    - ✅ Updated `extension/shared/app.js` — Fully integrated with new architecture
+  - **Results**: Zero code duplication, professional Waterfall mode, 100% test pass rate (91/91 smoke + 20/20 CLI)
+  - **Security**: Fixed 4 HTML injection vulnerabilities, added keyboard accessibility
+  - **Specs**: 23 comprehensive specification files in `specs/`
+  - **PR**: https://github.com/ravitejakamalapuram/echokit/pull/56
 
 - [ ] **Refactor `extension/shared/app.js`** (currently ~3000 LOC)
   - Suggested split: `header.js` · `menu.js` · `settings-dialog.js` · `request-detail.js` · `waterfall.js` · `gist-sync.js`
