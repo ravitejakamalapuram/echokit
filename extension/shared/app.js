@@ -1158,87 +1158,95 @@ function renderFilterChips() {
   // Method chips
   state.filters.methods.forEach(m => {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="method"
             data-value="${m}"
-            data-testid="chip-method-${m.toLowerCase()}">
+            data-testid="chip-method-${m.toLowerCase()}"
+            aria-label="Remove method filter ${m}">
         × method:${m}
-      </span>
+      </button>
     `);
   });
 
   // Status chips
   state.filters.statusCodes.forEach(s => {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="status"
-            data-value="${s}">
+            data-value="${s}"
+            aria-label="Remove status filter ${s}">
         × status:${s}
-      </span>
+      </button>
     `);
   });
 
   // Body search chips
   if (state.filters.requestBodyContains) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="request-body">
+            data-type="request-body"
+            aria-label="Remove request body filter">
         × request:"${escapeHtml(state.filters.requestBodyContains.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 
   if (state.filters.responseBodyContains) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="response-body">
+            data-type="response-body"
+            aria-label="Remove response body filter">
         × response:"${escapeHtml(state.filters.responseBodyContains.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 
   // Header search chips (new)
   if (state.filters.requestHeader.name) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="request-header-name">
+            data-type="request-header-name"
+            aria-label="Remove request header name filter">
         × req-header:"${escapeHtml(state.filters.requestHeader.name.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 
   if (state.filters.requestHeader.value) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="request-header-value">
+            data-type="request-header-value"
+            aria-label="Remove request header value filter">
         × req-header-val:"${escapeHtml(state.filters.requestHeader.value.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 
   if (state.filters.responseHeader.name) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="response-header-name">
+            data-type="response-header-name"
+            aria-label="Remove response header name filter">
         × res-header:"${escapeHtml(state.filters.responseHeader.name.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 
   if (state.filters.responseHeader.value) {
     chips.push(`
-      <span class="ek-filter-chip"
+      <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
-            data-type="response-header-value">
+            data-type="response-header-value"
+            aria-label="Remove response header value filter">
         × res-header-val:"${escapeHtml(state.filters.responseHeader.value.slice(0, 20))}"
-      </span>
+      </button>
     `);
   }
 

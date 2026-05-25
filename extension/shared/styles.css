@@ -1539,6 +1539,11 @@ button.ek-source-badge:focus-visible {
   transform: translateY(-1px);
 }
 
+.ek-filter-chip:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 .ek-result-count {
   font-size: 12px;
   color: var(--text-dim);
