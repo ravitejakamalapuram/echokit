@@ -406,15 +406,20 @@ jobs:
 
       - name: Verify deployment health endpoints
         run: |
+          set -e
           echo "⏳ Waiting 5 seconds for propagation..."
           sleep 5
 
           echo "Testing Workers.dev URL..."
-          curl -f https://echokit-license.echokit-rk.workers.dev/__health \
-            && echo "✅ Workers.dev URL is healthy" \
-            || echo "⚠️  Workers.dev health check failed — check Cloudflare dashboard"
+          if ! curl -f https://echokit-license.echokit-rk.workers.dev/__health; then
+            echo "❌ Workers.dev URL health check failed"
+            exit 1
+          fi
+          echo "✅ Workers.dev URL is healthy"
 
           echo "Testing custom domain..."
-          curl -f https://api.echo-kit.com/__health \
-            && echo "✅ Custom domain is healthy" \
-            || echo "⚠️  Custom domain not responding (DNS propagation may still be in progress)"
+          if ! curl -f https://api.echo-kit.com/__health; then
+            echo "❌ Custom domain health check failed"
+            exit 1
+          fi
+          echo "✅ Custom domain is healthy"

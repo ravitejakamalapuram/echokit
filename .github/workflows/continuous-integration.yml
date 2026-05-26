@@ -11,7 +11,7 @@
 #   additional safety benefit. If you push directly to main without a PR, open
 #   a PR next time — or trigger the smoke job manually via workflow_dispatch.
 
-name: CI
+name: Continuous Integration
 
 on:
   pull_request:
@@ -107,10 +107,10 @@ jobs:
             extension/shared/app.js \
             extension/shared/matcher.js \
             extension/shared/store.js \
-            --ext .js --max-warnings 0 || true
+            --ext .js --max-warnings 0
 
       - name: Lint CLI source files
-        run: npx eslint cli/bin/echokit-server.js cli/lib --ext .js --max-warnings 0 || true
+        run: npx eslint cli/bin/echokit-server.js cli/lib --ext .js --max-warnings 0
 
   # ── Unit Tests ────────────────────────────────────────────────────────────────
   # Fast Node.js unit tests — no browser or network required.
