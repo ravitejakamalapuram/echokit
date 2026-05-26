@@ -125,6 +125,13 @@ function wsAcceptKey(clientKey) {
   return crypto.createHash('sha1').update(clientKey + WS_GUID).digest('base64');
 }
 
+/**
+ * Encode a single WebSocket frame from the given payload.
+ * @param {*} payloadStr - Value to send as the frame payload; converted to a UTF-8 string.
+ * @param {number} [opcode=0x1] - Frame opcode (e.g. `0x1` for text, `0x2` for binary, control opcodes like `0x8`, `0x9`, `0xA`).
+ * @param {boolean} [isFinal=true] - Whether this frame is the final fragment (FIN bit).
+ * @returns {Buffer} The complete WebSocket frame (header followed by UTF-8 payload).
+ */
 function encodeWSFrame(payloadStr, opcode = 0x1, isFinal = true) {
   const payload = Buffer.from(String(payloadStr), 'utf8');
   const len = payload.length;
@@ -149,13 +156,32 @@ function encodeWSFrame(payloadStr, opcode = 0x1, isFinal = true) {
   return Buffer.concat([header, payload]);
 }
 
-// Send ping frame for keep-alive
+/**
+ * Send a WebSocket ping control frame to keep the connection alive.
+ * Errors thrown while writing to the socket are ignored.
+ * @param {import('net').Socket|object} socket - The connected socket (must implement `write`) to receive the ping.
+ */
 function _sendPing(socket) {
   try {
     socket.write(encodeWSFrame('', 0x9)); // Opcode 0x9 = ping
   } catch {}
 }
 
+/**
+ * Handles a WebSocket upgrade: performs the handshake, responds to client control frames (ping/close),
+ * and replays recorded inbound frames from the provided mock.
+ *
+ * The mock's responseBody (JSON) should contain a `frames` array of objects; only frames with `dir === 'in'`
+ * are replayed. Each frame may include `t` (timestamp offset in ms) and `data` (string or serializable value).
+ * If `mock.wsLoop` is truthy, the replayed frames will loop until the socket is closed.
+ *
+ * @param {import('http').IncomingMessage} req - The HTTP upgrade request; must include `sec-websocket-key` header.
+ * @param {import('net').Socket} socket - The raw socket to complete the upgrade and send/receive WebSocket frames.
+ * @param {Object} mock - Mock configuration used for replaying frames.
+ * @param {string} [mock.responseBody] - JSON string containing `{ frames: [...] }`.
+ * @param {boolean} [mock.wsLoop] - If true, replay frames in a continuous loop.
+ * @param {*} _opts - Unused options placeholder.
+ */
 function handleWSUpgrade(req, socket, mock, _opts) {
   const clientKey = req.headers['sec-websocket-key'];
   if (!clientKey) { socket.destroy(); return; }
@@ -285,6 +311,18 @@ const colors = {
   gray: '\x1b[90m'
 };
 
+/**
+ * Prints a colorized, human-readable coverage summary to the console.
+ * 
+ * @param {Object} report - Coverage report data.
+ * @param {number} report.totalMocks - Total number of recorded mocks.
+ * @param {number} report.usedMocks - Number of mocks that were hit at least once.
+ * @param {Array<Object>} report.unusedMocks - Array of unused mock descriptors (each with at least `method` and `url`).
+ * @param {number} report.matchedRequests - Number of requests that matched a mock.
+ * @param {number} report.unmatchedRequests - Number of requests that did not match any mock.
+ * @param {number} report.durationMs - Total duration of the run in milliseconds.
+ * @param {Array<Object>} [report.unmatched] - Array of unmatched request descriptors (each with at least `method` and `url`); used to list examples.
+ */
 function printCoverageSummary(report) {
   const { totalMocks, usedMocks, unusedMocks, matchedRequests, unmatchedRequests, coverage } = report;
   const coverageColor = coverage >= 80 ? colors.green : coverage >= 50 ? colors.yellow : colors.red;

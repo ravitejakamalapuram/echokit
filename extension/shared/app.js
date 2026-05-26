@@ -336,7 +336,14 @@ function renderInteractionListNew() {
   }
 }
 
-// ---------- render ----------
+/**
+ * Render the EchoKit UI into the configured root element using the current application state.
+ *
+ * Updates the document theme, captures and later restores focus/scroll snapshot, builds the main
+ * app markup (header, toolbar, list or waterfall, detail pane, footer), applies layout classes
+ * and list width, initializes the componentized list when not in waterfall mode, binds UI event
+ * handlers, and refreshes menus and embedded code editors.
+ */
 function render() {
   applyTheme();
   const snapshot = snapshotUIState();
@@ -1151,6 +1158,15 @@ function renderAdvancedFilterPanel() {
   `;
 }
 
+/**
+ * Render the active filter chips row as an HTML string.
+ *
+ * Builds a compact row of removable filter "chips" for each active advanced filter
+ * (methods, status codes, body/header contains) and includes counts showing how
+ * many filters are active and how many interactions are shown vs total.
+ *
+ * @returns {string} An HTML snippet with the filter chips and summary counts, or an empty string when no filters are active.
+ */
 function renderFilterChips() {
   const chips = [];
 
@@ -1256,6 +1272,11 @@ function renderFilterChips() {
   `;
 }
 
+/**
+ * Render an HTML waterfall timeline view representing the timing of the provided interactions.
+ * @param {Array<Object>} interactions - List of interaction objects to render; each item is expected to include `id`, `url`, `method`, `timestamp`, optional `durationMs`, `responseStatus`, and optional `overrideStatus`.
+ * @returns {string} An HTML string containing the waterfall view (or the empty view when no interactions are provided).
+ */
 function _renderWaterfall(interactions) {
   if (!interactions.length) return renderEmpty();
 
@@ -1382,11 +1403,21 @@ function renderRow(i) {
     </div>
   `;
 }
+/**
+ * Map an internal match mode key to its short badge label.
+ * @param {string} mode - Match mode key (e.g. 'ignore-query', 'ignore-body', 'path-wildcard').
+ * @returns {string} The short badge label for the mode ('NOQ', 'NOB', 'PATH'), or the original mode string if no mapping exists.
+ */
 function modeBadge(mode) {
   return { 'ignore-query': 'NOQ', 'ignore-body': 'NOB', 'path-wildcard': 'PATH' }[mode] || mode;
 }
 
-// Renders list view - grouped list for popup, sortable table for devtools
+/**
+ * Render the interactions list as either a grouped-by-domain list or a sortable table based on UI mode and enabled features.
+ * @param {Array<Object>} interactions - Array of interaction objects to render.
+ * @param {boolean} isPopup - True when rendering the compact popup UI; false for the devtools panel.
+ * @returns {string} The HTML for the list view; when `interactions` is empty returns the empty-list HTML.
+ */
 function _renderListView(interactions, isPopup) {
   if (interactions.length === 0) return renderEmpty();
 
@@ -1782,11 +1813,14 @@ function renderAllCodeEditors() {
 }
 
 /**
- * Attach UI event handlers for every element under the root that defines a `data-action`.
+ * Bind a UI action handler to an element that declares a `data-action`.
  *
- * Binds action-specific listeners which update local UI state, invoke background RPCs via `BG(...)`,
- * trigger selective or full re-renders, and open dialogs/menus as appropriate (e.g., selection, recording
- * controls, filtering, sorting, mock editing, header edits, chain operations, import/export, and settings).
+ * Attaches the appropriate event listener for the given action, updates UI state,
+ * invokes background RPCs, opens dialogs/menus, and triggers selective or full re-renders.
+ * @param {Element} el - The DOM element whose `data-action` should be bound.
+ * @param {string} action - The action name from `data-action`.
+ * @param {string|number|null} id - Optional interaction identifier used by some actions.
+ * @returns {boolean} `true` if a handler was attached for the provided action, `false` otherwise.
  */
 function bindGlobalEvents(el, action, id) {
   if (action === 'select') {
@@ -1873,6 +1907,34 @@ function bindGlobalEvents(el, action, id) {
   return false;
 }
 
+/**
+ * Attach filter-related event handlers to an element based on a filter/action key.
+ *
+ * Binds the appropriate event listener(s) for toolbar and advanced filter controls (search, method/status toggles,
+ * body/header contains inputs, source toggles, remove/clear actions, and sorting) and updates `state` then triggers
+ * list refreshes via `softRenderList()` or `render()` as required.
+ *
+ * @param {Element} el - The element to bind the handler to.
+ * @param {string} action - Action key that selects which handler to bind. Supported values:
+ *   - 'search'
+ *   - 'filter-method'
+ *   - 'filter-status'
+ *   - 'toggle-advanced-filters'
+ *   - 'filter-method-toggle'
+ *   - 'filter-status-toggle'
+ *   - 'filter-source-toggle'
+ *   - 'filter-request-body'
+ *   - 'filter-response-body'
+ *   - 'filter-req-header-name'
+ *   - 'filter-req-header-value'
+ *   - 'filter-res-header-name'
+ *   - 'filter-res-header-value'
+ *   - 'remove-filter'
+ *   - 'sort-by'
+ *   - 'clear-all-filters'
+ * @param {string|number} _id - Unused identifier (present for API consistency).
+ * @returns {boolean} `true` if a handler was bound for the given action, `false` otherwise.
+ */
 function bindFilterEvents(el, action, _id) {
   if (action === 'search') {
     let t;
@@ -2661,6 +2723,15 @@ function renderSettingsLicense() {
   `;
 }
 
+/**
+ * Attach event listeners to the settings overlay controls to persist user changes and update the UI.
+ *
+ * Binds handlers for scope, theme, CORS override, CORS diagnostics, auto-open-on-refresh, and the
+ * irreversible "clear all recordings" action; persisted changes trigger a state refresh and re-render,
+ * diagnostics shows an alert with results, and clear-all prompts for confirmation before deleting data.
+ *
+ * @param {HTMLElement} overlay - The settings modal root element containing the controls.
+ */
 function bindSettingsGeneralEvents(overlay) {
   overlay.querySelector('[data-a="scope"]').addEventListener('change', async (e) => {
     await BG({ type: 'echokit:settings:update', patch: { scope: e.target.value } });
