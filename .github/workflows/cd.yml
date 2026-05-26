@@ -1,58 +1,43 @@
-# release.yml — Extension Release Pipeline
+# cd.yml — Continuous Delivery Pipeline
 #
-# Purpose  : Automatically version-bump, tag, build, and publish the Chrome extension
-#            whenever extension source changes land on main. Zero manual steps required.
-# Triggers  : push to main touching extension/** | workflow_dispatch (manual release)
-# Jobs      : version-and-tag → publish-extension (sequential)
-# Secrets   : PAT_FOR_WORKFLOWS (required for git push)
-#             CWS_EXTENSION_ID · CWS_CLIENT_ID · CWS_CLIENT_SECRET · CWS_REFRESH_TOKEN
-#
-# ── How versioning works ──────────────────────────────────────────────────────
-# Commit message prefixes drive the semver bump:
-#   BREAKING CHANGE / feat! / fix!   →  major  (1.x.x → 2.0.0)
-#   feat: / feature:                 →  minor  (x.1.x → x.2.0)
-#   fix: / bugfix: / patch:          →  patch  (x.x.1 → x.x.2)
-#   anything else                    →  patch  (default)
-#
-# workflow_dispatch input overrides commit-message detection (useful for hotfixes).
-#
-# ── Job sequence ──────────────────────────────────────────────────────────────
-# 1. version-and-tag
-#      Reads current version → detects bump type → calculates new version
-#      → updates extension/manifest.json → commits [skip ci] to main
-#      → creates and pushes git tag vX.Y.Z
-#
-# 2. publish-extension  (runs only after version-and-tag succeeds)
-#      Checks out the tag → confirms manifest version → builds zip
-#      → creates GitHub Release with zip attached
-#      → uploads to Chrome Web Store → publishes
-#
-# ── Why everything is in one file ─────────────────────────────────────────────
-# Previously, auto-release.yml created a tag which cross-triggered release.yml.
-# This cross-workflow trigger required PAT_FOR_WORKFLOWS AND was brittle
-# (if the PAT expired, the publish step silently never ran). One file, one
-# workflow run, one clear audit trail.
+# Purpose  : Consolidates all shipping workflows (extension releases, website deploys,
+#            and worker updates) into a single Continuous Delivery pipeline.
+# Triggers  : push to main touching website/**, worker/**, extension/**, or cd.yml itself
+#             workflow_dispatch (allowing choosing manual release bump and/or deploy target)
+# Jobs      : detect-changes → deploy-website ║ deploy-worker ║ version-and-tag → publish-extension
+# Secrets   : PAT_FOR_WORKFLOWS (git push version bump)
+#             CWS_EXTENSION_ID · CWS_CLIENT_ID · CWS_CLIENT_SECRET · CWS_REFRESH_TOKEN (Chrome Web Store)
+#             CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID (Cloudflare deployments)
 
-name: Release
+name: Continuous Delivery
 
 on:
   push:
     branches: [main]
     paths:
       - 'extension/**'
-      - '!extension/**/*.md'   # Docs-only changes don't warrant a new release
+      - '!extension/**/*.md'
+      - 'website/**'
+      - 'worker/**'
+      - '.github/workflows/cd.yml'
   workflow_dispatch:
     inputs:
-      bump_type:
-        description: 'Version bump type (overrides commit-message detection)'
+      release_bump:
+        description: 'Version bump type (overrides commit-message detection for extension release)'
         required: false
-        default: 'patch'
+        default: 'none'
         type: choice
-        options: [patch, minor, major]
+        options: [none, patch, minor, major]
+      deploy_target:
+        description: 'Which infrastructure target to deploy'
+        required: false
+        default: 'none'
+        type: choice
+        options: [none, all, website, worker]
 
-# Never cancel a release mid-flight — a partial release is worse than a slow one.
+# Never cancel CD runs mid-flight — half-completed deployments or version tags are bad state.
 concurrency:
-  group: release-${{ github.ref }}
+  group: cd-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -60,19 +45,88 @@ env:
 
 jobs:
 
-  # ── Job 1: version-and-tag ────────────────────────────────────────────────────
-  # Detects the correct semver bump from commit messages, updates manifest.json,
-  # commits the change to main with [skip ci], and creates a git tag.
+  # ── Detect Changed Paths ───────────────────────────────────────────────────────
+  # Evaluates files changed in the push, or parses workflow_dispatch input selection.
+  # Downstream jobs only execute if their specific target was changed or requested.
+  detect-changes:
+    name: Detect changed targets
+    runs-on: ubuntu-latest
+    outputs:
+      website: ${{ steps.changes.outputs.website }}
+      worker:  ${{ steps.changes.outputs.worker }}
+      extension: ${{ steps.changes.outputs.extension }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine changed targets
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_BUMP="${{ inputs.release_bump }}"
+            DEPLOY_TARGET="${{ inputs.deploy_target }}"
+
+            echo "🖱️ Manual dispatch:"
+            echo "  release_bump: ${RELEASE_BUMP}"
+            echo "  deploy_target: ${DEPLOY_TARGET}"
+
+            if [[ "$RELEASE_BUMP" != "none" ]]; then
+              echo "extension=true" >> $GITHUB_OUTPUT
+            else
+              echo "extension=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "website" ]]; then
+              echo "website=true" >> $GITHUB_OUTPUT
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "worker" ]]; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            echo "Changed files:"
+            echo "$CHANGED"
+
+            if echo "$CHANGED" | grep -q '^website/'; then
+              echo "website=true" >> $GITHUB_OUTPUT
+              echo "🌐 website/ changes detected"
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+
+            if echo "$CHANGED" | grep -qE '^(worker/|\.github/workflows/cd\.yml)'; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+              echo "⚙️ worker/ changes detected"
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+
+            if echo "$CHANGED" | grep '^extension/' | grep -qv '\.md$'; then
+              echo "extension=true" >> $GITHUB_OUTPUT
+              echo "📦 extension/ changes detected"
+            else
+              echo "extension=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # ── Bump Version & Create Release Tag (Extension) ───────────────────────────
   version-and-tag:
     name: Bump version and create release tag
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.extension == 'true'
     permissions:
       contents: write
     outputs:
       version: ${{ steps.bump.outputs.version }}
       tag:     ${{ steps.bump.outputs.tag }}
       skipped: ${{ steps.tag_check.outputs.exists }}
-
     steps:
       - name: Checkout repository (full history required for tag comparison)
         uses: actions/checkout@v4
@@ -90,16 +144,14 @@ jobs:
       - name: Detect version bump type from commit messages
         id: detect_bump
         run: |
-          # workflow_dispatch input takes explicit precedence over commit detection
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.bump_type }}" ]; then
-            echo "bump=${{ inputs.bump_type }}" >> $GITHUB_OUTPUT
-            echo "🔧 Manual override: ${{ inputs.bump_type }} bump"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release_bump }}" != "none" ]; then
+            echo "bump=${{ inputs.release_bump }}" >> $GITHUB_OUTPUT
+            echo "🔧 Manual override: ${{ inputs.release_bump }} bump"
             exit 0
           fi
 
           MESSAGES=$(git log --format=%B ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
 
-          # BREAKING must be checked first — a single breaking commit outweighs any feat/fix
           if echo "$MESSAGES" | grep -qiE "(BREAKING CHANGE|BREAKING:|^feat!|^fix!)"; then
             echo "bump=major" >> $GITHUB_OUTPUT
             echo "🔴 MAJOR bump — breaking change detected"
@@ -153,59 +205,33 @@ jobs:
             echo "✅ Tag ${TAG} does not exist — proceeding"
           fi
 
-      - name: Create and push git tag at current commit
+      - name: Commit and push manifest version bump & git tag
         if: steps.tag_check.outputs.exists == 'false'
         run: |
           set -e
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS }}@github.com/${{ github.repository }}
+          TAG="v${{ steps.bump.outputs.version }}"
+          VERSION="${{ steps.bump.outputs.version }}"
 
-          # Tag on the current commit (the developer's actual push) BEFORE the
-          # version-bump commit. This ensures the tag points to a commit without
-          # [skip ci], so downstream tooling that watches tags works correctly.
-          git tag -a "v${{ steps.bump.outputs.version }}" \
-            -m "Release v${{ steps.bump.outputs.version }}
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
 
-          Bump type : ${{ steps.detect_bump.outputs.bump }}
-          Previous  : ${{ steps.current.outputs.version }}
-          Commit    : ${{ github.sha }}"
+          git add extension/manifest.json
+          git commit -m "chore: release version ${VERSION} [skip ci]"
+          git tag -a "$TAG" -m "Release version ${VERSION}"
+          git push origin main --follow-tags
+          echo "✅ Version bump committed and tag ${TAG} pushed"
 
-          git push origin "v${{ steps.bump.outputs.version }}"
-          echo "🏷️  Created and pushed tag v${{ steps.bump.outputs.version }}"
-
-      - name: Commit version bump to main [skip ci]
-        if: steps.tag_check.outputs.exists == 'false'
-        run: |
-          set -e
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_FOR_WORKFLOWS }}@github.com/${{ github.repository }}
-
-          if git diff --quiet extension/manifest.json; then
-            echo "ℹ️  manifest.json unchanged — no version-bump commit needed"
-          else
-            git add extension/manifest.json
-            git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
-            git push origin main
-            echo "✅ Version bump committed and pushed to main"
-          fi
-
-  # ── Job 2: publish-extension ──────────────────────────────────────────────────
-  # Builds the extension zip, creates a GitHub Release with it attached,
-  # then uploads and publishes the zip to the Chrome Web Store.
-  # Runs only after version-and-tag succeeds and only if a new tag was created.
+  # ── Build, Release & Publish Extension ───────────────────────────────────────
   publish-extension:
-    name: Build zip and publish to Chrome Web Store
+    name: Build, release & publish extension
     runs-on: ubuntu-latest
-    needs: version-and-tag
-    if: needs.version-and-tag.outputs.skipped == 'false'
+    needs: [detect-changes, version-and-tag]
+    if: needs.detect-changes.outputs.extension == 'true' && needs.version-and-tag.outputs.skipped == 'false'
     permissions:
       contents: write
     env:
       VERSION: ${{ needs.version-and-tag.outputs.version }}
       TAG:     ${{ needs.version-and-tag.outputs.tag }}
-
     steps:
       - name: Validate all Chrome Web Store secrets are configured
         run: |
@@ -272,7 +298,7 @@ jobs:
           fi
 
           TOKEN=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-          echo "::add-mask::${TOKEN}"   # Prevent token from appearing in logs
+          echo "::add-mask::${TOKEN}"
           echo "token=${TOKEN}" >> $GITHUB_OUTPUT
           echo "✅ OAuth token obtained"
 
@@ -314,8 +340,6 @@ jobs:
           BODY=$(echo "$RESPONSE" | sed '$d')
 
           if [[ "$HTTP_CODE" != "200" ]]; then
-            # A previous version may still be in Chrome review — upload succeeded,
-            # the new version will auto-publish once the review completes.
             if echo "$BODY" | grep -q "item that is in review"; then
               echo "⚠️  Another version is currently in Chrome review"
               echo "📋 Upload succeeded — this version will publish after the current review completes"
@@ -329,3 +353,68 @@ jobs:
 
           echo "✅ EchoKit ${VERSION} published to Chrome Web Store"
           echo "📋 Chrome review typically takes 1–2 days before going fully public"
+
+  # ── Deploy Website ─────────────────────────────────────────────────────────────
+  deploy-website:
+    name: Deploy website → Cloudflare Pages
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.website == 'true'
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required website files exist
+        run: |
+          set -e
+          test -f website/index.html
+          test -f website/style.css
+          echo "✅ Website files validated"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: echokit-website
+          directory:   website
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Deploy Worker ──────────────────────────────────────────────────────────────
+  deploy-worker:
+    name: Deploy worker → Cloudflare Workers
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.worker == 'true'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Workers via Wrangler
+         # Pin to cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken:         ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:        ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command:          deploy
+
+      - name: Verify deployment health endpoints
+        run: |
+          echo "⏳ Waiting 5 seconds for propagation..."
+          sleep 5
+
+          echo "Testing Workers.dev URL..."
+          curl -f https://echokit-license.echokit-rk.workers.dev/__health \
+            && echo "✅ Workers.dev URL is healthy" \
+            || echo "⚠️  Workers.dev health check failed — check Cloudflare dashboard"
+
+          echo "Testing custom domain..."
+          curl -f https://api.echo-kit.com/__health \
+            && echo "✅ Custom domain is healthy" \
+            || echo "⚠️  Custom domain not responding (DNS propagation may still be in progress)"
