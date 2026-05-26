@@ -2706,26 +2706,14 @@ function renderSettingsLicense() {
         <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
       </div>
 
-      <div class="ek-settings-row">
+      <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
         <div style="flex:1">
-          <div class="ek-settings-title">License Key ${state.isPro ? '<span class="ek-pro-badge" style="font-size:9px;padding:2px 6px">PRO ACTIVE</span>' : ''}</div>
-          <div class="ek-settings-hint">Enter your EchoKit Pro key to unlock all features. Keys start with <span class="ek-tag">EK-PRO-</span>, <span class="ek-tag">EK-YEAR-</span>, or <span class="ek-tag">EK-LTD-</span>.</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;min-width:200px">
-          <input class="ek-input" type="text" id="ek-license-input" placeholder="EK-PRO-…" style="font-family:var(--font-mono);font-size:11px" data-testid="license-key-input"/>
-          <button class="ek-btn ek-btn-primary" data-a="license-activate" data-testid="license-activate-btn">Activate</button>
-          ${!state.isPro ? `<a href="#" data-a="get-pro" style="font-size:11px;color:var(--amber);text-decoration:none;text-align:center">Get Pro →</a>` : `<button class="ek-btn ek-btn-ghost" data-a="license-remove" style="font-size:10px">Remove license</button>`}
-        </div>
-      </div>
-
-      <div class="ek-settings-row">
-        <div style="flex:1">
-          <div class="ek-settings-title">License Endpoint</div>
-          <div class="ek-settings-hint">Custom license validation endpoint. Leave blank to use default built-in validation.</div>
-        </div>
-        <div style="display:flex;gap:6px;min-width:200px">
-          <input class="ek-input" type="text" id="ek-license-endpoint-input" placeholder="https://license.echokit.dev" style="flex:1;font-size:11px" data-testid="license-endpoint-input"/>
-          <button class="ek-btn ek-btn-ghost" data-a="test-endpoint" data-testid="test-endpoint-btn" style="padding:0 12px;white-space:nowrap">Test</button>
+          <div class="ek-settings-title" style="display: flex; align-items: center; gap: 8px; color: var(--green); font-weight: 600;">
+            <span>🎉 EchoKit Pro (Free Access)</span>
+          </div>
+          <div class="ek-settings-hint" style="margin-top: 4px; color: var(--text-secondary); line-height: 1.5;">
+            All Pro features are fully enabled and free for everyone for now. Enjoy unlimited recordings, advanced matching, export tools, and more!
+          </div>
         </div>
       </div>
   `;

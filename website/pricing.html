@@ -120,7 +120,10 @@
 
   <div class="hero">
     <h1>Simple, honest <span>pricing</span></h1>
-    <p>Start free. Upgrade when you need advanced mocking, team sync, and unlimited recordings.</p>
+    <p style="margin-bottom: 24px;">Start free. Upgrade when you need advanced mocking, team sync, and unlimited recordings.</p>
+    <div style="display: inline-block; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 12px 24px; color: var(--green); font-size: 14px; font-weight: 500; max-width: 650px; margin: 0 auto; line-height: 1.5;">
+      🎉 <strong>Temporary Free Access:</strong> While our LemonSqueezy payment integration is pending, all Pro features are fully enabled in the extension for free!
+    </div>
   </div>
 
   <div class="pricing-grid">
@@ -148,9 +151,13 @@
 
     <!-- Monthly -->
     <div class="plan featured">
-      <div class="plan-badge">POPULAR</div>
+      <div class="plan-badge">FREE FOR NOW</div>
       <div class="plan-name">Pro Monthly</div>
-      <div class="plan-price"><span class="amount">$5</span><span class="period">/month</span></div>
+      <div class="plan-price">
+        <span class="amount" style="text-decoration: line-through; color: var(--text-dim); font-size: 28px;">$5</span>
+        <span class="amount" style="color: var(--green); margin-left: 8px;">$0</span>
+        <span class="period">/month</span>
+      </div>
       <div class="plan-desc">Full power, billed monthly. Cancel anytime.</div>
       <ul class="plan-features">
         <li>Unlimited recordings</li>
@@ -164,13 +171,17 @@
         <li>Conditional mock (fire N times)</li>
         <li>Priority support</li>
       </ul>
-      <a href="#" class="plan-cta cta-primary" id="btn-monthly">Get Pro Monthly →</a>
+      <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" class="plan-cta cta-primary" target="_blank">Get Pro for Free →</a>
     </div>
 
     <!-- Lifetime -->
     <div class="plan">
       <div class="plan-name">Lifetime</div>
-      <div class="plan-price"><span class="amount">$199</span><span class="period">one-time</span></div>
+      <div class="plan-price">
+        <span class="amount" style="text-decoration: line-through; color: var(--text-dim); font-size: 28px;">$199</span>
+        <span class="amount" style="color: var(--green); margin-left: 8px;">$0</span>
+        <span class="period">one-time</span>
+      </div>
       <div class="plan-desc">Pay once, own it forever. All future updates included.</div>
       <ul class="plan-features">
         <li>Everything in Pro Monthly</li>
@@ -178,12 +189,12 @@
         <li>No recurring charges</li>
         <li>Priority feature requests</li>
       </ul>
-      <a href="#" class="plan-cta cta-primary" id="btn-lifetime">Get Lifetime →</a>
+      <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" class="plan-cta cta-primary" target="_blank">Get Lifetime for Free →</a>
     </div>
   </div>
 
   <!-- Annual callout -->
-  <div style="text-align:center;margin:-24px 0 48px;color:var(--text-dim);font-size:13px">
+  <div style="text-align:center;margin:-24px 0 48px;color:var(--text-dim);font-size:13px;display:none;">
     Prefer annual? <a href="#" id="btn-annual"><strong style="color:var(--amber)">$49/year</strong> — save 18%</a>
   </div>
 
@@ -219,8 +230,8 @@
     </table>
   </div>
 
-  <!-- Activate existing key -->
-  <div class="activate" id="activate">
+  <!-- Activate existing key - TEMPORARILY HIDDEN during free access period -->
+  <div class="activate" id="activate" style="display: none;">
     <h2>Already have a license key?</h2>
     <p>Paste your key below to verify it, then enter it in the extension via <strong>Menu → Settings → License Key</strong>.</p>
     <div class="form">
@@ -234,24 +245,24 @@
   <div class="faq">
     <h2>Frequently asked questions</h2>
     <details>
-      <summary>How does the license key work?</summary>
-      <p>After payment you'll receive a license key starting with <code>EK-PRO-</code>, <code>EK-YEAR-</code>, or <code>EK-LTD-</code>. Open the extension popup → Menu → Settings → License Key, paste it in, and click Activate. That's it — all Pro features unlock immediately.</p>
+      <summary>Why is EchoKit Pro free right now?</summary>
+      <p>We're transitioning to LemonSqueezy as our payment provider (Merchant of Record with global tax handling). During this transition period, all Pro features are unlocked for everyone. Once the payment integration is complete, we'll announce pricing details and grandfather existing active users.</p>
     </details>
     <details>
-      <summary>What is the 50-recording free tier limit?</summary>
-      <p>The free tier lets you record up to 50 unique API interactions per IndexedDB session. Use "Clear recordings" from the menu to start fresh and record another 50. This is designed to be generous enough for quick debugging while encouraging Pro for heavy-use workflows.</p>
+      <summary>How long will Pro features stay free?</summary>
+      <p>The free access period will last until our LemonSqueezy merchant verification and payment integration is complete. We'll provide advance notice before any changes. Install from the <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" target="_blank">Chrome Web Store</a> now to get started!</p>
     </details>
     <details>
-      <summary>Can I use one license on multiple machines?</summary>
-      <p>Yes. Your license key can be activated on up to 3 devices simultaneously (browser profiles). Chrome Sync will keep the key in sync across your signed-in Chrome profile automatically.</p>
+      <summary>What Pro features are currently available?</summary>
+      <p>All Pro features are fully enabled: unlimited recordings, GitHub Gist sync, advanced URL/body matching, response transforms, global request headers, URL rewrite rules, waterfall timeline view, OpenAPI import, and more. No limits, no trial period — everything just works.</p>
     </details>
     <details>
-      <summary>Is there a refund policy?</summary>
-      <p>Yes — 14-day no-questions-asked refund for all plans. Contact support via GitHub Issues.</p>
+      <summary>Will I need to pay when the integration is complete?</summary>
+      <p>Pricing will be announced before any changes take effect. We're committed to keeping a generous free tier and fair pricing for Pro features. Current users will receive advance notification and special consideration.</p>
     </details>
     <details>
-      <summary>Does the Lifetime plan cover future updates?</summary>
-      <p>Yes. Every feature added to EchoKit is included in your Lifetime license at no extra cost.</p>
+      <summary>Does the extension collect any personal data?</summary>
+      <p>No. EchoKit runs entirely locally in your browser. All recordings stay in your browser's IndexedDB. We don't track, collect, or transmit your API interactions. See our <a href="privacy.html">Privacy Policy</a> for details.</p>
     </details>
   </div>
 
@@ -260,15 +271,15 @@
   </footer>
 
   <script>
-    // LemonSqueezy checkout URLs - Production Mode
-    const LINKS = {
-      monthly: 'https://echokit.lemonsqueezy.com/checkout/buy/a10eaa5e-ce99-4c84-aff6-900405e87880?enabled=1662237',
-      annual:  'https://echokit.lemonsqueezy.com/checkout/buy/371e5a4f-2096-4ea0-9197-322ffb41702c?enabled=1662250',
-      lifetime:'https://echokit.lemonsqueezy.com/checkout/buy/8d78047a-ba2b-49cf-ae30-2c107f60754d?enabled=1662254'
-    };
-    document.getElementById('btn-monthly').href = LINKS.monthly;
-    document.getElementById('btn-annual').href = LINKS.annual;
-    document.getElementById('btn-lifetime').href = LINKS.lifetime;
+    // LemonSqueezy checkout URLs - Temporarily redirected to free Chrome Web Store page
+    const STORE_URL = 'https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf';
+    const btnMonthly = document.getElementById('btn-monthly');
+    const btnAnnual = document.getElementById('btn-annual');
+    const btnLifetime = document.getElementById('btn-lifetime');
+
+    if (btnMonthly) { btnMonthly.href = STORE_URL; btnMonthly.target = '_blank'; }
+    if (btnAnnual) { btnAnnual.href = STORE_URL; btnAnnual.target = '_blank'; }
+    if (btnLifetime) { btnLifetime.href = STORE_URL; btnLifetime.target = '_blank'; }
 
     async function verifyKey() {
       const k = document.getElementById('license-input').value.trim().toUpperCase();
