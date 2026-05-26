@@ -1115,15 +1115,16 @@ async function handleEchokitLocalStorageRead(msg) {
       },
       func: () => {
         const o = {};
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          o[k] = localStorage.getItem(k);
+        const ls = globalThis.localStorage;
+        for (let i = 0; i < ls.length; i++) {
+          const k = ls.key(i);
+          o[k] = ls.getItem(k);
         }
         return {
           keys: o,
           origin: location.origin,
           href: location.href,
-          count: localStorage.length
+          count: ls.length
         };
       }
     });
@@ -1150,10 +1151,11 @@ async function handleEchokitLocalStorageWrite(msg) {
       },
       args: [keys, clearFirst],
       func: (keys, clearFirst) => {
-        if (clearFirst) localStorage.clear();
+        const ls = globalThis.localStorage;
+        if (clearFirst) ls.clear();
         let written = 0;
         for (const [k, v] of Object.entries(keys)) {
-          localStorage.setItem(k, v);
+          ls.setItem(k, v);
           written++;
         }
         return {

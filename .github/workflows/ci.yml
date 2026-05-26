@@ -19,6 +19,10 @@ on:
     branches: [main]
   workflow_dispatch:  # Allow manually triggering all jobs including smoke
 
+# Limit workflow permissions to read-only for security best practices.
+permissions:
+  contents: read
+
 # Cancel any in-progress run for the same branch/PR to save runner minutes.
 concurrency:
   group: ci-${{ github.ref }}
@@ -82,8 +86,7 @@ jobs:
 
   # ── Lint ──────────────────────────────────────────────────────────────────────
   # Run ESLint on all extension and CLI source files.
-  # Uses --max-warnings 0 with || true so lint warnings don't block merges
-  # (warnings are surfaced in the log but don't fail the job).
+  # Uses --max-warnings 0 to ensure any lint warning fails the build.
   lint:
     name: Lint (ESLint)
     runs-on: ubuntu-latest

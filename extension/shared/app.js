@@ -2746,15 +2746,19 @@ function bindSettingsGeneralEvents(overlay) {
     await refresh(); overlay.remove(); render(); showSettingsDialog();
   });
   overlay.querySelector('[data-a="cors-diagnostics"]').addEventListener('click', async () => {
-    const diag = await BG({ type: 'echokit:cors:diagnostics' });
-    const msg = diag.ok
-      ? `✅ CORS Diagnostics:
+    try {
+      const diag = await BG({ type: 'echokit:cors:diagnostics' });
+      if (!diag || typeof diag.ok === 'undefined') {
+        throw new Error('No diagnostics response from background');
+      }
+      const msg = diag.ok
+        ? `✅ CORS Diagnostics:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CORS Enabled: ${diag.corsEnabled}
 Scope: ${diag.scope}
 Rule Installed: ${diag.ruleInstalled}
 
-Active Tabs: ${diag.tabs.length}
+Active Tabs: ${diag.tabs ? diag.tabs.length : 0}
 Dynamic Rules: ${diag.dynamicRulesCount}
 Session Rules: ${diag.sessionRulesCount}
 
@@ -2764,12 +2768,17 @@ ${diag.rule ? `Current CORS Rule (ID ${diag.rule.id}):
   Action: ${JSON.stringify(diag.rule.action, null, 2)}` : 'No CORS rule active'}
 
 Open browser console for full details.`
-      : `❌ CORS Diagnostics Failed:
+        : `❌ CORS Diagnostics Failed:
 ${diag.error}`;
 
-    // eslint-disable-next-line no-console
-    if (diag.ok) console.log('[EchoKit CORS Diagnostics]', diag);
-    alert(msg);
+      // eslint-disable-next-line no-console
+      if (diag.ok) console.log('[EchoKit CORS Diagnostics]', diag);
+      alert(msg);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[EchoKit CORS Diagnostics Error]', error);
+      alert(`❌ CORS Diagnostics Failed:\n${error?.message || 'Unknown error'}`);
+    }
   });
   overlay.querySelector('[data-a="auto-open"]').addEventListener('change', async (e) => {
     await BG({ type: 'echokit:settings:update', patch: { autoOpenOnRefresh: e.target.checked } });

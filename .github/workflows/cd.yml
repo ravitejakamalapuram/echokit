@@ -289,7 +289,7 @@ jobs:
         run: |
           set -e
           echo "🔑 Fetching OAuth access token..."
-          RESPONSE=$(curl -sf "https://oauth2.googleapis.com/token" \
+          RESPONSE=$(curl -sf --connect-timeout 5 --max-time 15 "https://oauth2.googleapis.com/token" \
             -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token")
 
           if ! echo "$RESPONSE" | python3 -c "import sys,json; obj=json.load(sys.stdin); exit(0 if 'access_token' in obj else 1)" 2>/dev/null; then
@@ -309,6 +309,7 @@ jobs:
           set -e
           echo "📤 Uploading echokit-${TAG}.zip to Chrome Web Store..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --connect-timeout 5 --max-time 60 \
             -H "Authorization: Bearer ${{ steps.oauth.outputs.token }}" \
             -H "x-goog-api-version: 2" \
             -X PUT -T "echokit-${TAG}.zip" \
@@ -331,6 +332,7 @@ jobs:
           set -e
           echo "🚀 Publishing extension..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --connect-timeout 5 --max-time 30 \
             -H "Authorization: Bearer ${{ steps.oauth.outputs.token }}" \
             -H "x-goog-api-version: 2" \
             -H "Content-Length: 0" \
@@ -411,14 +413,14 @@ jobs:
           sleep 5
 
           echo "Testing Workers.dev URL..."
-          if ! curl -f https://echokit-license.echokit-rk.workers.dev/__health; then
+          if ! curl -f --connect-timeout 5 --max-time 10 https://echokit-license.echokit-rk.workers.dev/__health; then
             echo "❌ Workers.dev URL health check failed"
             exit 1
           fi
           echo "✅ Workers.dev URL is healthy"
 
           echo "Testing custom domain..."
-          if ! curl -f https://api.echo-kit.com/__health; then
+          if ! curl -f --connect-timeout 5 --max-time 10 https://api.echo-kit.com/__health; then
             echo "❌ Custom domain health check failed"
             exit 1
           fi

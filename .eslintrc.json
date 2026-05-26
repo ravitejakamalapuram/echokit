@@ -34,8 +34,7 @@
         "fetch": "readonly",
         "caches": "readonly",
         "clients": "readonly",
-        "AbortController": "readonly",
-        "localStorage": "readonly"
+        "AbortController": "readonly"
       }
     },
     {
