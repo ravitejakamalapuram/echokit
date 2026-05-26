@@ -33,7 +33,8 @@
         "IDBKeyRange": "readonly",
         "fetch": "readonly",
         "caches": "readonly",
-        "clients": "readonly"
+        "clients": "readonly",
+        "AbortController": "readonly"
       }
     },
     {
@@ -51,6 +52,9 @@
       },
       "parserOptions": {
         "sourceType": "commonjs"
+      },
+      "rules": {
+        "no-console": "off"
       }
     },
     {

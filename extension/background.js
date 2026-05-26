@@ -6,10 +6,11 @@
 // Must be false in production builds (verbose logging has a measurable overhead in SW).
 const DEBUG = false;
 /** @type {(...args: unknown[]) => void} */
+// eslint-disable-next-line no-console
 const dbg = DEBUG ? console.log.bind(console) : () => {};
-import { computeHash, computeMatchKeys } from './shared/matcher.js';
+import { computeMatchKeys } from './shared/matcher.js';
 import {
-  putInteraction, getInteraction, deleteInteraction, deleteInteractions, getAllInteractions,
+  putInteraction, getInteraction, deleteInteraction, getAllInteractions,
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
 const SESSION_KEY = 'echokit_tab_state';
@@ -1114,15 +1115,16 @@ async function handleEchokitLocalStorageRead(msg) {
       },
       func: () => {
         const o = {};
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          o[k] = localStorage.getItem(k);
+        const ls = globalThis.localStorage;
+        for (let i = 0; i < ls.length; i++) {
+          const k = ls.key(i);
+          o[k] = ls.getItem(k);
         }
         return {
           keys: o,
           origin: location.origin,
           href: location.href,
-          count: localStorage.length
+          count: ls.length
         };
       }
     });
@@ -1149,10 +1151,11 @@ async function handleEchokitLocalStorageWrite(msg) {
       },
       args: [keys, clearFirst],
       func: (keys, clearFirst) => {
-        if (clearFirst) localStorage.clear();
+        const ls = globalThis.localStorage;
+        if (clearFirst) ls.clear();
         let written = 0;
         for (const [k, v] of Object.entries(keys)) {
-          localStorage.setItem(k, v);
+          ls.setItem(k, v);
           written++;
         }
         return {
@@ -1746,7 +1749,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
 chrome.tabs.onActivated.addListener(({
   tabId
 }) => updateBadge(tabId).catch(() => {}));
-chrome.tabs.onCreated.addListener(tab => {
+chrome.tabs.onCreated.addListener(_tab => {
   // Edge case fix: Debounce CORS updates for new tab creation
   if (settings.corsOverride && (settings.scope === 'tab' || settings.scope === 'domain')) {
     if (corsUpdateTimeout) clearTimeout(corsUpdateTimeout);

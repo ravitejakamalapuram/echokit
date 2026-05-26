@@ -47,13 +47,27 @@ function fnv1a(str) {
   return h.toString(16).padStart(8, '0');
 }
 
+/**
+ * Extracts the GraphQL operation name from a query string.
+ * @param {string} query - GraphQL query text or value coercible to string.
+ * @returns {string} The operation name if present (from `query`, `mutation`, or `subscription`), otherwise an empty string.
+ */
 function extractOpName(query) {
   if (!query) return '';
   const m = String(query).match(/(?:query|mutation|subscription)\s+(\w+)/);
   return m ? m[1] : '';
 }
 
-function parseGraphQL(body, url) {
+/**
+ * Parse a GraphQL HTTP request payload and extract the operation name, normalized query, and variables.
+ * @param {string|object|null|undefined} body - Request body as a JSON string or already-parsed object; falsy values yield `null`.
+ * @returns {{operationName: string, query: string, variables: object}|null} An object with:
+ *  - `operationName`: the explicit `operationName` from the payload or the first operation name parsed from the `query`, or `''` if none;
+ *  - `query`: the GraphQL `query` with contiguous whitespace collapsed to single spaces and trimmed;
+ *  - `variables`: the `variables` object from the payload or an empty object.
+ *  Returns `null` if the body is falsy, is not valid JSON (when a string), or does not contain a `query` field.
+ */
+function parseGraphQL(body, _url) {
   if (!body) return null;
   let parsed;
   try { parsed = typeof body === 'string' ? JSON.parse(body) : body; } catch { return null; }
