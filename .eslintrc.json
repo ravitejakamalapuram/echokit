@@ -53,6 +53,9 @@
       },
       "parserOptions": {
         "sourceType": "commonjs"
+      },
+      "rules": {
+        "no-console": "off"
       }
     },
     {

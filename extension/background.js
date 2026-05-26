@@ -6,10 +6,11 @@
 // Must be false in production builds (verbose logging has a measurable overhead in SW).
 const DEBUG = false;
 /** @type {(...args: unknown[]) => void} */
+// eslint-disable-next-line no-console
 const dbg = DEBUG ? console.log.bind(console) : () => {};
-import { computeHash, computeMatchKeys } from './shared/matcher.js';
+import { computeMatchKeys } from './shared/matcher.js';
 import {
-  putInteraction, getInteraction, deleteInteraction, deleteInteractions, getAllInteractions,
+  putInteraction, getInteraction, deleteInteraction, getAllInteractions,
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
 const SESSION_KEY = 'echokit_tab_state';
@@ -1746,7 +1747,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
 chrome.tabs.onActivated.addListener(({
   tabId
 }) => updateBadge(tabId).catch(() => {}));
-chrome.tabs.onCreated.addListener(tab => {
+chrome.tabs.onCreated.addListener(_tab => {
   // Edge case fix: Debounce CORS updates for new tab creation
   if (settings.corsOverride && (settings.scope === 'tab' || settings.scope === 'domain')) {
     if (corsUpdateTimeout) clearTimeout(corsUpdateTimeout);

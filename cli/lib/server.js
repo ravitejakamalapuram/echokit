@@ -150,13 +150,13 @@ function encodeWSFrame(payloadStr, opcode = 0x1, isFinal = true) {
 }
 
 // Send ping frame for keep-alive
-function sendPing(socket) {
+function _sendPing(socket) {
   try {
     socket.write(encodeWSFrame('', 0x9)); // Opcode 0x9 = ping
   } catch {}
 }
 
-function handleWSUpgrade(req, socket, mock, opts) {
+function handleWSUpgrade(req, socket, mock, _opts) {
   const clientKey = req.headers['sec-websocket-key'];
   if (!clientKey) { socket.destroy(); return; }
   const accept = wsAcceptKey(clientKey);
@@ -286,7 +286,7 @@ const colors = {
 };
 
 function printCoverageSummary(report) {
-  const { totalMocks, usedMocks, unusedMocks, totalRequests, matchedRequests, unmatchedRequests, coverage } = report;
+  const { totalMocks, usedMocks, unusedMocks, matchedRequests, unmatchedRequests, coverage } = report;
   const coverageColor = coverage >= 80 ? colors.green : coverage >= 50 ? colors.yellow : colors.red;
 
   console.log('\n' + colors.bright + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset);

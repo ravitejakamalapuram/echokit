@@ -53,7 +53,7 @@ function extractOpName(query) {
   return m ? m[1] : '';
 }
 
-function parseGraphQL(body, url) {
+function parseGraphQL(body, _url) {
   if (!body) return null;
   let parsed;
   try { parsed = typeof body === 'string' ? JSON.parse(body) : body; } catch { return null; }

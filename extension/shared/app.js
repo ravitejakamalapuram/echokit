@@ -343,7 +343,6 @@ function render() {
 
   const isPopup = state.mode === 'popup';
   const list = filteredInteractions();
-  const grouped = groupByDomain(list);
   const selected = state.selectedId ? state.interactions.find(i => i.id === state.selectedId) : null;
   const conflicts = selected ? state.interactions.filter(i => i.hash === selected.hash) : [];
 
@@ -1257,7 +1256,7 @@ function renderFilterChips() {
   `;
 }
 
-function renderWaterfall(interactions) {
+function _renderWaterfall(interactions) {
   if (!interactions.length) return renderEmpty();
 
   // Sort by start time
@@ -1388,7 +1387,7 @@ function modeBadge(mode) {
 }
 
 // Renders list view - grouped list for popup, sortable table for devtools
-function renderListView(interactions, isPopup) {
+function _renderListView(interactions, isPopup) {
   if (interactions.length === 0) return renderEmpty();
 
   const features = getFeatures();
@@ -1874,7 +1873,7 @@ function bindGlobalEvents(el, action, id) {
   return false;
 }
 
-function bindFilterEvents(el, action, id) {
+function bindFilterEvents(el, action, _id) {
   if (action === 'search') {
     let t;
     el.addEventListener('input', (e) => {
@@ -2697,6 +2696,7 @@ Open browser console for full details.`
       : `❌ CORS Diagnostics Failed:
 ${diag.error}`;
 
+    // eslint-disable-next-line no-console
     if (diag.ok) console.log('[EchoKit CORS Diagnostics]', diag);
     alert(msg);
   });
