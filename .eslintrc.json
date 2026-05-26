@@ -33,7 +33,9 @@
         "IDBKeyRange": "readonly",
         "fetch": "readonly",
         "caches": "readonly",
-        "clients": "readonly"
+        "clients": "readonly",
+        "AbortController": "readonly",
+        "localStorage": "readonly"
       }
     },
     {
