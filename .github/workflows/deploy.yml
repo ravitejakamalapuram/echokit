@@ -1,0 +1,165 @@
+# deploy.yml — Deploy Infrastructure
+#
+# Purpose  : Deploy Cloudflare infrastructure whenever website or worker source
+#            changes land on main. Both targets deploy in parallel since they
+#            are fully independent of each other.
+# Triggers  : push to main touching website/** or worker/**
+#             workflow_dispatch with target selector (all | website | worker)
+# Jobs      : detect-changes → deploy-website ║ deploy-worker  (parallel)
+# Secrets   : CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID
+#
+# ── Deployment targets ────────────────────────────────────────────────────────
+# website  →  Static site at echokit.dev via Cloudflare Pages
+# worker   →  License validation + payment webhooks via Cloudflare Workers
+#             Production URLs:
+#               https://echokit-license.echokit-rk.workers.dev  (workers.dev)
+#               https://api.echo-kit.com                        (custom domain)
+
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'worker/**'
+      - '.github/workflows/deploy.yml'   # Changing this workflow redeploys both targets
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which target to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, website, worker]
+
+# Never cancel an in-progress deploy — a half-deployed state is worse than waiting.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  # ── Detect Changed Paths ───────────────────────────────────────────────────────
+  # Determines which targets actually changed so downstream jobs can skip
+  # gracefully when only one target was touched.
+  # On workflow_dispatch, uses the 'target' input instead of git diff.
+  detect-changes:
+    name: Detect which targets changed
+    runs-on: ubuntu-latest
+    outputs:
+      website: ${{ steps.changes.outputs.website }}
+      worker:  ${{ steps.changes.outputs.worker }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # Need parent commit to diff against
+
+      - name: Determine changed targets
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ inputs.target }}"
+            echo "🖱️  Manual dispatch — target: ${TARGET}"
+            if [[ "$TARGET" == "all" || "$TARGET" == "website" ]]; then
+              echo "website=true" >> $GITHUB_OUTPUT
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$TARGET" == "all" || "$TARGET" == "worker" ]]; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            echo "Changed files:"
+            echo "$CHANGED"
+
+            if echo "$CHANGED" | grep -q '^website/'; then
+              echo "website=true" >> $GITHUB_OUTPUT
+              echo "🌐 website/ changes detected"
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+
+            if echo "$CHANGED" | grep -qE '^(worker/|\.github/workflows/deploy\.yml)'; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+              echo "⚙️  worker/ changes detected"
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # ── Deploy Website ─────────────────────────────────────────────────────────────
+  # Deploy the public echokit.dev static site to Cloudflare Pages.
+  # Skipped automatically if no website/** files changed.
+  deploy-website:
+    name: Deploy website → Cloudflare Pages
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.website == 'true'
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required website files exist
+        run: |
+          set -e
+          test -f website/index.html
+          test -f website/style.css
+          echo "✅ Website files validated"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: echokit-website
+          directory:   website
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Deploy Worker ──────────────────────────────────────────────────────────────
+  # Deploy the license validation + payment webhook Cloudflare Worker.
+  # Handles: HMAC key verification, Stripe webhooks, LemonSqueezy webhooks,
+  # license key issuance, and emailing via Resend.
+  # Skipped automatically if no worker/** files changed.
+  deploy-worker:
+    name: Deploy worker → Cloudflare Workers
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.worker == 'true'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Workers via Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken:         ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:        ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command:          deploy
+
+      - name: Verify deployment health endpoints
+        run: |
+          echo "⏳ Waiting 5 seconds for propagation..."
+          sleep 5
+
+          echo "Testing Workers.dev URL..."
+          curl -f https://echokit-license.echokit-rk.workers.dev/__health \
+            && echo "✅ Workers.dev URL is healthy" \
+            || echo "⚠️  Workers.dev health check failed — check Cloudflare dashboard"
+
+          echo "Testing custom domain..."
+          curl -f https://api.echo-kit.com/__health \
+            && echo "✅ Custom domain is healthy" \
+            || echo "⚠️  Custom domain not responding (DNS propagation may still be in progress)"
