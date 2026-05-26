@@ -97,7 +97,7 @@ jobs:
             exit 0
           fi
 
-          MESSAGES=$(git log --format=%s ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
+          MESSAGES=$(git log --format=%B ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
 
           # BREAKING must be checked first — a single breaking commit outweighs any feat/fix
           if echo "$MESSAGES" | grep -qiE "(BREAKING CHANGE|BREAKING:|^feat!|^fix!)"; then
@@ -233,12 +233,11 @@ jobs:
       - name: Confirm manifest.json version matches the release tag
         run: |
           set -e
-          node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('./extension/manifest.json', 'utf8'));
-            m.version = '${VERSION}';
-            fs.writeFileSync('./extension/manifest.json', JSON.stringify(m, null, 2) + '\n');
-          "
+          ACTUAL=$(node -e "console.log(require('./extension/manifest.json').version)")
+          if [ "$ACTUAL" != "$VERSION" ]; then
+            echo "❌ manifest.json version ($ACTUAL) does not match release version ($VERSION)"
+            exit 1
+          fi
           echo "✅ manifest.json version confirmed: ${VERSION}"
 
       - name: Build extension zip
