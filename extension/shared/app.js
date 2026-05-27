@@ -973,11 +973,13 @@ function renderAdvancedToolbar() {
                spellcheck="false"/>
         <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
-                data-testid="toggle-advanced-filters">
+                data-testid="toggle-advanced-filters"
+                aria-expanded="${state.advancedFilterOpen}"
+                aria-label="Toggle advanced filters">
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
-          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
+          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters" aria-label="Clear all filters">
             Clear All
           </button>
         ` : ''}
