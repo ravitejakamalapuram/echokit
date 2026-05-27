@@ -9,6 +9,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **Temporary Free Pro Access** — All Pro features unlocked for all users during LemonSqueezy payment integration transition
+  - License validation temporarily bypassed in `getProStatus()`
+  - Settings UI updated to show "EchoKit Pro (Free Access)" confirmation instead of license key entry
+  - Pricing page updated with free access banner and redirects to Chrome Web Store
+  - This is a temporary measure until LemonSqueezy merchant verification completes
+
 ### Planned
 - LemonSqueezy payment integration (Merchant of Record, global tax handling)
 - Mint real license keys for paying customers via payment webhook

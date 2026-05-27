@@ -196,6 +196,26 @@ async function validateLicenseRemote(key) {
     };
   }
 }
+// NOTE: isLicenseValid() function temporarily disabled during free access period
+// See the commented version below after getProStatus() - will be restored with LemonSqueezy
+
+// Checks license key OR active trial. Returns { pro, trial, trialDaysLeft }.
+async function getProStatus() {
+  // TODO: Temporary free access during LemonSqueezy payment integration
+  // This bypasses license validation and grants Pro access to all users.
+  // REVERT THIS once LemonSqueezy integration is complete and payment flow is live.
+  // Expected completion: When LemonSqueezy merchant verification completes
+  // Original implementation: Check git history for license validation logic
+  return {
+    pro: true,
+    trial: false,
+    trialDaysLeft: 0
+  };
+}
+
+// NOTE: isLicenseValid() function temporarily unused during free access period
+// The function below will be re-enabled when license validation is restored
+/* TEMPORARILY DISABLED - Will be restored with LemonSqueezy integration
 async function isLicenseValid(key) {
   // Format gate first — short-circuits for empty / obviously bad keys.
   if (!validateLicenseKey(key)) return false;
@@ -236,32 +256,7 @@ async function isLicenseValid(key) {
   // on the next extension restart / after the 24h cache expires.
   return true;
 }
-
-// Checks license key OR active trial. Returns { pro, trial, trialDaysLeft }.
-async function getProStatus() {
-  const stored = await chrome.storage.sync.get(['echokit_license', 'echokit_trial_expiry']);
-  const key = stored['echokit_license'] || '';
-  if (key && (await isLicenseValid(key))) return {
-    pro: true,
-    trial: false,
-    trialDaysLeft: 0
-  };
-  const expiry = stored['echokit_trial_expiry'] || 0;
-  const now = Date.now();
-  if (expiry > now) {
-    const trialDaysLeft = Math.ceil((expiry - now) / 86400000);
-    return {
-      pro: true,
-      trial: true,
-      trialDaysLeft
-    };
-  }
-  return {
-    pro: false,
-    trial: false,
-    trialDaysLeft: 0
-  };
-}
+END TEMPORARILY DISABLED */
 function buildMockIndexFor(interactions, ctx) {
   const index = {
     strict: {},
