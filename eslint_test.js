@@ -1,0 +1,2 @@
+const LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+console.log(LICENSE_CACHE_TTL_MS);
