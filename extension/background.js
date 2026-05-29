@@ -102,7 +102,7 @@ function visibleInContext(interaction, ctx) {
 //      configured. Result is cached in chrome.storage.local for 24h so the
 //      extension keeps working offline once a key has been validated.
 const LICENSE_CACHE_KEY = 'echokit_license_cache';
-const LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const _LICENSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_LICENSE_WORKER_URL = 'https://echokit-license.echokit-rk.workers.dev';
 
 /**
