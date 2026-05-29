@@ -1126,6 +1126,13 @@ button.ek-source-badge:focus-visible {
   padding: 2px 6px; font-size: 10px; border-radius: 3px;
   background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted);
 }
+button.ek-tag {
+  cursor: pointer;
+}
+.ek-tag:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
 .ek-tag.on { color: var(--red); border-color: rgba(239,68,68,0.3); background: var(--red-dim); }
 .ek-tag.amber { color: var(--amber); border-color: rgba(251,191,36,0.3); background: var(--amber-dim); }
 

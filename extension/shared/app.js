@@ -1775,7 +1775,7 @@ function renderFooter(count) {
   const isPopup = state.mode === 'popup';
   const recTag = state.tab.recording ? `<span class="ek-tag on">REC</span>` : `<span class="ek-tag">idle</span>`;
   const mockTag = state.tab.mocking ? `<span class="ek-tag amber">MOCK ON</span>` : '';
-  const corsTag = state.settings.corsOverride ? `<span class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings">CORS</span>` : '';
+  const corsTag = state.settings.corsOverride ? `<button type="button" class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings" aria-label="Open settings for CORS override">CORS</button>` : '';
   const scope = state.settings.scope || 'domain';
   const freeLimit = !state.isPro ? `<span class="ek-subtle ${state.allCount >= 50 ? 'ek-limit-warn' : ''}" title="Free tier: 50 recordings max. Upgrade for unlimited.">${state.allCount}/50</span>` : '';
 
@@ -1793,7 +1793,7 @@ function renderFooter(count) {
     <div class="ek-footer">
       ${recTag} ${mockTag} ${corsTag}
       <span class="ek-subtle">${count} request${count === 1 ? '' : 's'}</span>
-      <span class="ek-subtle">· scope: <span class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope">${scope}</span></span>
+      <span class="ek-subtle">· scope: <button type="button" class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope" aria-label="Change scope: currently ${scope}">${scope}</button></span>
       ${freeLimit}
       ${devToolsLink}
       <span class="ek-row-inline-end ek-subtle">${state.tab.host ? escapeHtml(state.tab.host) : `tab #${state.tabId ?? '—'}`}</span>
