@@ -1,181 +1,24 @@
-# ci.yml — Continuous Integration
-#
-# Purpose  : Quality gate for every pull request. Blocks merges on test/lint failures.
-# Triggers  : pull_request (all 4 jobs) | push to main (lint + unit + validate only)
-# Jobs      : validate · lint · unit · smoke (PR-only)
-# Secrets   : none required
-#
-# Why smoke tests are skipped on push-to-main:
-#   Smoke tests (Playwright + Chromium) take ~3 minutes. They already ran as a
-#   merge gate on the PR. Re-running post-merge adds cost and noise with no
-#   additional safety benefit. If you push directly to main without a PR, open
-#   a PR next time — or trigger the smoke job manually via workflow_dispatch.
-
 name: Continuous Integration
 
 on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:  # Allow manually triggering all jobs including smoke
+  workflow_dispatch:
 
-# Limit workflow permissions to read-only for security best practices.
 permissions:
   contents: read
 
-# Cancel any in-progress run for the same branch/PR to save runner minutes.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
-
-  # ── Validate ──────────────────────────────────────────────────────────────────
-  # Check that all required files exist, manifest.json is valid JSON,
-  # and every .js file in the extension and CLI passes a Node.js syntax check.
-  # No dependencies installed — runs in under 30 seconds.
-  validate:
-    name: Validate structure & syntax
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check all required extension files exist
-        run: |
-          set -e
-          echo "Checking required extension files..."
-          test -f extension/manifest.json
-          test -f extension/background.js
-          test -f extension/injected.js
-          test -f extension/content.js
-          test -f extension/shared/app.js
-          test -f extension/shared/matcher.js
-          test -f extension/shared/store.js
-          test -f extension/popup/popup.html
-          test -f extension/popup/popup.js
-          test -f extension/devtools/devtools.html
-          test -f extension/devtools/devtools.js
-          test -f extension/devtools/panel.html
-          test -f extension/devtools/panel.js
-          echo "✅ All required extension files present"
-
-      - name: Validate manifest.json is well-formed JSON
-        run: |
-          set -e
-          python3 -m json.tool extension/manifest.json > /dev/null
-          echo "✅ manifest.json is valid JSON"
-
-      - name: Check JavaScript syntax — extension (all .js files)
-        run: |
-          set -e
-          find extension -name "*.js" | while read f; do
-            node -c "$f" || exit 1
-          done
-          echo "✅ All extension JS files pass syntax check"
-
-      - name: Check JavaScript syntax — CLI (all .js files)
-        run: |
-          set -e
-          find cli -name "*.js" | while read f; do
-            node -c "$f" || exit 1
-          done
-          echo "✅ All CLI JS files pass syntax check"
-
-  # ── Lint ──────────────────────────────────────────────────────────────────────
-  # Run ESLint on all extension and CLI source files.
-  # Uses --max-warnings 0 to ensure any lint warning fails the build.
-  lint:
-    name: Lint (ESLint)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dev dependencies (ESLint)
-        run: npm install --ignore-scripts
-
-      - name: Lint extension source files
-        run: |
-          npx eslint \
-            extension/background.js \
-            extension/injected.js \
-            extension/content.js \
-            extension/shared/app.js \
-            extension/shared/matcher.js \
-            extension/shared/store.js \
-            --ext .js --max-warnings 0
-
-      - name: Lint CLI source files
-        run: npx eslint cli/bin/echokit-server.js cli/lib --ext .js --max-warnings 0
-
-  # ── Unit Tests ────────────────────────────────────────────────────────────────
-  # Fast Node.js unit tests — no browser or network required.
-  # Covers: request matching/hashing logic (matcher.js) and CLI server logic.
-  unit:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dev dependencies
-        run: npm install --ignore-scripts
-
-      - name: Run matcher unit tests
-        run: node --experimental-vm-modules tests/test-matcher.js
-
-      - name: Run CLI unit tests
-        run: node cli/test/test.js
-
-  # ── E2E Smoke Tests ───────────────────────────────────────────────────────────
-  # Playwright end-to-end tests against a real Chromium with the extension loaded.
-  #
-  # Runs on:
-  #   • pull_request — always (this is the merge gate)
-  #   • workflow_dispatch — always (manual trigger for debugging)
-  #   • push to main — SKIPPED (smoke already ran on the PR before merge)
-  #
-  # Test artifacts (screenshots, logs) are uploaded on failure for debugging.
-  smoke:
-    name: E2E smoke tests (Playwright)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Playwright and Chromium browser
-        run: |
-          pip install playwright websockets
-          python -m playwright install chromium
-
-      - name: Run E2E smoke tests in headless mode
-        run: python3 tests/smoke_echokit.py
-        env:
-          HEADLESS: 'true'
-
-      - name: Upload test failure artifacts (screenshots, logs)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-test-failures-${{ github.run_number }}
-          path: |
-            test-results/
-            screenshots/
-            /tmp/*.png
-          retention-days: 7
-          if-no-files-found: ignore
+  ci:
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-ci.yml@main
+    with:
+      extension-dir: 'extension'
+      run-lint: true
+      run-unit-tests: true
+      run-e2e-tests: true
+      e2e-test-script: 'tests/smoke_echokit.py'
