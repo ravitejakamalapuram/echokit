@@ -4,7 +4,7 @@
 import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
 import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
-import { getConflictCount } from './interaction-helpers.js';
+import { getConflictCount, getConflicts } from './interaction-helpers.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -351,7 +351,7 @@ function render() {
   const isPopup = state.mode === 'popup';
   const list = filteredInteractions();
   const selected = state.selectedId ? state.interactions.find(i => i.id === state.selectedId) : null;
-  const conflicts = selected ? state.interactions.filter(i => i.hash === selected.hash) : [];
+  const conflicts = selected ? getConflicts(selected, state.interactions) : [];
 
   const safeMode = state.mode === 'devtools' ? 'devtools' : 'popup';
   const appCls = `ek-app ${safeMode} ${state.detailOpen && isPopup ? 'detail-open' : ''}`;
