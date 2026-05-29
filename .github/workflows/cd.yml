@@ -1,14 +1,3 @@
-# cd.yml — Continuous Delivery Pipeline
-#
-# Purpose  : Consolidates all shipping workflows (extension releases, website deploys,
-#            and worker updates) into a single Continuous Delivery pipeline.
-# Triggers  : push to main touching website/**, worker/**, extension/**, or cd.yml itself
-#             workflow_dispatch (allowing choosing manual release bump and/or deploy target)
-# Jobs      : detect-changes → deploy-website ║ deploy-worker ║ version-and-tag → publish-extension
-# Secrets   : PAT_FOR_WORKFLOWS (git push version bump)
-#             CWS_EXTENSION_ID · CWS_CLIENT_ID · CWS_CLIENT_SECRET · CWS_REFRESH_TOKEN (Chrome Web Store)
-#             CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID (Cloudflare deployments)
-
 name: Continuous Delivery
 
 on:
@@ -40,14 +29,11 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: write
 
 jobs:
-
   # ── Detect Changed Paths ───────────────────────────────────────────────────────
-  # Evaluates files changed in the push, or parses workflow_dispatch input selection.
-  # Downstream jobs only execute if their specific target was changed or requested.
   detect-changes:
     name: Detect changed targets
     runs-on: ubuntu-latest
@@ -115,247 +101,6 @@ jobs:
             fi
           fi
 
-  # ── Bump Version & Create Release Tag (Extension) ───────────────────────────
-  version-and-tag:
-    name: Bump version and create release tag
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.extension == 'true'
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.bump.outputs.version }}
-      tag:     ${{ steps.bump.outputs.tag }}
-      skipped: ${{ steps.tag_check.outputs.exists }}
-    steps:
-      - name: Checkout repository (full history required for tag comparison)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_FOR_WORKFLOWS }}
-
-      - name: Read current version from extension/manifest.json
-        id: current
-        run: |
-          CURRENT=$(node -e "console.log(require('./extension/manifest.json').version)")
-          echo "version=${CURRENT}" >> $GITHUB_OUTPUT
-          echo "📦 Current version: ${CURRENT}"
-
-      - name: Detect version bump type from commit messages
-        id: detect_bump
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release_bump }}" != "none" ]; then
-            echo "bump=${{ inputs.release_bump }}" >> $GITHUB_OUTPUT
-            echo "🔧 Manual override: ${{ inputs.release_bump }} bump"
-            exit 0
-          fi
-
-          MESSAGES=$(git log --format=%B ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "")
-
-          if echo "$MESSAGES" | grep -qiE "(BREAKING CHANGE|BREAKING:|^feat!|^fix!)"; then
-            echo "bump=major" >> $GITHUB_OUTPUT
-            echo "🔴 MAJOR bump — breaking change detected"
-          elif echo "$MESSAGES" | grep -qiE "^(feat|feature):"; then
-            echo "bump=minor" >> $GITHUB_OUTPUT
-            echo "🟡 MINOR bump — new feature detected"
-          elif echo "$MESSAGES" | grep -qiE "^(fix|bugfix|patch):"; then
-            echo "bump=patch" >> $GITHUB_OUTPUT
-            echo "🟢 PATCH bump — bug fix detected"
-          else
-            echo "bump=patch" >> $GITHUB_OUTPUT
-            echo "🟢 PATCH bump — default (no conventional commit prefix)"
-          fi
-
-      - name: Calculate new version and write to manifest.json
-        id: bump
-        run: |
-          set -e
-          CURRENT="${{ steps.current.outputs.version }}"
-          BUMP="${{ steps.detect_bump.outputs.bump }}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-
-          case "$BUMP" in
-            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH+1)) ;;
-          esac
-
-          NEW="${MAJOR}.${MINOR}.${PATCH}"
-          echo "version=${NEW}" >> $GITHUB_OUTPUT
-          echo "tag=v${NEW}"    >> $GITHUB_OUTPUT
-          echo "✅ ${CURRENT} → ${NEW} (${BUMP})"
-
-          node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('./extension/manifest.json', 'utf8'));
-            m.version = '${NEW}';
-            fs.writeFileSync('./extension/manifest.json', JSON.stringify(m, null, 2) + '\n');
-          "
-          echo "✅ manifest.json updated to ${NEW}"
-
-      - name: Check whether this version tag already exists
-        id: tag_check
-        run: |
-          TAG="v${{ steps.bump.outputs.version }}"
-          if git rev-parse "$TAG" > /dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Tag ${TAG} already exists — skipping this run (no duplicate release)"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag ${TAG} does not exist — proceeding"
-          fi
-
-      - name: Commit and push manifest version bump & git tag
-        if: steps.tag_check.outputs.exists == 'false'
-        run: |
-          set -e
-          TAG="v${{ steps.bump.outputs.version }}"
-          VERSION="${{ steps.bump.outputs.version }}"
-
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-          git add extension/manifest.json
-          git commit -m "chore: release version ${VERSION} [skip ci]"
-          git tag -a "$TAG" -m "Release version ${VERSION}"
-          git push origin main --follow-tags
-          echo "✅ Version bump committed and tag ${TAG} pushed"
-
-  # ── Build, Release & Publish Extension ───────────────────────────────────────
-  publish-extension:
-    name: Build, release & publish extension
-    runs-on: ubuntu-latest
-    needs: [detect-changes, version-and-tag]
-    if: needs.detect-changes.outputs.extension == 'true' && needs.version-and-tag.outputs.skipped == 'false'
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.version-and-tag.outputs.version }}
-      TAG:     ${{ needs.version-and-tag.outputs.tag }}
-    steps:
-      - name: Validate all Chrome Web Store secrets are configured
-        run: |
-          set -e
-          MISSING=""
-          [[ -z "${{ secrets.CWS_EXTENSION_ID }}" ]]   && MISSING="${MISSING}CWS_EXTENSION_ID "
-          [[ -z "${{ secrets.CWS_CLIENT_ID }}" ]]       && MISSING="${MISSING}CWS_CLIENT_ID "
-          [[ -z "${{ secrets.CWS_CLIENT_SECRET }}" ]]   && MISSING="${MISSING}CWS_CLIENT_SECRET "
-          [[ -z "${{ secrets.CWS_REFRESH_TOKEN }}" ]]   && MISSING="${MISSING}CWS_REFRESH_TOKEN "
-
-          if [[ -n "$MISSING" ]]; then
-            echo "❌ Missing required GitHub Secrets: ${MISSING}"
-            echo ""
-            echo "Add them at: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            echo "See docs/deployment/ for setup instructions."
-            exit 1
-          fi
-          echo "✅ All Chrome Web Store secrets are present"
-
-      - name: Checkout repository at the release tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.version-and-tag.outputs.tag }}
-
-      - name: Confirm manifest.json version matches the release tag
-        run: |
-          set -e
-          ACTUAL=$(node -e "console.log(require('./extension/manifest.json').version)")
-          if [ "$ACTUAL" != "$VERSION" ]; then
-            echo "❌ manifest.json version ($ACTUAL) does not match release version ($VERSION)"
-            exit 1
-          fi
-          echo "✅ manifest.json version confirmed: ${VERSION}"
-
-      - name: Build extension zip
-        run: |
-          set -e
-          cd extension && zip -rq "../echokit-${TAG}.zip" . -x '*.DS_Store'
-          ls -lh "../echokit-${TAG}.zip"
-          echo "✅ Built echokit-${TAG}.zip"
-
-      - name: Create GitHub Release and attach zip
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.version-and-tag.outputs.tag }}
-          files: echokit-${{ needs.version-and-tag.outputs.tag }}.zip
-          generate_release_notes: true
-
-      - name: Obtain Chrome Web Store OAuth access token
-        id: oauth
-        env:
-          CWS_CLIENT_ID:     ${{ secrets.CWS_CLIENT_ID }}
-          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
-          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
-        run: |
-          set -e
-          echo "🔑 Fetching OAuth access token..."
-          RESPONSE=$(curl -sf --connect-timeout 5 --max-time 15 "https://oauth2.googleapis.com/token" \
-            -d "client_id=${CWS_CLIENT_ID}&client_secret=${CWS_CLIENT_SECRET}&refresh_token=${CWS_REFRESH_TOKEN}&grant_type=refresh_token")
-
-          if ! echo "$RESPONSE" | python3 -c "import sys,json; obj=json.load(sys.stdin); exit(0 if 'access_token' in obj else 1)" 2>/dev/null; then
-            echo "❌ Failed to obtain OAuth access token — check CWS credentials"
-            exit 1
-          fi
-
-          TOKEN=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-          echo "::add-mask::${TOKEN}"
-          echo "token=${TOKEN}" >> $GITHUB_OUTPUT
-          echo "✅ OAuth token obtained"
-
-      - name: Upload extension zip to Chrome Web Store
-        env:
-          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
-        run: |
-          set -e
-          echo "📤 Uploading echokit-${TAG}.zip to Chrome Web Store..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            --connect-timeout 5 --max-time 60 \
-            -H "Authorization: Bearer ${{ steps.oauth.outputs.token }}" \
-            -H "x-goog-api-version: 2" \
-            -X PUT -T "echokit-${TAG}.zip" \
-            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          if [[ "$HTTP_CODE" != "200" ]]; then
-            echo "❌ Upload failed (HTTP ${HTTP_CODE})"
-            echo "$BODY"
-            exit 1
-          fi
-          echo "✅ Upload successful"
-
-      - name: Publish extension on Chrome Web Store
-        env:
-          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
-        run: |
-          set -e
-          echo "🚀 Publishing extension..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            --connect-timeout 5 --max-time 30 \
-            -H "Authorization: Bearer ${{ steps.oauth.outputs.token }}" \
-            -H "x-goog-api-version: 2" \
-            -H "Content-Length: 0" \
-            -X POST "https://www.googleapis.com/chromewebstore/v1.1/items/${CWS_EXTENSION_ID}/publish")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          if [[ "$HTTP_CODE" != "200" ]]; then
-            if echo "$BODY" | grep -q "item that is in review"; then
-              echo "⚠️  Another version is currently in Chrome review"
-              echo "📋 Upload succeeded — this version will publish after the current review completes"
-              echo "🔗 Monitor status: https://chrome.google.com/webstore/devconsole"
-              exit 0
-            fi
-            echo "❌ Publish failed (HTTP ${HTTP_CODE})"
-            echo "$BODY"
-            exit 1
-          fi
-
-          echo "✅ EchoKit ${VERSION} published to Chrome Web Store"
-          echo "📋 Chrome review typically takes 1–2 days before going fully public"
-
   # ── Deploy Website ─────────────────────────────────────────────────────────────
   deploy-website:
     name: Deploy website → Cloudflare Pages
@@ -398,7 +143,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Cloudflare Workers via Wrangler
-         # Pin to cloudflare/wrangler-action@v3
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken:         ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -425,3 +169,21 @@ jobs:
             exit 1
           fi
           echo "✅ Custom domain is healthy"
+
+  # ── Deploy & Publish Chrome Extension ──────────────────────────────────────────
+  publish-extension:
+    name: Package & Publish Extension
+    needs: detect-changes
+    if: needs.detect-changes.outputs.extension == 'true'
+    permissions:
+      contents: write
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@v1.1.1
+    with:
+      extension-dir: 'extension'
+      publish-target: 'default'
+      auto-publish: 'true'
+    secrets:
+      chrome-extension-id: ${{ secrets.CWS_EXTENSION_ID }}
+      chrome-client-id: ${{ secrets.CWS_CLIENT_ID }}
+      chrome-client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+      chrome-refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}

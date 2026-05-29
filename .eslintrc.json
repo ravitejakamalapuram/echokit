@@ -1,5 +1,11 @@
 {
   "root": true,
+  "ignorePatterns": [
+    "extension/shared/waterfall-renderer.js",
+    "extension/shared/layouts.js",
+    "extension/shared/interaction-renderer.js",
+    "extension/popup/diagnostic.js"
+  ],
   "env": {
     "browser": true,
     "es2022": true
