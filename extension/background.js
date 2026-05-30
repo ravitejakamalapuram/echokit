@@ -339,7 +339,7 @@ async function pushTabMeta(tabId, cachedInteractions = null) {
   if (pushInFlight.has(tabId)) {
     dbg('[EchoKit] Push already in flight for tab', tabId, '— waiting');
     await pushInFlight.get(tabId);
-    return;
+    // Continue executing instead of returning early so the *new* state is pushed!
   }
 
   const pushPromise = (async () => {
