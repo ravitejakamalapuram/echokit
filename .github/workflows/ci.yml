@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   ci:
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-ci.yml@v1.1.1
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-ci.yml@v1.1.4
     with:
       extension-dir: 'extension'
       run-lint: true
