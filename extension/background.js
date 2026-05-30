@@ -223,7 +223,7 @@ async function isLicenseValid(key) {
   // Try cached server result.
   try {
     const cached = (await chrome.storage.local.get(LICENSE_CACHE_KEY))[LICENSE_CACHE_KEY];
-    if (cached && cached.key === key && Date.now() - cached.ts < LICENSE_CACHE_TTL_MS) {
+    if (cached && cached.key === key && Date.now() - cached.ts < _LICENSE_CACHE_TTL_MS) {
       return !!cached.valid;
     }
   } catch {}
