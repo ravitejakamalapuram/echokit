@@ -177,7 +177,7 @@ jobs:
     if: needs.detect-changes.outputs.extension == 'true'
     permissions:
       contents: write
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@v1.1.8
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@v1.1.9
     with:
       extension-dir: 'extension'
       publish-target: 'default'
