@@ -210,8 +210,8 @@ export const INTERACTION_COLUMNS = {
         const safeId = escapeHtml(i.id);
 
         return `<div class="ek-actions">` +
-          `<button class="ek-icon-btn" data-action="edit" data-id="${safeId}" title="Edit">${editIcon}</button>` +
-          `<button class="ek-icon-btn" data-action="delete" data-id="${safeId}" title="Delete">${deleteIcon}</button>` +
+          `<button class="ek-icon-btn" data-action="edit" data-id="${safeId}" title="Edit" aria-label="Edit API">${editIcon}</button>` +
+          `<button class="ek-icon-btn" data-action="delete" data-id="${safeId}" title="Delete" aria-label="Delete API">${deleteIcon}</button>` +
           `<button class="ek-icon-btn ${isBlocked ? 'on' : ''}" ` +
           `data-action="toggle-block" data-id="${safeId}" ` +
           `title="${isBlocked ? 'Blocked' : 'Block'}" ` +
