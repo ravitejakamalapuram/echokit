@@ -1,3 +1,6 @@
 ## 2025-02-17 - O(N²) Performance Bottleneck in Conflict Resolution
 **Learning:** Filtering arrays during rendering by `.filter(x => x.hash === i.hash).length` to count conflicts within mapping loops such as `renderRow` creates an O(N²) performance bottleneck, slowing down UI rendering.
 **Action:** Use a `WeakMap` cached mechanism to pre-compute counts using a `Map` the first time an array is passed, then return counts from the cache to achieve O(N) performance overall and O(1) inside loops.
+## 2025-02-18 - Optimized conflict resolution using WeakMap Grouping
+**Learning:** We replaced an O(N) array filter in `extension/shared/app.js` using `.filter` for hash resolution with an O(1) WeakMap group cache mechanism inside `extension/shared/interaction-helpers.js`, which gives a performance improvement without introducing complexity. This correctly implements the previous learning without using array filtering for conflict arrays.
+**Action:** When finding cases of array filtering matching inside the render cycle, ensure the matching groups are precomputed and cached by reference if possible using a `WeakMap`. This caching helps avoid repeated linear scans of arrays, significantly reducing rendering time and achieving O(1) matching.
