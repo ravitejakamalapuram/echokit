@@ -133,6 +133,7 @@ export function getModeBadgeText(mode) {
 }
 
 const conflictCountCache = new WeakMap();
+const conflictElementsCache = new WeakMap();
 
 function getHashCounts(allInteractions) {
   let counts = conflictCountCache.get(allInteractions);
@@ -145,6 +146,22 @@ function getHashCounts(allInteractions) {
     conflictCountCache.set(allInteractions, counts);
   }
   return counts;
+}
+
+function getHashElements(allInteractions) {
+  let elements = conflictElementsCache.get(allInteractions);
+  if (!elements) {
+    elements = new Map();
+    for (let i = 0; i < allInteractions.length; i++) {
+      const h = allInteractions[i].hash;
+      if (h) {
+        if (!elements.has(h)) elements.set(h, []);
+        elements.get(h).push(allInteractions[i]);
+      }
+    }
+    conflictElementsCache.set(allInteractions, elements);
+  }
+  return elements;
 }
 
 /**
@@ -168,6 +185,18 @@ export function hasConflict(interaction, allInteractions) {
 export function getConflictCount(interaction, allInteractions) {
   if (!interaction || !interaction.hash || !allInteractions) return 0;
   return getHashCounts(allInteractions).get(interaction.hash) || 0;
+}
+
+/**
+ * Get all conflicting versions.
+ *
+ * @param {Object} interaction - Interaction to check
+ * @param {Array} allInteractions - All interactions to compare against
+ * @returns {Array} Array of conflicting interactions
+ */
+export function getConflicts(interaction, allInteractions) {
+  if (!interaction || !interaction.hash || !allInteractions) return [];
+  return getHashElements(allInteractions).get(interaction.hash) || [];
 }
 
 /**
