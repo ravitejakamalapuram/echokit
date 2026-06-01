@@ -486,14 +486,14 @@ function renderHeader() {
           <span class="ek-switch-label">CORS</span>
         </label>
         <button class="ek-btn ek-btn-ghost ek-btn-icon ${state.waterfall ? 'active' : ''}" data-action="toggle-waterfall"
-          title="Toggle network waterfall view" data-testid="waterfall-toggle-btn" aria-label="Toggle network waterfall view">
+          title="Toggle network waterfall view" data-testid="waterfall-toggle-btn" aria-label="Toggle network waterfall view" aria-pressed="${state.waterfall ? 'true' : 'false'}">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
         </button>
         <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
         </button>
         <div class="ek-menu">
-          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu">
+          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu" aria-expanded="${!!state.menuOpen}">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
           </button>
         </div>
@@ -973,7 +973,8 @@ function renderAdvancedToolbar() {
                spellcheck="false"/>
         <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
-                data-testid="toggle-advanced-filters">
+                data-testid="toggle-advanced-filters"
+                aria-expanded="${!!state.advancedFilterOpen}">
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
