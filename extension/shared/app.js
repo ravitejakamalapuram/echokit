@@ -3078,88 +3078,77 @@ function filteredInteractions() {
   const features = getFeatures();
   let results = state.interactions;
 
-  // PHASE 1: Method filter
-  if (features.multiSelect && state.filters.methods.length > 0) {
-    results = results.filter(i => state.filters.methods.includes(i.method));
-  } else if (state.methodFilter) {
-    // Popup mode: single-select (backward compat)
-    results = results.filter(i => i.method === state.methodFilter);
-  }
-
-  // PHASE 2: Status filter
-  if (features.multiSelect && state.filters.statusCodes.length > 0) {
-    results = results.filter(i => matchesStatusFilter(i.responseStatus, state.filters.statusCodes));
-  } else if (state.statusFilter != null) {
-    // Popup mode: single-select (backward compat)
-    const filterFn = (i) => {
-      const bucket = String(Math.floor((i.responseStatus || 0) / 100));
-      if (state.statusFilter === '0') return (i.responseStatus || 0) === 0;
-      return bucket === state.statusFilter;
-    };
-    results = results.filter(filterFn);
-  }
-
-  // PHASE 3: URL search (both modes)
   const q = state.search.trim().toLowerCase();
-  if (q) {
-    results = results.filter(i => i.url.toLowerCase().includes(q));
-  }
 
-  // PHASE 4: Body search (DevTools only)
-  if (features.bodySearch) {
-    if (state.filters.requestBodyContains) {
-      const query = state.filters.requestBodyContains.toLowerCase();
-      results = results.filter(i => searchBodyContent(i.requestBody, query));
-    }
+  // Pre-compute conditions that don't depend on individual interactions
+  const hasMethodFilter = features.multiSelect && state.filters.methods.length > 0;
+  const hasLegacyMethodFilter = !hasMethodFilter && !!state.methodFilter;
+  const hasStatusFilter = features.multiSelect && state.filters.statusCodes.length > 0;
+  const hasLegacyStatusFilter = !hasStatusFilter && state.statusFilter != null;
+  const hasUrlSearch = !!q;
+  const hasReqBodyFilter = features.bodySearch && !!state.filters.requestBodyContains;
+  const reqBodyQuery = hasReqBodyFilter ? state.filters.requestBodyContains.toLowerCase() : null;
+  const hasResBodyFilter = features.bodySearch && !!state.filters.responseBodyContains;
+  const resBodyQuery = hasResBodyFilter ? state.filters.responseBodyContains.toLowerCase() : null;
+  const hasReqHeaderFilter = features.headerSearch && (state.filters.requestHeader.name || state.filters.requestHeader.value);
+  const hasResHeaderFilter = features.headerSearch && (state.filters.responseHeader.name || state.filters.responseHeader.value);
+  const hasMockFilter = state.filters.mockEnabled !== null;
+  const hasBlockedFilter = state.filters.blocked !== null;
+  const hasNotesFilter = state.filters.hasNotes !== null;
+  const hasSourceFilters = features.sourceFilters &&
+    (!state.filters.sources.thisTab || !state.filters.sources.otherTabs ||
+     !state.filters.sources.closedTabs || !state.filters.sources.imported);
 
-    if (state.filters.responseBodyContains) {
-      const query = state.filters.responseBodyContains.toLowerCase();
-      results = results.filter(i => searchBodyContent(i.responseBody, query));
-    }
-  }
+  const hasAnyFilter = hasMethodFilter || hasLegacyMethodFilter || hasStatusFilter || hasLegacyStatusFilter ||
+    hasUrlSearch || hasReqBodyFilter || hasResBodyFilter || hasReqHeaderFilter || hasResHeaderFilter ||
+    hasMockFilter || hasBlockedFilter || hasNotesFilter || hasSourceFilters;
 
-  // PHASE 5: Header search (DevTools only)
-  if (features.headerSearch) {
-    if (state.filters.requestHeader.name || state.filters.requestHeader.value) {
-      results = results.filter(i =>
-        searchHeaders(
-          i.requestHeaders,
-          state.filters.requestHeader.name,
-          state.filters.requestHeader.value
-        )
-      );
-    }
-
-    if (state.filters.responseHeader.name || state.filters.responseHeader.value) {
-      results = results.filter(i =>
-        searchHeaders(
-          i.responseHeaders,
-          state.filters.responseHeader.name,
-          state.filters.responseHeader.value
-        )
-      );
-    }
-  }
-
-  // PHASE 6: Boolean filters (DevTools only)
-  if (state.filters.mockEnabled !== null) {
-    results = results.filter(i => i.mockEnabled === state.filters.mockEnabled);
-  }
-  if (state.filters.blocked !== null) {
-    results = results.filter(i => i.blocked === state.filters.blocked);
-  }
-  if (state.filters.hasNotes !== null) {
-    results = results.filter(i => state.filters.hasNotes ? (i.notes && i.notes.trim()) : !i.notes);
-  }
-
-  // PHASE 6.5: Source filters (DevTools only) - NEW
-  if (features.sourceFilters) {
+  // Single pass filter O(N) instead of chaining multiple filters O(K*N)
+  if (hasAnyFilter) {
     results = results.filter(i => {
-      const source = classifySource(i, state.tabId);
-      if (source === 'this-tab') return state.filters.sources.thisTab;
-      if (source === 'other-tab') return state.filters.sources.otherTabs;
-      if (source === 'closed-tab') return state.filters.sources.closedTabs;
-      if (source === 'imported') return state.filters.sources.imported;
+      // PHASE 1: Method filter
+      if (hasMethodFilter && !state.filters.methods.includes(i.method)) return false;
+      if (hasLegacyMethodFilter && i.method !== state.methodFilter) return false;
+
+      // PHASE 2: Status filter
+      if (hasStatusFilter && !matchesStatusFilter(i.responseStatus, state.filters.statusCodes)) return false;
+      if (hasLegacyStatusFilter) {
+        const bucket = String(Math.floor((i.responseStatus || 0) / 100));
+        if (state.statusFilter === '0') {
+          if ((i.responseStatus || 0) !== 0) return false;
+        } else {
+          if (bucket !== state.statusFilter) return false;
+        }
+      }
+
+      // PHASE 3: URL search
+      if (hasUrlSearch && !i.url.toLowerCase().includes(q)) return false;
+
+      // PHASE 4: Body search
+      if (hasReqBodyFilter && !searchBodyContent(i.requestBody, reqBodyQuery)) return false;
+      if (hasResBodyFilter && !searchBodyContent(i.responseBody, resBodyQuery)) return false;
+
+      // PHASE 5: Header search
+      if (hasReqHeaderFilter && !searchHeaders(i.requestHeaders, state.filters.requestHeader.name, state.filters.requestHeader.value)) return false;
+      if (hasResHeaderFilter && !searchHeaders(i.responseHeaders, state.filters.responseHeader.name, state.filters.responseHeader.value)) return false;
+
+      // PHASE 6: Boolean filters
+      if (hasMockFilter && i.mockEnabled !== state.filters.mockEnabled) return false;
+      if (hasBlockedFilter && i.blocked !== state.filters.blocked) return false;
+      if (hasNotesFilter) {
+        const hasNotes = !!(i.notes && i.notes.trim());
+        if (state.filters.hasNotes !== hasNotes) return false;
+      }
+
+      // PHASE 6.5: Source filters
+      if (hasSourceFilters) {
+        const source = classifySource(i, state.tabId);
+        if (source === 'this-tab' && !state.filters.sources.thisTab) return false;
+        if (source === 'other-tab' && !state.filters.sources.otherTabs) return false;
+        if (source === 'closed-tab' && !state.filters.sources.closedTabs) return false;
+        if (source === 'imported' && !state.filters.sources.imported) return false;
+      }
+
       return true;
     });
   }
@@ -3169,6 +3158,9 @@ function filteredInteractions() {
     results = sortInteractions(results, state.sortBy, state.sortOrder);
   } else {
     // Popup mode: simple timestamp DESC
+    if (results === state.interactions) {
+      results = [...results]; // Avoid mutating state.interactions
+    }
     results.sort((a, b) => b.timestamp - a.timestamp);
   }
 
