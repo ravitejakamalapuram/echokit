@@ -9,18 +9,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Planned
+- LemonSqueezy payment integration (Merchant of Record, global tax handling)
+- Mint real license keys for paying customers via payment webhook
+- Refactor `shared/app.js` (~2800 lines) into focused modules: `header.js`, `menu.js`, `settings-dialog.js`, `request-detail.js`, `waterfall.js` (Issue [#8](https://github.com/ravitejakamalapuram/echokit/issues/8))
+
+---
+
+## [1.11.0] - 2026-06-02
+
 ### Changed
 - **Temporary Free Pro Access** — All Pro features unlocked for all users during LemonSqueezy payment integration transition
   - License validation temporarily bypassed in `getProStatus()`
   - Settings UI updated to show "EchoKit Pro (Free Access)" confirmation instead of license key entry
   - Pricing page updated with free access banner and redirects to Chrome Web Store
   - This is a temporary measure until LemonSqueezy merchant verification completes
-
-### Planned
-- LemonSqueezy payment integration (Merchant of Record, global tax handling)
-- Mint real license keys for paying customers via payment webhook
-- Upload v1.10.3 release bundle to Chrome Web Store
-- Refactor `shared/app.js` (~2800 lines) into focused modules: `header.js`, `menu.js`, `settings-dialog.js`, `request-detail.js`, `waterfall.js` (Issue [#8](https://github.com/ravitejakamalapuram/echokit/issues/8))
 
 ---
 
@@ -153,7 +156,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/ravitejakamalapuram/echokit/compare/v1.10.3...HEAD
+[Unreleased]: https://github.com/ravitejakamalapuram/echokit/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/ravitejakamalapuram/echokit/compare/v1.10.3...v1.11.0
 [1.10.3]: https://github.com/ravitejakamalapuram/echokit/compare/v1.6.0...v1.10.3
 [1.6.0]: https://github.com/ravitejakamalapuram/echokit/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/ravitejakamalapuram/echokit/compare/v1.4.0...v1.5.0
