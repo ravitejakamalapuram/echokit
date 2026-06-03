@@ -1,25 +1,48 @@
 /**
- * Sanitize HTML to prevent XSS.
- * This uses a basic fallback sanitizer due to limitations on injecting large third-party libraries (< 50 lines).
- * For a complete solution, a library like DOMPurify is recommended.
+ * Sanitize HTML to prevent XSS using DOM-based parsing.
+ * Creates a temporary DOM element, parses HTML, and sanitizes by removing dangerous elements and attributes.
+ * This is safer than regex-based sanitization which can be bypassed.
  *
  * @param {string} dirty - Dirty HTML string
  * @returns {string} Sanitized HTML string
  */
 export function sanitizeHTML(dirty) {
   if (!dirty) return '';
-  // Fallback for non-browser environments or when DOMPurify isn't available
-  // It removes script tags and on* attributes.
-  let safe = String(dirty);
 
-  // Remove <script> tags and content
-  safe = safe.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  const template = document.createElement('template');
+  template.innerHTML = dirty.trim();
 
-  // Remove on* event handlers (e.g. onclick, onerror)
-  safe = safe.replace(/(\s)(on\w+)=['"]?[^>]*?['"]?(?=>|\s)/gi, '$1');
+  const fragment = template.content;
 
-  // Remove javascript: and data: URIs in href and src
-  safe = safe.replace(/(href|src)=['"]?(javascript|data):[^>]*?['"]?(?=>|\s)/gi, '$1="#"');
+  // Remove all script tags
+  fragment.querySelectorAll('script').forEach(el => el.remove());
 
-  return safe;
+  // Remove all elements with dangerous tags
+  const dangerousTags = ['iframe', 'object', 'embed', 'link', 'style', 'base', 'meta'];
+  dangerousTags.forEach(tag => {
+    fragment.querySelectorAll(tag).forEach(el => el.remove());
+  });
+
+  // Remove all dangerous attributes from all elements
+  const dangerousAttributes = /^on|^formaction$|^form$|^xmlns$/i;
+  fragment.querySelectorAll('*').forEach(el => {
+    Array.from(el.attributes).forEach(attr => {
+      // Remove event handlers (onclick, onerror, etc.)
+      if (dangerousAttributes.test(attr.name)) {
+        el.removeAttribute(attr.name);
+      }
+      // Sanitize href and src to remove javascript: and data: URIs
+      if ((attr.name === 'href' || attr.name === 'src') && attr.value) {
+        const lower = attr.value.toLowerCase().trim();
+        if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+          el.setAttribute(attr.name, '#');
+        }
+      }
+    });
+  });
+
+  // Create a div to serialize the sanitized content
+  const div = document.createElement('div');
+  div.appendChild(fragment);
+  return div.innerHTML;
 }
