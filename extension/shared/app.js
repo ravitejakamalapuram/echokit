@@ -1,6 +1,7 @@
 // EchoKit — shared UI module.
 // Used by both popup + devtools panel. Mode-switches layout, preserves scroll & cursor.
 
+import { sanitizeHTML } from './sanitize.js';
 import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
 import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
@@ -356,7 +357,7 @@ function render() {
   const safeMode = state.mode === 'devtools' ? 'devtools' : 'popup';
   const appCls = `ek-app ${safeMode} ${state.detailOpen && isPopup ? 'detail-open' : ''}`;
 
-  root.innerHTML = `
+  root.innerHTML = sanitizeHTML(`
     <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
       ${renderToolbar()}
@@ -371,7 +372,7 @@ function render() {
       </div>
       ${renderFooter(list.length)}
     </div>
-  `;
+  `);
 
   const appEl = root.querySelector('[data-testid="echokit-app"]');
   if (appEl) {
@@ -706,7 +707,7 @@ function onImportOpenAPI() {
 function showProGate(feature) {
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal ek-pro-gate" data-testid="pro-gate-modal">
       <div class="ek-pro-badge">PRO</div>
       <div class="ek-modal-title">${escapeHtml(feature)}</div>
@@ -716,7 +717,7 @@ function showProGate(feature) {
         <button class="ek-btn ek-btn-primary" data-a="upgrade" data-testid="pro-gate-upgrade-btn">Upgrade to Pro →</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="later"]').addEventListener('click', () => overlay.remove());
@@ -729,7 +730,7 @@ function showProGate(feature) {
 function showDevToolsGuide() {
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="devtools-guide-modal">
       <div class="ek-modal-title">⚙️ Advanced Settings in DevTools</div>
       <div style="margin:16px 0">
@@ -760,7 +761,7 @@ function showDevToolsGuide() {
         <button class="ek-btn ek-btn-primary" data-a="close">Got it!</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="close"]').addEventListener('click', () => overlay.remove());
@@ -820,7 +821,7 @@ function showPasteDialog(count, origin, payload) {
   overlay.className = 'ek-modal-overlay';
   const preview = Object.entries(payload.keys || {}).slice(0, 10).map(([k, v]) => `<div class="ek-kv-row"><span class="ek-tag" style="font-family:var(--font-mono)">${escapeHtml(k)}</span><span class="ek-subtle" style="font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(String(v).slice(0, 80))}</span><span></span></div>`).join('');
   const more = Object.keys(payload.keys || {}).length > 10 ? `<div class="ek-subtle">…and ${Object.keys(payload.keys).length - 10} more</div>` : '';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="paste-modal">
       <div class="ek-modal-title">Paste localStorage</div>
       <div class="ek-subtle">${escapeHtml(count)} keys · from <span class="ek-tag">${escapeHtml(origin)}</span> → into <span class="ek-tag">${escapeHtml(state.tab.host || 'active tab')}</span></div>
@@ -834,7 +835,7 @@ function showPasteDialog(count, origin, payload) {
         <button class="ek-btn ek-btn-primary" data-a="confirm" data-testid="paste-confirm">Apply</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
@@ -860,7 +861,7 @@ function showGistUploadDialog() {
   const lastToken = localStorage.getItem('ek_gist_token') || '';
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="gist-upload-modal">
       <div class="ek-modal-title">Share mocks via GitHub Gist</div>
       <div class="ek-subtle">Uploads your full mock set as a JSON file to a new gist. Teammates can import from the URL.</div>
@@ -879,7 +880,7 @@ function showGistUploadDialog() {
         <button class="ek-btn ek-btn-primary" data-a="upload" data-testid="gist-upload-confirm">Upload</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
@@ -902,7 +903,7 @@ function showGistUploadDialog() {
 function showGistImportDialog() {
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="gist-import-modal">
       <div class="ek-modal-title">Import mocks from Gist</div>
       <div class="ek-subtle">Paste a public gist URL or a raw file URL. No token needed for public gists.</div>
@@ -914,7 +915,7 @@ function showGistImportDialog() {
         <button class="ek-btn ek-btn-primary" data-a="import" data-testid="gist-import-confirm">Import</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('[data-a="cancel"]').addEventListener('click', () => overlay.remove());
@@ -2322,10 +2323,10 @@ function softRenderList() {
   if (isPopup || !features.sortableColumns) {
     // Grouped list view
     const grouped = groupByDomain(items);
-    list.innerHTML = items.length === 0 ? renderEmpty() : grouped.map(renderDomainGroup).join('');
+    list.innerHTML = items.length === 0 ? renderEmpty() : sanitizeHTML(grouped.map(renderDomainGroup).join(''));
   } else {
     // Table view
-    list.innerHTML = renderSortableTable(items);
+    list.innerHTML = sanitizeHTML(renderSortableTable(items));
   }
 
   list.scrollTop = scrollTop;
@@ -2445,7 +2446,7 @@ async function onExport() {
 function showImportDialog() {
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="import-modal">
       <div class="ek-modal-title">Import mocks</div>
       <div class="ek-subtle">Paste an EchoKit export JSON, or choose a file.</div>
@@ -2462,7 +2463,7 @@ function showImportDialog() {
         <button class="ek-btn ek-btn-primary" data-a="confirm" data-testid="import-confirm">Import</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   const fileInput = overlay.querySelector('input[type="file"]');
@@ -2979,7 +2980,7 @@ function showSettingsDialog() {
   const isDevTools = state.mode === 'devtools';
   const overlay = document.createElement('div');
   overlay.className = 'ek-modal-overlay';
-  overlay.innerHTML = `
+  overlay.innerHTML = sanitizeHTML(`
     <div class="ek-modal" data-testid="settings-modal">
       <div class="ek-modal-title">Settings</div>
       ${renderSettingsGeneral(s, isDevTools)}
@@ -2992,7 +2993,7 @@ function showSettingsDialog() {
         <button class="ek-btn ek-btn-primary" data-a="close">Done</button>
       </div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
 
   const reopen = () => { overlay.remove(); showSettingsDialog(); };
