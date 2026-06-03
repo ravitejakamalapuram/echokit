@@ -133,6 +133,7 @@ export function getModeBadgeText(mode) {
 }
 
 const conflictCountCache = new WeakMap();
+const conflictGroupCache = new WeakMap();
 
 function getHashCounts(allInteractions) {
   let counts = conflictCountCache.get(allInteractions);
@@ -145,6 +146,32 @@ function getHashCounts(allInteractions) {
     conflictCountCache.set(allInteractions, counts);
   }
   return counts;
+}
+
+/**
+ * Get all interactions that conflict with the given interaction.
+ *
+ * @param {Object} interaction - Interaction to check
+ * @param {Array} allInteractions - All interactions to compare against
+ * @returns {Array} List of conflicting interactions
+ */
+export function getConflicts(interaction, allInteractions) {
+  if (!interaction || !interaction.hash || !allInteractions) return [];
+
+  let groups = conflictGroupCache.get(allInteractions);
+  if (!groups) {
+    groups = new Map();
+    for (let i = 0; i < allInteractions.length; i++) {
+      const h = allInteractions[i].hash;
+      if (h) {
+        if (!groups.has(h)) groups.set(h, []);
+        groups.get(h).push(allInteractions[i]);
+      }
+    }
+    conflictGroupCache.set(allInteractions, groups);
+  }
+
+  return groups.get(interaction.hash) || [];
 }
 
 /**
