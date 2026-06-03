@@ -941,7 +941,7 @@ function renderToolbar() {
       <div class="ek-toolbar">
         <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
-          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}">${m}</button>`).join('')}
         </div>
         <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
           <option value="">status: all</option>
@@ -1411,8 +1411,8 @@ function renderRow(i) {
       ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions">×${versionCount}</span>` : ''}
       ${showBadge ? renderSourceBadge(i, state.tabId) : ''}
       <span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>
-      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"></button>
-      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">⊘</button>
+      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}" aria-pressed="${i.mockEnabled ? 'true' : 'false'}"></button>
+      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}" aria-pressed="${i.blocked ? 'true' : 'false'}">⊘</button>
     </div>
   `;
 }
@@ -1531,7 +1531,8 @@ function renderInteractionRow(i) {
                 data-id="${i.id}"
                 title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}"
                 data-testid="mock-toggle"
-                aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}">
+                aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"
+                aria-pressed="${i.mockEnabled ? 'true' : 'false'}">
           ${i.mockEnabled ? '✓' : '○'}
         </button>
         <button class="ek-icon-btn ${i.blocked ? 'on' : ''}"
@@ -1539,7 +1540,8 @@ function renderInteractionRow(i) {
                 data-id="${i.id}"
                 title="${i.blocked ? 'Blocked' : 'Block'}"
                 data-testid="block-btn"
-                aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">
+                aria-label="${i.blocked ? 'Unblock API' : 'Block API'}"
+                aria-pressed="${i.blocked ? 'true' : 'false'}">
           ⊘
         </button>
       </div>
