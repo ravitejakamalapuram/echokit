@@ -247,7 +247,7 @@ function applyTheme() {
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
  */
-function renderInteractionListNew() {
+function renderInteractionListNew(list) {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -324,8 +324,7 @@ function renderInteractionListNew() {
   }
 
   // Update layout with current data
-  const filtered = filteredInteractions();
-  layoutInstance.setInteractions(filtered);
+  layoutInstance.setInteractions(list);
   layoutInstance.setSearchTerm(state.search);
 
   if (state.mode === 'devtools' && layoutInstance.setSorting) {
@@ -350,6 +349,7 @@ function render() {
   const snapshot = snapshotUIState();
 
   const isPopup = state.mode === 'popup';
+  // ⚡ Bolt: Cache filtered array and pass down to prevent O(N) redundant filtering during render cycle
   const list = filteredInteractions();
   const selected = state.selectedId ? state.interactions.find(i => i.id === state.selectedId) : null;
   const conflicts = selected ? getConflicts(selected, state.interactions) : [];
@@ -360,7 +360,7 @@ function render() {
   root.innerHTML = sanitizeHTML(`
     <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
-      ${renderToolbar()}
+      ${renderToolbar(list)}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
           ${state.waterfall ? renderWaterfallNew(list, { selectedId: state.selectedId }) : ''}
@@ -384,7 +384,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew();
+    renderInteractionListNew(list);
   }
 
   bindEvents();
@@ -931,7 +931,7 @@ function showGistImportDialog() {
   });
 }
 
-function renderToolbar() {
+function renderToolbar(list) {
   const features = getFeatures();
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -955,11 +955,11 @@ function renderToolbar() {
     `;
   } else {
     // DEVTOOLS: Advanced toolbar with filter panel
-    return renderAdvancedToolbar();
+    return renderAdvancedToolbar(list);
   }
 }
 
-function renderAdvancedToolbar() {
+function renderAdvancedToolbar(list) {
   const features = getFeatures();
   const activeCount = getActiveFilterCount();
 
@@ -989,7 +989,7 @@ function renderAdvancedToolbar() {
       </div>
 
       ${state.advancedFilterOpen ? renderAdvancedFilterPanel() : ''}
-      ${features.filterChips ? renderFilterChips() : ''}
+      ${features.filterChips ? renderFilterChips(list) : ''}
     </div>
   `;
 }
@@ -1172,7 +1172,7 @@ function renderAdvancedFilterPanel() {
  *
  * @returns {string} An HTML snippet with the filter chips and summary counts, or an empty string when no filters are active.
  */
-function renderFilterChips() {
+function renderFilterChips(list) {
   const chips = [];
 
   // Method chips
@@ -1273,7 +1273,7 @@ function renderFilterChips() {
   if (chips.length === 0) return '';
 
   const count = chips.length;
-  const filteredCount = filteredInteractions().length;
+  const filteredCount = list.length;
   const totalCount = state.interactions.length;
 
   return `
