@@ -1494,7 +1494,7 @@ function renderSortableListHeader() {
 function renderInteractionRow(i) {
   const st = i.overrideStatus ?? i.responseStatus;
   const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
-  const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
+  const path = prettyUrl(i.url).path;
   const active = i.id === state.selectedId ? 'selected' : '';
   const method = (i.method || 'GET').toUpperCase();
   const features = getFeatures();
@@ -3235,9 +3235,22 @@ function groupByDomain(list) {
   }
   return [...map.entries()].map(([domain, items]) => ({ domain, items }));
 }
-function domainOf(url) { try { return new URL(url, location.href).host || '(local)'; } catch { return '(unknown)'; } }
-function prettyUrl(url) {
-  try { const u = new URL(url, location.href); return { path: u.pathname, query: u.search }; }
-  catch { return { path: url, query: '' }; }
+// ⚡ Bolt: Cache URL parsing to prevent O(N) performance bottleneck in rendering loops.
+// new URL() takes ~1-2ms per call, so mapping 1000 items creates noticeable lag.
+const urlCache = new Map();
+function getCachedUrl(url) {
+  if (urlCache.has(url)) return urlCache.get(url);
+  let res;
+  try {
+    const u = new URL(url, location.href);
+    res = { host: u.host || '(local)', path: u.pathname, query: u.search };
+  } catch {
+    res = { host: '(unknown)', path: url, query: '' };
+  }
+  if (urlCache.size > 5000) urlCache.clear();
+  urlCache.set(url, res);
+  return res;
 }
+function domainOf(url) { return getCachedUrl(url).host; }
+function prettyUrl(url) { return getCachedUrl(url); }
 // escapeHtml is defined at line 48 - removed duplicate declaration
