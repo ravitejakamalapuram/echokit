@@ -1,52 +1,5 @@
-UI Componentization: Single Source of Truth Architecture
-
-Problem Solved: Popup and DevTools had divergent code paths leading to different status colors, different rendering logic, and inevitable future bugs from maintaining 2 codebases.
-
-Solution: Architecturally impossible to diverge - all business logic flows through single source.
-
-New Architecture (5 Layers):
-- Layer 4: app.js Integration (+70 lines)
-- Layer 3: Layout Adaptors (323 lines)
-- Layer 2: Core Rendering (294 lines)
-- Layer 1: Column Config (210 lines)
-- Layer 0: Helper Functions (171 lines) - SINGLE SOURCE
-
-Files Created:
-1. extension/shared/interaction-helpers.js (171 lines) - Business logic
-2. extension/shared/columns.js (210 lines) - Column definitions
-3. extension/shared/interaction-renderer.js (294 lines) - HTML generation
-4. extension/shared/layouts.js (323 lines) - Event & state management
-5. tests/integration/ui-componentization.test.js (349 lines) - 34+ automated tests
-
-Files Modified:
-- extension/shared/app.js (+70 lines) - Integration layer
-
-Testing: 34+ Automated Tests - ALL PASSING
-
-Test coverage:
-- 6 helper function tests
-- 3 column configuration tests
-- 8 core rendering tests
-- 7 layout adaptor tests
-- Integration verification
-- Single source consistency enforced
-
-Run: node tests/integration/ui-componentization.test.js
-
-Guarantees:
-1. Impossible to diverge - All colors/formatting from ONE function
-2. Zero code duplication - Change once, updates everywhere
-3. Tested automatically - 34+ assertions enforce consistency
-4. Zero breaking changes - All existing features preserved
-
-Stats:
-- Code: 1,417 lines across 6 files
-- Docs: 1,800+ lines across 10 files
-- Tests: 34+ assertions, all passing
-- Breaking Changes: 0
-
-Ready to Merge:
-- All code complete
-- All tests passing
-- Fully documented
-- Manual browser testing pending (post-merge)
+🚨 Severity: HIGH
+💡 Vulnerability: Several innerHTML assignments in layouts.js and app.js were lacking the required sanitizeHTML wrapper, introducing a DOM XSS vulnerability where dynamically generated HTML (like interaction lists and code highlights) is rendered.
+🎯 Impact: An attacker could potentially inject malicious scripts that execute in the extension context via malformed interaction data or JSON payloads.
+🔧 Fix: Wrapped missing innerHTML assignments in app.js and layouts.js with sanitizeHTML, and imported it where missing.
+✅ Verification: Tested locally with 'pnpm test' and 'pnpm lint', verified innerHTML assignments across extension files using grep.
