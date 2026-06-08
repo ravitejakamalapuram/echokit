@@ -48,6 +48,20 @@ function getFeatures() {
   return FEATURES[state.mode] || FEATURES.popup;
 }
 
+// URL parsing cache to prevent O(N) performance bottleneck during rendering
+const urlCache = new Map();
+function getParsedUrl(url) {
+  if (urlCache.has(url)) return urlCache.get(url);
+  try {
+    const parsed = new URL(url, location.href);
+    urlCache.set(url, parsed);
+    return parsed;
+  } catch {
+    urlCache.set(url, null);
+    return null;
+  }
+}
+
 // Helper function to escape HTML to prevent XSS
 function escapeHtml(str) {
   if (str == null) return '';
@@ -1337,12 +1351,11 @@ function _renderWaterfall(interactions) {
 
         // Extract path from URL
         const path = (() => {
-          try {
-            const url = new URL(r.url);
+          const url = getParsedUrl(r.url);
+          if (url) {
             return url.pathname + (url.search ? '?' + url.search.slice(1, 20) + (url.search.length > 20 ? '...' : '') : '');
-          } catch {
-            return r.url;
           }
+          return r.url;
         })();
 
         // Show duration label only if bar is wide enough
@@ -1494,7 +1507,7 @@ function renderSortableListHeader() {
 function renderInteractionRow(i) {
   const st = i.overrideStatus ?? i.responseStatus;
   const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
-  const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
+  const path = (() => { const url = getParsedUrl(i.url); return url ? url.pathname : i.url; })();
   const active = i.id === state.selectedId ? 'selected' : '';
   const method = (i.method || 'GET').toUpperCase();
   const features = getFeatures();
@@ -3235,9 +3248,10 @@ function groupByDomain(list) {
   }
   return [...map.entries()].map(([domain, items]) => ({ domain, items }));
 }
-function domainOf(url) { try { return new URL(url, location.href).host || '(local)'; } catch { return '(unknown)'; } }
+function domainOf(url) { const u = getParsedUrl(url); return u ? (u.host || '(local)') : '(unknown)'; }
 function prettyUrl(url) {
-  try { const u = new URL(url, location.href); return { path: u.pathname, query: u.search }; }
-  catch { return { path: url, query: '' }; }
+  const u = getParsedUrl(url);
+  if (u) return { path: u.pathname, query: u.search };
+  return { path: url, query: '' };
 }
 // escapeHtml is defined at line 48 - removed duplicate declaration
