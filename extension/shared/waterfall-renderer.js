@@ -23,7 +23,8 @@ import {
   getTimingLabel,
   formatDuration,
   formatBytes,
-  calculateTimelineScale
+  calculateTimelineScale,
+  parseUrl
 } from './interaction-helpers.js';
 
 /**
@@ -226,8 +227,8 @@ export function renderTimingTooltip(interaction) {
  * @returns {string} Path + query (truncated)
  */
 function getPathFromUrl(url) {
-  try {
-    const parsed = new URL(url);
+  const parsed = parseUrl(url);
+  if (parsed) {
     const path = parsed.pathname;
     const query = parsed.search;
 
@@ -236,8 +237,8 @@ function getPathFromUrl(url) {
     }
 
     return path + query;
-  } catch {
-    // Fallback for invalid URLs
-    return url.length > 40 ? url.slice(0, 40) + '...' : url;
   }
+
+  // Fallback for invalid URLs
+  return url.length > 40 ? url.slice(0, 40) + '...' : url;
 }

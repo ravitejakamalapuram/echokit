@@ -98,6 +98,38 @@ export function formatTimestamp(timestamp) {
 }
 
 /**
+ * Global URL cache to prevent repetitive instantiation during rendering loops.
+ * Cleared periodically to prevent memory leaks.
+ */
+const urlCache = new Map();
+
+/**
+ * Parses a URL using the global cache for performance.
+ *
+ * @param {string} url - The URL string to parse
+ * @param {string} [base] - Base URL (optional)
+ * @returns {URL|null} Parsed URL object or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const cacheKey = base ? `${url}|${base}` : url;
+  if (urlCache.has(cacheKey)) return urlCache.get(cacheKey);
+
+  if (urlCache.size > 5000) {
+    urlCache.clear();
+  }
+
+  try {
+    const u = base !== undefined ? new URL(url, base) : new URL(url);
+    urlCache.set(cacheKey, u);
+    return u;
+  } catch {
+    urlCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+/**
  * Pretty-print URL (extract path and query).
  *
  * @param {string} url - Full URL
@@ -106,15 +138,14 @@ export function formatTimestamp(timestamp) {
  * @single-source-of-truth
  */
 export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+  const u = parseUrl(url);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
