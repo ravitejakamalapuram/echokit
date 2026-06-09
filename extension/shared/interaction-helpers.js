@@ -97,6 +97,41 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+// URL caching to prevent performance bottleneck during render loops
+const urlCache = new Map();
+const URL_CACHE_LIMIT = 1000;
+
+/**
+ * Parses a URL, using a cache to avoid O(N) performance bottleneck
+ * of `new URL()` inside loops.
+ *
+ * @param {string} url - The URL to parse
+ * @param {string} [base] - Optional base URL
+ * @returns {URL|null} Parsed URL object, or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const key = base ? `${url}::${base}` : url;
+
+  let parsed = urlCache.get(key);
+  if (parsed !== undefined) return parsed;
+
+  // Evict oldest entry if we exceed limit
+  if (urlCache.size >= URL_CACHE_LIMIT) {
+    const firstKey = urlCache.keys().next().value;
+    urlCache.delete(firstKey);
+  }
+
+  try {
+    parsed = base ? new URL(url, base) : new URL(url);
+  } catch (e) {
+    parsed = null;
+  }
+
+  urlCache.set(key, parsed);
+  return parsed;
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
@@ -106,15 +141,14 @@ export function formatTimestamp(timestamp) {
  * @single-source-of-truth
  */
 export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+  const u = parseUrl(url);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
