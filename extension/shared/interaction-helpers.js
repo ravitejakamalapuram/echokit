@@ -97,6 +97,37 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+const urlCache = new Map();
+const MAX_URL_CACHE_SIZE = 1000;
+
+/**
+ * Parse URL with memoization to prevent O(N) instantiations during rendering.
+ *
+ * @param {string} url - URL string to parse
+ * @param {string} [base] - Optional base URL
+ * @returns {URL|null} Parsed URL object or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const key = base ? `${url}|${base}` : url;
+  if (urlCache.has(key)) return urlCache.get(key);
+
+  try {
+    const parsed = base ? new URL(url, base) : new URL(url);
+
+    // Prevent memory leaks in long-running sessions
+    if (urlCache.size >= MAX_URL_CACHE_SIZE) {
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+
+    urlCache.set(key, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
@@ -106,15 +137,14 @@ export function formatTimestamp(timestamp) {
  * @single-source-of-truth
  */
 export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+  const u = parseUrl(url);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
