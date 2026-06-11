@@ -105,16 +105,44 @@ export function formatTimestamp(timestamp) {
  *
  * @single-source-of-truth
  */
-export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+const urlCache = new Map();
+const MAX_CACHE_SIZE = 1000;
+
+/**
+ * Parse and cache URL objects for performance in tight loops.
+ *
+ * @param {string} url - URL string
+ * @param {string} [base] - Optional base URL
+ * @returns {URL|null} Parsed URL object or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const key = base ? `${url}|${base}` : url;
+  let parsed = urlCache.get(key);
+
+  if (!parsed) {
+    try {
+      parsed = base ? new URL(url, base) : new URL(url);
+      if (urlCache.size >= MAX_CACHE_SIZE) {
+        urlCache.delete(urlCache.keys().next().value);
+      }
+      urlCache.set(key, parsed);
+    } catch {
+      return null;
+    }
+  }
+  return parsed;
+}
+
+export function prettyUrl(url, base) {
+  const u = parseUrl(url, base);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
