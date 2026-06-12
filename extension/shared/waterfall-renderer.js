@@ -23,7 +23,8 @@ import {
   getTimingLabel,
   formatDuration,
   formatBytes,
-  calculateTimelineScale
+  calculateTimelineScale,
+  parseUrl
 } from './interaction-helpers.js';
 
 /**
@@ -227,7 +228,7 @@ export function renderTimingTooltip(interaction) {
  */
 function getPathFromUrl(url) {
   try {
-    const parsed = new URL(url);
+    const parsed = parseUrl(url);
     const path = parsed.pathname;
     const query = parsed.search;
 
