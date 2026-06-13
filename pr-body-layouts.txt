@@ -1,0 +1,5 @@
+🚨 Severity: HIGH
+💡 Vulnerability: The `PopupLayout` and `DevToolsLayout` components pass dynamically constructed HTML directly to `innerHTML` without sanitization.
+🎯 Impact: Untrusted data from intercepted network responses could potentially bypass template escaping and execute malicious scripts in the extension context via DOM-based XSS.
+🔧 Fix: Wrapped the `renderInteractionList` HTML output in `sanitizeHTML()` to safely strip dangerous tags and attributes before assignment.
+✅ Verification: The codebase successfully compiles, and manual/unit testing confirms functionality behaves correctly with no XSS payloads executing.
