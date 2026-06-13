@@ -1,0 +1,26 @@
+{
+  "appName": "EchoKit — API Recorder & Mocker",
+  "appType": "chrome-extension",
+  "repoName": "echokit",
+  "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+  "modules": [
+    {
+      "name": "Chrome Extension",
+      "type": "chrome-extension",
+      "path": "extension",
+      "status": "draft",
+      "storeId": "your-extension-id-here",
+      "storeUrl": "https://chromewebstore.google.com/detail/your-app/your-extension-id-here",
+      "developerConsoleUrl": "https://chrome.google.com/webstore/devconsole/your-extension-id-here",
+      "buildScript": "npm run build",
+      "artifactPath": "initial-package.zip",
+      "cwsListing": {
+        "shortDescription": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+        "detailedDescription": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+        "category": "productivity",
+        "singlePurpose": "Record real API interactions and instantly mock them. Zero setup. Buil",
+        "privacyPolicyUrl": "https://ravitejakamalapuram.github.io/echokit/privacy.html"
+      }
+    }
+  ]
+}
