@@ -15,6 +15,7 @@ import {
   sortInteractions,
   filterInteractions
 } from './interaction-renderer.js';
+import { sanitizeHTML } from './sanitize.js';
 
 /**
  * Base Layout class with common functionality.
@@ -129,7 +130,7 @@ export class PopupLayout extends BaseLayout {
       { groupByDomain: this.state.groupByDomain }
     );
 
-    this.container.innerHTML = html;
+    this.container.innerHTML = sanitizeHTML(html);
     this.attachEventListeners();
   }
 
@@ -221,7 +222,7 @@ export class DevToolsLayout extends BaseLayout {
       }
     );
 
-    this.container.innerHTML = html;
+    this.container.innerHTML = sanitizeHTML(html);
     this.attachEventListeners();
   }
 
