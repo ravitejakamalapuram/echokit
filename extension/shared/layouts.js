@@ -11,6 +11,10 @@
  */
 
 import {
+  sanitizeHTML
+} from './sanitize.js';
+
+import {
   renderInteractionList,
   sortInteractions,
   filterInteractions
@@ -129,7 +133,7 @@ export class PopupLayout extends BaseLayout {
       { groupByDomain: this.state.groupByDomain }
     );
 
-    this.container.innerHTML = html;
+    this.container.innerHTML = sanitizeHTML(html);
     this.attachEventListeners();
   }
 
@@ -221,7 +225,7 @@ export class DevToolsLayout extends BaseLayout {
       }
     );
 
-    this.container.innerHTML = html;
+    this.container.innerHTML = sanitizeHTML(html);
     this.attachEventListeners();
   }
 
