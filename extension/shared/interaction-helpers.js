@@ -97,6 +97,42 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+const urlCache = new Map();
+const MAX_URL_CACHE_SIZE = 1000;
+
+/**
+ * Parse URL and cache the result.
+ * WARNING: The returned URL object MUST NOT be mutated, as it is shared
+ * across requests. Mutating it will cause cross-request corruption.
+ * If mutation is necessary, safely clone the cached URL first.
+ *
+ * @param {string} urlStr - The URL string to parse
+ * @param {string} [base] - Optional base URL
+ * @returns {URL|null} Parsed URL object or null if invalid
+ */
+export function parseUrl(urlStr, base) {
+  const cacheKey = base ? `${urlStr}|${base}` : urlStr;
+
+  if (urlCache.has(cacheKey)) {
+    return urlCache.get(cacheKey);
+  }
+
+  let parsed;
+  try {
+    parsed = base ? new URL(urlStr, base) : new URL(urlStr);
+  } catch (e) {
+    parsed = null;
+  }
+
+  if (urlCache.size >= MAX_URL_CACHE_SIZE) {
+    const firstKey = urlCache.keys().next().value;
+    urlCache.delete(firstKey);
+  }
+
+  urlCache.set(cacheKey, parsed);
+  return parsed;
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
@@ -106,15 +142,14 @@ export function formatTimestamp(timestamp) {
  * @single-source-of-truth
  */
 export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+  const u = parseUrl(url);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
