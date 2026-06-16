@@ -3,9 +3,24 @@
 
 'use strict';
 
+const urlCache = new Map();
+function parseUrlCached(url, base) {
+  if (!url) return null;
+  const key = base ? url + '|' + base : url;
+  if (urlCache.has(key)) return urlCache.get(key);
+  try {
+    const parsed = base ? new URL(url, base) : new URL(url);
+    if (urlCache.size >= 1000) urlCache.delete(urlCache.keys().next().value);
+    urlCache.set(key, parsed);
+    return parsed;
+  } catch { return null; }
+}
+
 function normalizeUrl(url) {
   try {
-    const u = new URL(url, 'http://_/');
+    const cached = parseUrlCached(url, 'http://_/');
+    if (!cached) throw new Error();
+    const u = new URL(cached.href);
     const params = [...u.searchParams.entries()].sort((a, b) =>
       a[0] === b[0] ? (a[1] < b[1] ? -1 : 1) : a[0] < b[0] ? -1 : 1
     );
@@ -19,7 +34,12 @@ function normalizeUrl(url) {
 
 function stripQuery(url) {
   try {
-    const u = new URL(url, 'http://_/'); u.search = ''; u.hash = ''; return u.toString();
+    const cached = parseUrlCached(url, 'http://_/');
+    if (!cached) throw new Error();
+    const u = new URL(cached.href);
+    u.search = '';
+    u.hash = '';
+    return u.toString();
   } catch { return String(url); }
 }
 

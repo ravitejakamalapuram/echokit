@@ -7,20 +7,31 @@
 // to injected.js. The only difference: injected.js uses location.href as
 // the base (page context), while this uses a configurable base parameter.
 
+import { parseUrl } from './interaction-helpers.js';
+
 export function normalizeUrl(url, base) {
   try {
-    const u = new URL(url, base || 'http://local.local');
-    const params = [...u.searchParams.entries()].sort((a, b) =>
+    const u = parseUrl(url, base || 'http://local.local');
+    if (!u) throw new Error();
+    const cloned = new URL(u.href);
+    const params = [...cloned.searchParams.entries()].sort((a, b) =>
       a[0] === b[0] ? (a[1] < b[1] ? -1 : 1) : a[0] < b[0] ? -1 : 1
     );
-    u.search = params.length ? '?' + params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
-    u.hash = '';
-    return u.toString();
+    cloned.search = params.length ? '?' + params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+    cloned.hash = '';
+    return cloned.toString();
   } catch { return String(url); }
 }
 
 export function stripQuery(url) {
-  try { const u = new URL(url, 'http://local.local'); u.search = ''; u.hash = ''; return u.toString(); }
+  try {
+    const u = parseUrl(url, 'http://local.local');
+    if (!u) throw new Error();
+    const cloned = new URL(u.href);
+    cloned.search = '';
+    cloned.hash = '';
+    return cloned.toString();
+  }
   catch { return String(url); }
 }
 
@@ -67,7 +78,8 @@ export function parseGraphQL(body, url) {
   }
   // Also handle GET ?query=... style
   try {
-    const u = new URL(url, 'http://local.local');
+    const u = parseUrl(url, 'http://local.local');
+    if (!u) throw new Error();
     const q = u.searchParams.get('query');
     if (q) return {
       operationName: u.searchParams.get('operationName') || extractOpName(q) || '',

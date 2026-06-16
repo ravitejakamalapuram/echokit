@@ -177,9 +177,24 @@ class MockEventSource {
   // shared/matcher.js MUST be manually mirrored here. The only difference:
   // this uses location.href as the base (page context), while shared/matcher.js
   // takes a configurable base parameter.
+  const urlCache = new Map();
+  function parseUrlCached(url, base) {
+    if (!url) return null;
+    const key = base ? url + '|' + base : url;
+    if (urlCache.has(key)) return urlCache.get(key);
+    try {
+      const parsed = base ? new URL(url, base) : new URL(url);
+      if (urlCache.size >= 1000) urlCache.delete(urlCache.keys().next().value);
+      urlCache.set(key, parsed);
+      return parsed;
+    } catch { return null; }
+  }
+
   function normalizeUrl(url) {
     try {
-      const u = new URL(url, location.href);
+      const cached = parseUrlCached(url, location.href);
+      if (!cached) throw new Error();
+      const u = new URL(cached.href);
       const params = [...u.searchParams.entries()].sort((a, b) =>
         a[0] === b[0] ? (a[1] < b[1] ? -1 : 1) : a[0] < b[0] ? -1 : 1
       );
@@ -190,7 +205,12 @@ class MockEventSource {
   }
   function stripQuery(url) {
     try {
-      const u = new URL(url, location.href); u.search = ''; u.hash = ''; return u.toString();
+      const cached = parseUrlCached(url, location.href);
+      if (!cached) throw new Error();
+      const u = new URL(cached.href);
+      u.search = '';
+      u.hash = '';
+      return u.toString();
     } catch { return String(url); }
   }
   function stableStringify(v) {
@@ -252,7 +272,8 @@ class MockEventSource {
       };
     }
     try {
-      const u = new URL(url, location.href);
+      const u = parseUrlCached(url, location.href);
+      if (!u) throw new Error();
       const q = u.searchParams.get('query');
       if (q) return {
         operationName: u.searchParams.get('operationName') || extractOpName(q) || '',
