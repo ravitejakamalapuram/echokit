@@ -97,24 +97,62 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+const urlCache = new Map();
+const MAX_URL_CACHE_SIZE = 1000;
+
+/**
+ * Parse URL with caching to prevent O(N) allocation bottleneck inside tight loops.
+ * WARNING: Do not mutate the returned URL object directly (e.g. parsed.search = '')
+ * to prevent cross-request data corruption. Clone it if mutation is necessary.
+ *
+ * @param {string} url - URL string
+ * @param {string} [base] - Base URL (e.g. location.href) for relative URLs
+ * @returns {URL|null} Parsed URL object or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const key = base ? `${url}|${base}` : url;
+
+  if (urlCache.has(key)) {
+    // Basic LRU-like behavior: bump to latest on access
+    const val = urlCache.get(key);
+    urlCache.delete(key);
+    urlCache.set(key, val);
+    return val;
+  }
+
+  try {
+    const parsed = base ? new URL(url, base) : new URL(url);
+    if (urlCache.size >= MAX_URL_CACHE_SIZE) {
+      // Remove oldest entry
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+    urlCache.set(key, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
  * @param {string} url - Full URL
+ * @param {string} [base] - Base URL (e.g. location.href) for relative URLs
  * @returns {{path: string, query: string}} Path and query parts
  *
  * @single-source-of-truth
  */
-export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+export function prettyUrl(url, base) {
+  const u = parseUrl(url, base);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
