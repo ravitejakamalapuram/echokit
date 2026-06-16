@@ -237,8 +237,7 @@ function getPathFromUrl(url) {
     }
 
     return path + query;
-  } catch {
-    // Fallback for invalid URLs
-    return url.length > 40 ? url.slice(0, 40) + '...' : url;
   }
+  // Fallback for invalid URLs
+  return url.length > 40 ? url.slice(0, 40) + '...' : url;
 }
