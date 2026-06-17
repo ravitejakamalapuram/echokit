@@ -675,7 +675,7 @@ def main():
                 r2 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_second_call_mocked', r2 == 202, f'status={r2}')
                 # Third call — mock exhausted, real server responds (200)
-                time.sleep(0.2)
+                time.sleep(0.5)
                 r3 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_third_call_passthrough', r3 == 200, f'status={r3}')
                 sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
