@@ -941,7 +941,7 @@ function renderToolbar() {
       <div class="ek-toolbar">
         <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
-          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}" aria-label="Filter by ${m} method" title="Filter by ${m} method">${m}</button>`).join('')}
         </div>
         <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
           <option value="">status: all</option>
@@ -1183,6 +1183,7 @@ function renderFilterChips() {
             data-type="method"
             data-value="${m}"
             data-testid="chip-method-${m.toLowerCase()}"
+            title="Remove method filter ${m}"
             aria-label="Remove method filter ${m}">
         × method:${m}
       </button>
@@ -1196,6 +1197,7 @@ function renderFilterChips() {
             data-action="remove-filter"
             data-type="status"
             data-value="${s}"
+            title="Remove status filter ${s}"
             aria-label="Remove status filter ${s}">
         × status:${s}
       </button>
@@ -1208,6 +1210,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-body"
+            title="Remove request body filter"
             aria-label="Remove request body filter">
         × request:"${escapeHtml(state.filters.requestBodyContains.slice(0, 20))}"
       </button>
@@ -1219,6 +1222,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-body"
+            title="Remove response body filter"
             aria-label="Remove response body filter">
         × response:"${escapeHtml(state.filters.responseBodyContains.slice(0, 20))}"
       </button>
@@ -1231,6 +1235,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-name"
+            title="Remove request header name filter"
             aria-label="Remove request header name filter">
         × req-header:"${escapeHtml(state.filters.requestHeader.name.slice(0, 20))}"
       </button>
@@ -1242,6 +1247,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-value"
+            title="Remove request header value filter"
             aria-label="Remove request header value filter">
         × req-header-val:"${escapeHtml(state.filters.requestHeader.value.slice(0, 20))}"
       </button>
@@ -1253,6 +1259,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-name"
+            title="Remove response header name filter"
             aria-label="Remove response header name filter">
         × res-header:"${escapeHtml(state.filters.responseHeader.name.slice(0, 20))}"
       </button>
@@ -1264,6 +1271,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-value"
+            title="Remove response header value filter"
             aria-label="Remove response header value filter">
         × res-header-val:"${escapeHtml(state.filters.responseHeader.value.slice(0, 20))}"
       </button>

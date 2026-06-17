@@ -1,0 +1,6 @@
+{
+  "title": "🎨 Palette: Add context and ARIA labels to filter chips",
+  "head": "feature/palette-filter-chip-a11y",
+  "base": "main",
+  "body": "💡 **What**: Added missing `aria-pressed`, `aria-label`, and `title` attributes to the method filter and standard filter chips in the app.\n🎯 **Why**: Previously, the method chips did not convey their active/pressed state or semantic purpose to screen readers. The active filter chips had `aria-label` but lacked visible tooltips (`title`) for sighted users on mouse hover.\n♿ **Accessibility**: Enhanced keyboard and screen-reader accessibility for interacting with filtering elements, while also improving standard visual usability with helpful hover titles.\n\nChanges are localized to `extension/shared/app.js` and have been verified to not break functionality."
+}
