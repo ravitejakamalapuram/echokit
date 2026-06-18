@@ -8,3 +8,8 @@
 - Sanitizes href/src attributes to block javascript:, data:, and vbscript: URIs
 - Uses DOM APIs for safe parsing instead of regex patterns
 This approach is more secure than regex-based sanitization as it uses the browser's own HTML parser and cannot be bypassed with malformed markup.
+
+## 2026-06-18 - Prevent DOM XSS in Layouts
+**Vulnerability:** `extension/shared/layouts.js` directly assigned unsanitized strings to `this.container.innerHTML` from `renderInteractionList`.
+**Learning:** Even though rendering helpers generate UI structure, any dynamic content within these layouts could contain malicious payloads that exploit missing DOM-based sanitization in upstream caller assignments.
+**Prevention:** Always wrap dynamically generated HTML strings from render helpers in `sanitizeHTML(html)` before assigning them to any `innerHTML` sink.
