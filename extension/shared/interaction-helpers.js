@@ -97,6 +97,38 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+// Cache for parsed URLs to prevent O(N) performance bottleneck during rendering
+const urlCache = new Map();
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded memory growth
+
+/**
+ * Parses a URL with caching to avoid expensive `new URL()` instantiation in tight loops.
+ *
+ * @warning NEVER mutate the returned URL object directly (e.g. `u.search = ''`),
+ * as this modifies the shared cached instance and causes cross-request data corruption.
+ * If mutation is necessary, safely clone it first: `new URL(parsed.href)`.
+ *
+ * @param {string} url - The URL to parse.
+ * @param {string} [base] - The base URL to use if `url` is relative.
+ * @returns {URL} The parsed URL object.
+ */
+export function parseUrl(url, base) {
+  const cacheKey = base ? `${base}|${url}` : url;
+  let parsed = urlCache.get(cacheKey);
+
+  if (!parsed) {
+    parsed = new URL(url, base);
+    if (urlCache.size >= MAX_CACHE_SIZE) {
+      // Very simple FIFO - delete the oldest entry
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+    urlCache.set(cacheKey, parsed);
+  }
+
+  return parsed;
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
@@ -107,7 +139,7 @@ export function formatTimestamp(timestamp) {
  */
 export function prettyUrl(url) {
   try {
-    const u = new URL(url);
+    const u = parseUrl(url);
     return {
       path: u.pathname,
       query: u.search

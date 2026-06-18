@@ -5,7 +5,7 @@ import { sanitizeHTML } from './sanitize.js';
 import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
 import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
-import { getConflictCount, getConflicts } from './interaction-helpers.js';
+import { getConflictCount, getConflicts, parseUrl } from './interaction-helpers.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -1338,7 +1338,7 @@ function _renderWaterfall(interactions) {
         // Extract path from URL
         const path = (() => {
           try {
-            const url = new URL(r.url);
+            const url = parseUrl(r.url, location.href);
             return url.pathname + (url.search ? '?' + url.search.slice(1, 20) + (url.search.length > 20 ? '...' : '') : '');
           } catch {
             return r.url;
@@ -1494,7 +1494,7 @@ function renderSortableListHeader() {
 function renderInteractionRow(i) {
   const st = i.overrideStatus ?? i.responseStatus;
   const stColor = st >= 500 ? 'var(--red)' : st >= 400 ? 'var(--amber)' : 'var(--emerald)';
-  const path = (() => { try { return new URL(i.url).pathname; } catch { return i.url; } })();
+  const path = (() => { try { return parseUrl(i.url, location.href).pathname; } catch { return i.url; } })();
   const active = i.id === state.selectedId ? 'selected' : '';
   const method = (i.method || 'GET').toUpperCase();
   const features = getFeatures();
@@ -3235,9 +3235,9 @@ function groupByDomain(list) {
   }
   return [...map.entries()].map(([domain, items]) => ({ domain, items }));
 }
-function domainOf(url) { try { return new URL(url, location.href).host || '(local)'; } catch { return '(unknown)'; } }
+function domainOf(url) { try { return parseUrl(url, location.href).host || '(local)'; } catch { return '(unknown)'; } }
 function prettyUrl(url) {
-  try { const u = new URL(url, location.href); return { path: u.pathname, query: u.search }; }
+  try { const u = parseUrl(url, location.href); return { path: u.pathname, query: u.search }; }
   catch { return { path: url, query: '' }; }
 }
 // escapeHtml is defined at line 48 - removed duplicate declaration
