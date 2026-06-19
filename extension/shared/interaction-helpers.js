@@ -97,6 +97,38 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+const MAX_CACHE_SIZE = 1000;
+const urlCache = new Map();
+
+/**
+ * Safely parse a URL and cache the result.
+ * @warning Do NOT mutate the returned URL object directly (e.g. setting u.search = '')
+ * as it will corrupt the cached instance. Clone it first if mutation is necessary.
+ *
+ * @param {string} url - Full URL
+ * @param {string} [base] - Base URL for relative paths
+ * @returns {URL|null} Parsed URL object or null on error
+ */
+export function parseUrl(url, base) {
+  const cacheKey = base ? `${url}|${base}` : url;
+  if (urlCache.has(cacheKey)) {
+    return urlCache.get(cacheKey);
+  }
+
+  try {
+    const parsed = new URL(url, base);
+    if (urlCache.size >= MAX_CACHE_SIZE) {
+      // Very simple LRU: delete first key (insertion order)
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+    urlCache.set(cacheKey, parsed);
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
@@ -107,7 +139,8 @@ export function formatTimestamp(timestamp) {
  */
 export function prettyUrl(url) {
   try {
-    const u = new URL(url);
+    const u = parseUrl(url);
+    if (!u) return { path: url, query: '' };
     return {
       path: u.pathname,
       query: u.search
