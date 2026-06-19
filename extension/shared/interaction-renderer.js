@@ -11,6 +11,7 @@
  */
 
 import { INTERACTION_COLUMNS, getColumnsForMode } from './columns.js';
+import { parseUrl } from './interaction-helpers.js';
 
 /**
  * Render a single interaction row.
@@ -174,13 +175,9 @@ function renderGroupedList(interactions, mode) {
   // Group by domain
   const groups = {};
   interactions.forEach(i => {
-    let domain;
-    try {
-      domain = new URL(i.url).hostname;
-    } catch (error) {
-      // Fallback for malformed or missing URLs
-      domain = 'invalid';
-    }
+    let domain = parseUrl(i.url, location.href).hostname;
+    if (!domain || domain === '(unknown)') domain = 'invalid';
+
     if (!groups[domain]) groups[domain] = [];
     groups[domain].push(i);
   });

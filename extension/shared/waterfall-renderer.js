@@ -18,6 +18,7 @@ import {
   getStatusValue,
   normalizeMethod,
   prettyUrl,
+  parseUrl,
   calculateTimingPhases,
   getTimingColor,
   getTimingLabel,
@@ -226,18 +227,13 @@ export function renderTimingTooltip(interaction) {
  * @returns {string} Path + query (truncated)
  */
 function getPathFromUrl(url) {
-  try {
-    const parsed = new URL(url);
-    const path = parsed.pathname;
-    const query = parsed.search;
+  const parsed = parseUrl(url, location.href);
+  const path = parsed.pathname;
+  const query = parsed.search;
 
-    if (query && query.length > 20) {
-      return path + query.slice(0, 20) + '...';
-    }
-
-    return path + query;
-  } catch {
-    // Fallback for invalid URLs
-    return url.length > 40 ? url.slice(0, 40) + '...' : url;
+  if (query && query.length > 20) {
+    return path + query.slice(0, 20) + '...';
   }
+
+  return path + query;
 }

@@ -97,24 +97,56 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+const urlCache = new Map();
+const MAX_URL_CACHE_SIZE = 1000;
+
+/**
+ * Parses a URL with a module-level Map cache to avoid O(N) instantiations inside loops.
+ *
+ * @warning DO NOT MUTATE the returned URL object directly (e.g. u.search = '') as this
+ * will cause cross-request data corruption in the cache. If mutation is needed, safely
+ * clone the cached URL first (e.g., new URL(parsed.href)).
+ *
+ * @param {string} url - URL string to parse
+ * @param {string} [base] - Base URL (e.g. location.href) for relative URLs
+ * @returns {URL|Object} Parsed URL object, or safe fallback
+ */
+export function parseUrl(url, base) {
+  const cacheKey = base ? url + '|' + base : url;
+  if (urlCache.has(cacheKey)) {
+    return urlCache.get(cacheKey);
+  }
+
+  try {
+    // new URL() throws TypeError for relative URLs without base parameter
+    const parsed = base ? new URL(url, base) : new URL(url, 'http://local.local');
+    if (urlCache.size >= MAX_URL_CACHE_SIZE) {
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+    urlCache.set(cacheKey, parsed);
+    return parsed;
+  } catch {
+    // Return a safe fallback object mimicking URL to avoid TypeErrors
+    return { href: url, pathname: url, search: '', hash: '', host: '(unknown)', hostname: '(unknown)' };
+  }
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
  * @param {string} url - Full URL
+ * @param {string} [base] - Optional base URL
  * @returns {{path: string, query: string}} Path and query parts
  *
  * @single-source-of-truth
  */
-export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
-    return {
-      path: u.pathname,
-      query: u.search
-    };
-  } catch {
-    return { path: url, query: '' };
-  }
+export function prettyUrl(url, base) {
+  const u = parseUrl(url, base);
+  return {
+    path: u.pathname,
+    query: u.search
+  };
 }
 
 /**
