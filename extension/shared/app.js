@@ -939,11 +939,11 @@ function renderToolbar() {
     // POPUP: Simple toolbar (current implementation)
     return `
       <div class="ek-toolbar">
-        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
+        <input class="ek-search" type="text" placeholder="search url…" aria-label="Search URLs" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
-          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+          ${methods.map(m => `<button type="button" aria-label="Filter by ${m}" title="Filter by ${m}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}" class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
         </div>
-        <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
+        <select class="ek-select" data-action="filter-status" aria-label="Filter by status" style="max-width: 110px" data-testid="filter-status">
           <option value="">status: all</option>
           <option value="2" ${state.statusFilter === '2' ? 'selected' : ''}>2xx</option>
           <option value="3" ${state.statusFilter === '3' ? 'selected' : ''}>3xx</option>
@@ -968,13 +968,16 @@ function renderAdvancedToolbar() {
       <div class="ek-toolbar-row">
         <input class="ek-search"
                type="text"
+               aria-label="Search URL, method, status"
                placeholder="search url, method, status…"
                value="${escapeHtml(state.search)}"
                data-action="search"
                data-testid="search-input"
                autocomplete="off"
                spellcheck="false"/>
-        <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
+        <button type="button"
+                title="Toggle advanced filters"
+                class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
                 data-testid="toggle-advanced-filters"
                 aria-expanded="${state.advancedFilterOpen ? 'true' : 'false'}"
@@ -982,7 +985,7 @@ function renderAdvancedToolbar() {
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
-          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
+          <button type="button" aria-label="Clear all filters" class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
             Clear All
           </button>
         ` : ''}
