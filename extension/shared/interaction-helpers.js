@@ -97,24 +97,61 @@ export function formatTimestamp(timestamp) {
   return Math.floor(diff / 86400_000) + 'd ago';
 }
 
+// URL Cache to prevent O(N) object allocations during rendering loops
+const MAX_URL_CACHE_SIZE = 1000;
+const urlCache = new Map();
+
+/**
+ * Cache and parse URLs for performance.
+ * @warning Do NOT mutate the returned URL object directly (e.g. do not set u.search = '')
+ * as it will corrupt the cache for future requests. If you need to mutate, clone it first.
+ *
+ * @param {string} url - The URL to parse
+ * @param {string} [base] - Base URL for relative URLs (e.g., location.href)
+ * @returns {URL|null} Parsed URL object, or null if invalid
+ */
+export function parseUrl(url, base) {
+  if (!url) return null;
+  const cacheKey = base ? `${base}|${url}` : url;
+
+  if (urlCache.has(cacheKey)) {
+    return urlCache.get(cacheKey);
+  }
+
+  try {
+    const parsed = base ? new URL(url, base) : new URL(url);
+
+    // Prevent infinite growth
+    if (urlCache.size >= MAX_URL_CACHE_SIZE) {
+      const firstKey = urlCache.keys().next().value;
+      urlCache.delete(firstKey);
+    }
+
+    urlCache.set(cacheKey, parsed);
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Pretty-print URL (extract path and query).
  *
  * @param {string} url - Full URL
+ * @param {string} [base] - Optional base URL
  * @returns {{path: string, query: string}} Path and query parts
  *
  * @single-source-of-truth
  */
-export function prettyUrl(url) {
-  try {
-    const u = new URL(url);
+export function prettyUrl(url, base) {
+  const u = parseUrl(url, base);
+  if (u) {
     return {
       path: u.pathname,
       query: u.search
     };
-  } catch {
-    return { path: url, query: '' };
   }
+  return { path: url, query: '' };
 }
 
 /**
