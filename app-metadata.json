@@ -5,7 +5,7 @@
   "description": "A premium application.",
   "modules": [
     {
-      "name": "EchoKit \u2014 API Recorder & Mocker (Chrome Extension)",
+      "name": "EchoKit — API Recorder & Mocker (Chrome Extension)",
       "type": "chrome-extension",
       "path": "extension",
       "status": "draft",
