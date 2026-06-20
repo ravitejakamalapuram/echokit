@@ -941,7 +941,7 @@ function renderToolbar() {
       <div class="ek-toolbar">
         <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
-          ${methods.map(m => `<button class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}">${m}</button>`).join('')}
+          ${methods.map(m => `<button type="button" class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" title="Filter by ${m}" aria-label="Filter by ${m}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}">${m}</button>`).join('')}
         </div>
         <select class="ek-select" data-action="filter-status" style="max-width: 110px" data-testid="filter-status">
           <option value="">status: all</option>
