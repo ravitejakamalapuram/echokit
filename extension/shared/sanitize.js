@@ -33,8 +33,9 @@ export function sanitizeHTML(dirty) {
       }
       // Sanitize href and src to remove javascript: and data: URIs
       if ((attr.name === 'href' || attr.name === 'src') && attr.value) {
-        const lower = attr.value.toLowerCase().trim();
-        if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+        // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
+        const cleanVal = attr.value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
+        if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
           el.setAttribute(attr.name, '#');
         }
       }
