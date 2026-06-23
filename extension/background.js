@@ -82,10 +82,26 @@ function getTab(tabId) {
   });
   return tabState.get(tabId);
 }
+// Cache for hostOf to prevent O(N) new URL() allocations during tight filtering loops
+// like visibleInContext.
+const MAX_URL_HOST_CACHE_SIZE = 1000;
+const urlHostCache = new Map();
+
 function hostOf(url) {
+  if (!url) return '';
+  if (urlHostCache.has(url)) {
+    return urlHostCache.get(url);
+  }
   try {
-    return new URL(url).host;
+    const host = new URL(url).host;
+    if (urlHostCache.size >= MAX_URL_HOST_CACHE_SIZE) {
+      const firstKey = urlHostCache.keys().next().value;
+      urlHostCache.delete(firstKey);
+    }
+    urlHostCache.set(url, host);
+    return host;
   } catch {
+    urlHostCache.set(url, '');
     return '';
   }
 }
