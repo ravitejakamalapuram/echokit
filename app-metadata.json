@@ -5,7 +5,7 @@
   "description": "A premium application.",
   "modules": [
     {
-      "name": "EchoKit — API Recorder & Mocker (Chrome Extension)",
+      "name": "EchoKit \u2014 API Recorder & Mocker (Chrome Extension)",
       "type": "chrome-extension",
       "path": "extension",
       "status": "draft",
@@ -19,7 +19,22 @@
         "detailedDescription": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
         "category": "productivity",
         "singlePurpose": "Record real API interactions and instantly mock them. Zero setup. Buil",
-        "privacyPolicyUrl": "https://ravitejakamalapuram.github.io/echokit/privacy.html"
+        "privacyPolicyUrl": "https://ravitejakamalapuram.github.io/echokit/privacy.html",
+        "remoteCodeUsed": true,
+        "remoteCodeJustification": "The extension references remote code or dynamic script loading. Occurrences: manifest.json: content_security_policy.extension_pages allows remote scripts ('script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;')",
+        "dataUsageCertified": true,
+        "permissionJustifications": {
+          "storage": "The 'storage' permission is required to save the user's custom preferences, selected themes, and cached Bhagavad Gita verses locally on their device, ensuring settings persist across sessions and function offline.",
+          "tabs": "The 'tabs' permission is used to safely navigate the user to settings, help pages, or other extension-related internal pages in a new browser tab.",
+          "activeTab": "The 'activeTab' permission is required to interact with the current tab when the user explicitly clicks the extension browser action, enabling features like page screenshotting or element reading on demand.",
+          "scripting": "The 'scripting' permission is required for core extension functions, specifically to enable the user-facing features related to this capability.",
+          "declarativeNetRequest": "The 'declarativeNetRequest' permission is used to safely intercept and redirect specific API requests to local fallback endpoints if the network is disconnected.",
+          "unlimitedStorage": "The 'unlimitedStorage' permission is required to store larger local database files containing Bhagavad Gita translation assets and audio recitations for offline usage.",
+          "clipboardRead": "The 'clipboardRead' permission is required for core extension functions, specifically to enable the user-facing features related to this capability.",
+          "clipboardWrite": "The 'clipboardWrite' permission is required for core extension functions, specifically to enable the user-facing features related to this capability.",
+          "cookies": "The 'cookies' permission is used to verify session credentials and ensure smooth authentication sync with the extension's cloud synchronization service.",
+          "<all_urls>": "This permission is required to communicate with remote API endpoint '<all_urls>' to fetch dynamic shlokas, daily quotes, and perform language translations on the fly."
+        }
       }
     }
   ]
