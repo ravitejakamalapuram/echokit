@@ -82,9 +82,19 @@ function getTab(tabId) {
   });
   return tabState.get(tabId);
 }
+const hostCache = new Map();
+const MAX_HOST_CACHE_SIZE = 1000;
+
 function hostOf(url) {
+  if (!url) return '';
+  if (hostCache.has(url)) return hostCache.get(url);
   try {
-    return new URL(url).host;
+    const host = new URL(url).host;
+    if (hostCache.size >= MAX_HOST_CACHE_SIZE) {
+      hostCache.delete(hostCache.keys().next().value);
+    }
+    hostCache.set(url, host);
+    return host;
   } catch {
     return '';
   }
