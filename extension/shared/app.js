@@ -1183,7 +1183,7 @@ function renderFilterChips() {
             data-type="method"
             data-value="${m}"
             data-testid="chip-method-${m.toLowerCase()}"
-            aria-label="Remove method filter ${m}">
+            title="Remove method filter ${m}" aria-label="Remove method filter ${m}">
         × method:${m}
       </button>
     `);
@@ -1196,7 +1196,7 @@ function renderFilterChips() {
             data-action="remove-filter"
             data-type="status"
             data-value="${s}"
-            aria-label="Remove status filter ${s}">
+            title="Remove status filter ${s}" aria-label="Remove status filter ${s}">
         × status:${s}
       </button>
     `);
@@ -1208,7 +1208,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-body"
-            aria-label="Remove request body filter">
+            title="Remove request body filter" aria-label="Remove request body filter">
         × request:"${escapeHtml(state.filters.requestBodyContains.slice(0, 20))}"
       </button>
     `);
@@ -1219,7 +1219,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-body"
-            aria-label="Remove response body filter">
+            title="Remove response body filter" aria-label="Remove response body filter">
         × response:"${escapeHtml(state.filters.responseBodyContains.slice(0, 20))}"
       </button>
     `);
@@ -1231,7 +1231,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-name"
-            aria-label="Remove request header name filter">
+            title="Remove request header name filter" aria-label="Remove request header name filter">
         × req-header:"${escapeHtml(state.filters.requestHeader.name.slice(0, 20))}"
       </button>
     `);
@@ -1242,7 +1242,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-value"
-            aria-label="Remove request header value filter">
+            title="Remove request header value filter" aria-label="Remove request header value filter">
         × req-header-val:"${escapeHtml(state.filters.requestHeader.value.slice(0, 20))}"
       </button>
     `);
@@ -1253,7 +1253,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-name"
-            aria-label="Remove response header name filter">
+            title="Remove response header name filter" aria-label="Remove response header name filter">
         × res-header:"${escapeHtml(state.filters.responseHeader.name.slice(0, 20))}"
       </button>
     `);
@@ -1264,7 +1264,7 @@ function renderFilterChips() {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-value"
-            aria-label="Remove response header value filter">
+            title="Remove response header value filter" aria-label="Remove response header value filter">
         × res-header-val:"${escapeHtml(state.filters.responseHeader.value.slice(0, 20))}"
       </button>
     `);
@@ -1579,7 +1579,7 @@ function renderDetail(i, conflicts) {
     <div class="ek-detail-head">
       <span class="ek-method ${(i.method||'GET').toUpperCase()}">${(i.method||'GET').toUpperCase()}</span>
       <div class="ek-detail-title">${escapeHtml(i.url)}</div>
-      <button class="ek-close" data-action="close-detail" data-testid="close-detail" aria-label="close">✕</button>
+      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="close" aria-label="close">✕</button>
     </div>
     <div class="ek-detail-body">
       ${conflicts.length > 1 ? `
@@ -1669,7 +1669,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-kv-row">
                   <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
                   <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
-                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
                 </div>
               `).join('')}
             </div>
@@ -1766,7 +1766,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
                   <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
-                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" aria-label="remove">×</button>
+                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
               </div>
@@ -2495,7 +2495,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
@@ -2510,7 +2510,7 @@ function renderBlocklistRule(b, idx) {
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
                 <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
-                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" aria-label="remove">×</button>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
               </div>
             `;
 }
@@ -2522,7 +2522,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
               </div>
             `;
@@ -2540,7 +2540,7 @@ function renderTransformRule(r, idx) {
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
