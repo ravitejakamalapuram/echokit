@@ -38,119 +38,139 @@ jobs:
     name: Detect changed targets
     runs-on: ubuntu-latest
     outputs:
-      website: ${{ steps.manual-dispatch.outputs.website || steps.changes.outputs.website }}
-      worker: ${{ steps.manual-dispatch.outputs.worker || steps.changes.outputs.worker }}
-      extension: ${{ steps.manual-dispatch.outputs.extension || steps.changes.outputs.extension }}
-
+      website: ${{ steps.changes.outputs.website }}
+      worker:  ${{ steps.changes.outputs.worker }}
+      extension: ${{ steps.changes.outputs.extension }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      # Handle manual workflow dispatch
-      - name: Handle manual dispatch
-        if: github.event_name == 'workflow_dispatch'
-        id: manual-dispatch
-        run: |
-          RELEASE_BUMP="${{ inputs.release_bump }}"
-          DEPLOY_TARGET="${{ inputs.deploy_target }}"
-
-          echo "🖱️ Manual dispatch:"
-          echo "  release_bump: ${RELEASE_BUMP}"
-          echo "  deploy_target: ${DEPLOY_TARGET}"
-
-          # Extension release
-          if [[ "$RELEASE_BUMP" != "none" ]]; then
-            echo "extension=true" >> $GITHUB_OUTPUT
-          else
-            echo "extension=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Deployment targets
-          if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "website" ]]; then
-            echo "website=true" >> $GITHUB_OUTPUT
-          else
-            echo "website=false" >> $GITHUB_OUTPUT
-          fi
-
-          if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "worker" ]]; then
-            echo "worker=true" >> $GITHUB_OUTPUT
-          else
-            echo "worker=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-
-      # Automatic change detection on push
-      - name: Detect changed paths
-        if: github.event_name != 'workflow_dispatch'
+      - name: Determine changed targets
         id: changes
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD)
-          echo "Changed files:"
-          echo "$CHANGED"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_BUMP="${{ inputs.release_bump }}"
+            DEPLOY_TARGET="${{ inputs.deploy_target }}"
 
-          # Website changes
-          if echo "$CHANGED" | grep -q '^website/'; then
-            echo "website=true" >> $GITHUB_OUTPUT
-            echo "🌐 website/ changes detected"
-          else
-            echo "website=false" >> $GITHUB_OUTPUT
-          fi
+            echo "🖱️ Manual dispatch:"
+            echo "  release_bump: ${RELEASE_BUMP}"
+            echo "  deploy_target: ${DEPLOY_TARGET}"
 
-          # Worker changes (including workflow changes)
-          if echo "$CHANGED" | grep -qE '^(worker/|\.github/workflows/cd\.yml)'; then
-            echo "worker=true" >> $GITHUB_OUTPUT
-            echo "⚙️ worker/ changes detected"
-          else
-            echo "worker=false" >> $GITHUB_OUTPUT
-          fi
+            if [[ "$RELEASE_BUMP" != "none" ]]; then
+              echo "extension=true" >> $GITHUB_OUTPUT
+            else
+              echo "extension=false" >> $GITHUB_OUTPUT
+            fi
 
-          # Extension changes (excluding markdown files)
-          if echo "$CHANGED" | grep '^extension/' | grep -qv '\.md$'; then
-            echo "extension=true" >> $GITHUB_OUTPUT
-            echo "📦 extension/ changes detected"
+            if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "website" ]]; then
+              echo "website=true" >> $GITHUB_OUTPUT
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "worker" ]]; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "extension=false" >> $GITHUB_OUTPUT
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            echo "Changed files:"
+            echo "$CHANGED"
+
+            if echo "$CHANGED" | grep -q '^website/'; then
+              echo "website=true" >> $GITHUB_OUTPUT
+              echo "🌐 website/ changes detected"
+            else
+              echo "website=false" >> $GITHUB_OUTPUT
+            fi
+
+            if echo "$CHANGED" | grep -qE '^(worker/|\.github/workflows/cd\.yml)'; then
+              echo "worker=true" >> $GITHUB_OUTPUT
+              echo "⚙️ worker/ changes detected"
+            else
+              echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+
+            if echo "$CHANGED" | grep '^extension/' | grep -qv '\.md$'; then
+              echo "extension=true" >> $GITHUB_OUTPUT
+              echo "📦 extension/ changes detected"
+            else
+              echo "extension=false" >> $GITHUB_OUTPUT
+            fi
           fi
-        shell: bash
 
   # ── Deploy Website ─────────────────────────────────────────────────────────────
   deploy-website:
     name: Deploy website → Cloudflare Pages
+    runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.website == 'true'
     permissions:
       contents: read
       deployments: write
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/cloudflare-pages-deploy.yml@main
-    with:
-      project-name: 'echokit-website'
-      directory: 'website'
-    secrets:
-      cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required website files exist
+        run: |
+          set -e
+          test -f website/index.html
+          test -f website/style.css
+          echo "✅ Website files validated"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: echokit-website
+          directory:   website
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Deploy Worker ──────────────────────────────────────────────────────────────
   deploy-worker:
     name: Deploy worker → Cloudflare Workers
+    runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.worker == 'true'
     permissions:
       contents: read
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/cloudflare-worker-deploy.yml@main
-    with:
-      working-directory: 'worker'
-      health-check-url: 'https://api.echo-kit.com/__health'
-      health-check-timeout: 10
-    secrets:
-      cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Workers via Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken:         ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:        ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command:          deploy
+
+      - name: Verify deployment health endpoints
+        run: |
+          set -e
+          echo "⏳ Waiting 5 seconds for propagation..."
+          sleep 5
+
+          echo "Testing Workers.dev URL..."
+          if ! curl -f --connect-timeout 5 --max-time 10 https://echokit-license.echokit-rk.workers.dev/__health; then
+            echo "❌ Workers.dev URL health check failed"
+            exit 1
+          fi
+          echo "✅ Workers.dev URL is healthy"
+
+          echo "Testing custom domain..."
+          if ! curl -f --connect-timeout 5 --max-time 10 https://api.echo-kit.com/__health; then
+            echo "❌ Custom domain health check failed"
+            exit 1
+          fi
+          echo "✅ Custom domain is healthy"
 
   # ── Deploy & Publish Chrome Extension ──────────────────────────────────────────
-  # Note: This may fail with ITEM_NOT_UPDATABLE if a version is under review.
-  # This is expected behavior and not a CI/CD issue. The workflow will succeed
-  # once the Chrome Web Store review completes (typically 1-2 days).
-  # TODO: Update the shared workflow to handle ITEM_NOT_UPDATABLE gracefully
   publish-extension:
     name: Package & Publish Extension
     needs: detect-changes
