@@ -1816,7 +1816,7 @@ function renderAllCodeEditors() {
     const mirror = root.querySelector(`.ek-code-mirror[data-mirror-for="${id}"]`);
     if (!mirror) return;
     const sync = () => {
-      mirror.innerHTML = highlightJSON(ta.value) + '\n'; // trailing NL so last line aligns
+      mirror.innerHTML = sanitizeHTML(highlightJSON(ta.value) + '\n'); // trailing NL so last line aligns
       mirror.scrollTop = ta.scrollTop;
       mirror.scrollLeft = ta.scrollLeft;
       const wrap = ta.closest('.ek-code-editor');
@@ -2326,7 +2326,7 @@ function softRenderList() {
   if (isPopup || !features.sortableColumns) {
     // Grouped list view
     const grouped = groupByDomain(items);
-    list.innerHTML = items.length === 0 ? renderEmpty() : sanitizeHTML(grouped.map(renderDomainGroup).join(''));
+    list.innerHTML = items.length === 0 ? sanitizeHTML(renderEmpty()) : sanitizeHTML(grouped.map(renderDomainGroup).join(''));
   } else {
     // Table view
     list.innerHTML = sanitizeHTML(renderSortableTable(items));
