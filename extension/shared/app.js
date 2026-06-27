@@ -491,11 +491,11 @@ function renderHeader() {
           aria-pressed="${state.waterfall ? 'true' : 'false'}">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
         </button>
-        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings">
+        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings (CORS, Headers, Blocklist, etc.)">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
         </button>
         <div class="ek-menu">
-          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu"
+          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="More actions"
             aria-expanded="${state.menuOpen ? 'true' : 'false'}" aria-haspopup="menu">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
           </button>
@@ -1414,8 +1414,8 @@ function renderRow(i) {
       ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions">×${versionCount}</span>` : ''}
       ${showBadge ? renderSourceBadge(i, state.tabId) : ''}
       <span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>
-      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"></button>
-      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">⊘</button>
+      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"></button>
+      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'Unblock API' : 'Block API'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">⊘</button>
     </div>
   `;
 }
@@ -1532,7 +1532,7 @@ function renderInteractionRow(i) {
         <button class="ek-icon-btn ${i.mockEnabled ? 'on' : ''}"
                 data-action="toggle-mock"
                 data-id="${i.id}"
-                title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}"
+                title="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"
                 data-testid="mock-toggle"
                 aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}">
           ${i.mockEnabled ? '✓' : '○'}
@@ -1540,7 +1540,7 @@ function renderInteractionRow(i) {
         <button class="ek-icon-btn ${i.blocked ? 'on' : ''}"
                 data-action="toggle-block"
                 data-id="${i.id}"
-                title="${i.blocked ? 'Blocked' : 'Block'}"
+                title="${i.blocked ? 'Unblock API' : 'Block API'}"
                 data-testid="block-btn"
                 aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">
           ⊘
@@ -1783,7 +1783,7 @@ function renderFooter(count) {
   const isPopup = state.mode === 'popup';
   const recTag = state.tab.recording ? `<span class="ek-tag on">REC</span>` : `<span class="ek-tag">idle</span>`;
   const mockTag = state.tab.mocking ? `<span class="ek-tag amber">MOCK ON</span>` : '';
-  const corsTag = state.settings.corsOverride ? `<button type="button" class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings" aria-label="Open settings for CORS override">CORS</button>` : '';
+  const corsTag = state.settings.corsOverride ? `<button type="button" class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="Open settings for CORS override" aria-label="Open settings for CORS override">CORS</button>` : '';
   const scope = state.settings.scope || 'domain';
   const freeLimit = !state.isPro ? `<span class="ek-subtle ${state.allCount >= 50 ? 'ek-limit-warn' : ''}" title="Free tier: 50 recordings max. Upgrade for unlimited.">${state.allCount}/50</span>` : '';
 
@@ -1801,7 +1801,7 @@ function renderFooter(count) {
     <div class="ek-footer">
       ${recTag} ${mockTag} ${corsTag}
       <span class="ek-subtle">${count} request${count === 1 ? '' : 's'}</span>
-      <span class="ek-subtle">· scope: <button type="button" class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope" aria-label="Change scope: currently ${scope}">${scope}</button></span>
+      <span class="ek-subtle">· scope: <button type="button" class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="Change scope: currently ${scope}" aria-label="Change scope: currently ${scope}">${scope}</button></span>
       ${freeLimit}
       ${devToolsLink}
       <span class="ek-row-inline-end ek-subtle">${state.tab.host ? escapeHtml(state.tab.host) : `tab #${state.tabId ?? '—'}`}</span>
