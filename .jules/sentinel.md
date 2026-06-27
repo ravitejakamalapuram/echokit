@@ -13,3 +13,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer's URI prefix checking (for `javascript:`, etc.) could be bypassed by inserting HTML entity-encoded control characters or spaces (like `&#09;` for tab) into the URI. The browser decodes these entities into control characters, but the standard `trim()` function only removes leading/trailing spaces, not internal control characters, allowing the payload to execute.
 **Learning:** Checking for dangerous URI prefixes requires stripping all control characters (`\x00-\x20` and `\x7F`) from the decoded value before prefix matching, because the browser's URI parser typically ignores these characters when executing the URI scheme.
 **Prevention:** Modified the `sanitizeHTML` logic to strip all control characters and spaces from the attribute value using `.replace(/[\x00-\x20\x7F]/g, '')` prior to executing the `startsWith` prefix checks.
+
+## $(date +%Y-%m-%d) - Prevent DOM XSS in code editor highlight and empty state
+**Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
+**Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
+**Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
