@@ -9,10 +9,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Comprehensive engineering review completed (archived in `docs/archive/engineering-review-2026-06-27.md`)
+- Technical debt action items extracted to `TODO.md` under P2 priority
+
 ### Planned
 - LemonSqueezy payment integration (Merchant of Record, global tax handling)
 - Mint real license keys for paying customers via payment webhook
 - Refactor `shared/app.js` (~2800 lines) into focused modules: `header.js`, `menu.js`, `settings-dialog.js`, `request-detail.js`, `waterfall.js` (Issue [#8](https://github.com/ravitejakamalapuram/echokit/issues/8))
+- Performance improvements: cached URL parsing, combined filter passes, removed console.log
+- Security hardening: DOM XSS fixes, improved error boundaries
 
 ---
 
