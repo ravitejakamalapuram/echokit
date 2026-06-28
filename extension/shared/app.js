@@ -974,7 +974,8 @@ function renderAdvancedToolbar() {
                data-testid="search-input"
                autocomplete="off"
                spellcheck="false"/>
-        <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
+        <button type="button"
+                class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
                 data-testid="toggle-advanced-filters"
                 title="Toggle advanced filters"
@@ -984,7 +985,8 @@ function renderAdvancedToolbar() {
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
-          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters"
+          <button type="button"
+                  class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters"
                   title="Clear all active filters" aria-label="Clear all active filters">
             Clear All
           </button>
