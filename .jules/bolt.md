@@ -7,3 +7,6 @@
 ## 2026-06-20 - O(N) URL Instantiation Bottleneck in background
 **Learning:** `new URL().host` allocations inside array filters (like `visibleInContext` during mapping loops or `buildMockIndexFor` logic) caused severe performance bottlenecks because native URL parsing is computationally expensive.
 **Action:** Added a `Map`-based LRU-like cache directly to the `hostOf` function in `background.js` to cache host resolution, drastically speeding up filtering operations and preventing redundant O(N) allocations on every UI refresh.
+## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
+**Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
+**Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.

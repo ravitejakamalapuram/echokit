@@ -360,7 +360,7 @@ function render() {
   root.innerHTML = sanitizeHTML(`
     <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
-      ${renderToolbar()}
+      ${renderToolbar(list.length)}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
           ${state.waterfall ? renderWaterfallNew(list, { selectedId: state.selectedId }) : ''}
@@ -931,7 +931,7 @@ function showGistImportDialog() {
   });
 }
 
-function renderToolbar() {
+function renderToolbar(filteredCount) {
   const features = getFeatures();
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -955,11 +955,11 @@ function renderToolbar() {
     `;
   } else {
     // DEVTOOLS: Advanced toolbar with filter panel
-    return renderAdvancedToolbar();
+    return renderAdvancedToolbar(filteredCount);
   }
 }
 
-function renderAdvancedToolbar() {
+function renderAdvancedToolbar(filteredCount) {
   const features = getFeatures();
   const activeCount = getActiveFilterCount();
 
@@ -989,7 +989,7 @@ function renderAdvancedToolbar() {
       </div>
 
       ${state.advancedFilterOpen ? renderAdvancedFilterPanel() : ''}
-      ${features.filterChips ? renderFilterChips() : ''}
+      ${features.filterChips ? renderFilterChips(filteredCount) : ''}
     </div>
   `;
 }
@@ -1172,7 +1172,7 @@ function renderAdvancedFilterPanel() {
  *
  * @returns {string} An HTML snippet with the filter chips and summary counts, or an empty string when no filters are active.
  */
-function renderFilterChips() {
+function renderFilterChips(filteredCount) {
   const chips = [];
 
   // Method chips
@@ -1273,7 +1273,7 @@ function renderFilterChips() {
   if (chips.length === 0) return '';
 
   const count = chips.length;
-  const filteredCount = filteredInteractions().length;
+
   const totalCount = state.interactions.length;
 
   return `
