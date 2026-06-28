@@ -974,15 +974,20 @@ function renderAdvancedToolbar(filteredCount) {
                data-testid="search-input"
                autocomplete="off"
                spellcheck="false"/>
-        <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
+        <button type="button"
+                class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
                 data-testid="toggle-advanced-filters"
+                title="Toggle advanced filters"
+                aria-label="Toggle advanced filters"
                 aria-expanded="${state.advancedFilterOpen ? 'true' : 'false'}"
                 aria-controls="advanced-filters-panel">
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
-          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
+          <button type="button"
+                  class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters"
+                  title="Clear all active filters" aria-label="Clear all active filters">
             Clear All
           </button>
         ` : ''}
