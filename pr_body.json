@@ -1,6 +1,1 @@
-{
-  "title": "⚡ Bolt: Cache hostOf parsed URLs in background",
-  "body": "💡 **What:** Added a `Map`-based LRU-like cache directly to the `hostOf` function in `extension/background.js` to cache host resolution.\n🎯 **Why:** `new URL().host` allocations inside array filters (like `visibleInContext` during mapping loops or `buildMockIndexFor` logic) caused severe performance bottlenecks because native URL parsing is computationally expensive. It created redundant O(N) object allocations on every UI refresh or sync.\n📊 **Impact:** Drastically speeds up array filtering operations in the background script. Prevents repeated URL instantiations inside tight loops, cutting O(N) operations down to O(1) cache lookups.\n🔬 **Measurement:** Verify by loading a large list of interactions and observing CPU/memory usage drop during fast tab switches or UI updates. The cache is limited to 1000 entries to prevent memory leaks.",
-  "head": "bolt-hostof-cache",
-  "base": "main"
-}
+{"title":"🛡️ Sentinel: Fix missing postMessage source validation","head":"sentinel-fix-postmessage","base":"main","body":"🚨 Severity: HIGH\n💡 Vulnerability: Missing postMessage source validation allows malicious iframes to spoof state.\n🎯 Impact: Malicious iframes can alter the application state and potentially cause unauthorized actions or data leakage.\n🔧 Fix: Added ev.source === window validation to the message event listener.\n✅ Verification: Tested to ensure messages from same window are accepted, and others are ignored."}

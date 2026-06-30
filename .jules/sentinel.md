@@ -18,3 +18,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
+
+## $(date +%Y-%m-%d) - Prevent cross-origin state spoofing via postMessage
+**Vulnerability:** The `window.addEventListener('message', ...)` handler in `extension/injected.js` processed messages from any origin without validating `ev.source === window`, allowing potentially malicious iframes or other windows to spoof state payloads and compromise extension logic.
+**Learning:** Browser extension content and injected scripts that communicate via `postMessage` must explicitly verify the message source to prevent Cross-Origin spoofing. Validating the namespace alone (`source: 'echokit-content'`) is insufficient as any origin can forge this payload.
+**Prevention:** Added an explicit `if (ev.source !== window) return;` guard at the beginning of the `message` event listener to ensure only messages originating from the same window (e.g., communication between content and injected scripts) are processed.
