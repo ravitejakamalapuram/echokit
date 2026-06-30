@@ -246,8 +246,9 @@ function applyTheme() {
 /**
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
+ * @param {Array<Object>} filtered - Pre-computed list of interactions to prevent O(N) recalculation.
  */
-function renderInteractionListNew() {
+function renderInteractionListNew(filtered) {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -324,7 +325,6 @@ function renderInteractionListNew() {
   }
 
   // Update layout with current data
-  const filtered = filteredInteractions();
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -384,7 +384,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew();
+    renderInteractionListNew(list);
   }
 
   bindEvents();
