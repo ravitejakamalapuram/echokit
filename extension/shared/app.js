@@ -1607,7 +1607,7 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-head">
           <span>Mock Behaviour</span>
           <div class="ek-row-inline-end">
-            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}">
+            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}" title="Toggle mock behaviour">
               <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">${i.mockEnabled ? 'ON' : 'OFF'}</span>
@@ -1701,7 +1701,7 @@ function renderDetail(i, conflicts) {
       </div>
 
       <div class="ek-row-inline">
-        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn">Delete this mock</button>
+        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn" aria-label="Delete this mock" title="Delete this mock">Delete this mock</button>
         <div class="ek-row-inline-end ek-subtle">hash <span class="ek-tag">${i.hash}</span></div>
       </div>
 
@@ -2621,7 +2621,7 @@ function renderSettingsGeneral(s, isDevTools) {
             </button>
           </div>
         </div>
-        <label class="ek-switch ${s.corsOverride?'on':''}">
+        <label class="ek-switch ${s.corsOverride?'on':''}" title="Override CORS">
           <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.corsOverride?'ON':'OFF'}</span>
@@ -2633,7 +2633,7 @@ function renderSettingsGeneral(s, isDevTools) {
           <div class="ek-settings-title">Auto-open popup on refresh</div>
           <div class="ek-settings-hint">When a tab reloads while recording, pop this panel back open.</div>
         </div>
-        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}">
+        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}" title="Auto-open on refresh">
           <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
@@ -2716,7 +2716,7 @@ function renderSettingsLicense() {
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
         </div>
-        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
+        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn" aria-label="Wipe all recordings" title="Wipe all recordings">Wipe</button>
       </div>
 
       <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
