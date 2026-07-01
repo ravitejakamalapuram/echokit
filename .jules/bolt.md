@@ -10,3 +10,6 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
+## 2025-02-18 - Redundant Data Normalization Bottleneck
+**Learning:** Calling expensive normalization functions like `normalizeUrl` (which uses `new URL()`) and `normalizeBody` (which uses JSON stringify/parse on potentially large bodies) multiple times with the same input within string templates causes a significant performance bottleneck (over 2x execution time) due to redundant O(N) operations.
+**Action:** Always pre-calculate and cache the results of expensive normalization operations in local variables before using them multiple times, especially in critical paths like computing hashes for every request.
