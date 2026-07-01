@@ -13,3 +13,7 @@
 ## 2025-02-22 - Missing tooltips on filter toolbar buttons
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
+
+## 2025-03-01 - Missing screen reader context for stateful status buttons
+**Learning:** Buttons conveying status via Unicode symbols (like "● REC" or "STOP") lack explicit ARIA labels, causing screen readers to pronounce symbols unpredictably or miss the intended action, while sighted users lack hover tooltips.
+**Action:** Always provide explicit `aria-label` and matching `title` attributes on stateful status or action buttons to ensure parity between mouse users and screen reader users.
