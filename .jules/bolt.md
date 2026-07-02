@@ -10,3 +10,6 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
+## 2025-02-23 - Optimize computeMatchKeys
+**Learning:** Redundant calls to `normalizeUrl`, `stripQuery`, and `normalizeBody` within `computeMatchKeys` (which allocate `new URL()` and perform JSON serialization) can severely degrade performance, especially when computing hashes for large volumes of interactions.
+**Action:** Always pre-calculate and cache the results of expensive normalization functions in local variables before building multiple match key variations.
