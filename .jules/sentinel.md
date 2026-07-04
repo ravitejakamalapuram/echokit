@@ -18,3 +18,7 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
+## 2024-05-18 - Fix DOM Clobbering in HTML Sanitizer
+**Vulnerability:** DOM Clobbering vulnerability bypassed HTML sanitization logic. Attackers could craft elements (like `<form><input name="attributes"></form>`) to mask properties on the DOM node, making `Array.from(el.attributes)` return empty arrays, thereby bypassing attribute sanitization.
+**Learning:** Accessing attributes directly on the DOM element object in a sanitization loop is inherently unsafe because of DOM Clobbering.
+**Prevention:** Always use `Element.prototype` methods (e.g., `Element.prototype.getAttributeNames.call(el)`) directly when dealing with user-supplied DOM elements, rather than properties on the element instance.

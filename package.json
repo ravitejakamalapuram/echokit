@@ -39,5 +39,8 @@
     "developer-tools",
     "mock-server",
     "testing"
-  ]
+  ],
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
 }
