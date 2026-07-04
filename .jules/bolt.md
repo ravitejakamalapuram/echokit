@@ -10,3 +10,6 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
+## 2024-07-04 - O(N) Object Allocation and Stringification Bottleneck in Array Filters
+**Learning:** Repeatedly calling JSON.stringify() on request/response bodies and Object.entries() on headers inside the filteredInteractions filter loop causes severe O(N) performance bottlenecks and excessive garbage collection during frequent UI renders.
+**Action:** Utilize a WeakMap to cache the stringified representations of object bodies and use for...in loops instead of Object.entries() to eliminate redundant computations and object allocations.
