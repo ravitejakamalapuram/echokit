@@ -10,3 +10,10 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
+
+## 2025-02-18 - O(N) Bottleneck in Array Filtering
+**Learning:** Filtering arrays in frequent rendering loops (like `filteredInteractions`) by repeatedly stringifying JSON bodies and using `Object.entries()` creates a severe O(N) performance bottleneck and redundant object allocations.
+**Action:** Utilize a `WeakMap` to cache stringified representations of object bodies and favor `for...in` loops over `Object.entries()` to eliminate the bottleneck and allocations.
+## 2023-10-27 - O(N) Object Iteration and JSON Serialization Bottlenecks in Render Loop
+**Learning:** In the `filteredInteractions()` rendering filter function, calling `JSON.stringify(body)` inside `searchBodyContent` and using `Object.entries(headers)` inside `searchHeaders` caused severe O(N) performance bottlenecks. This was due to repeated expensive JSON serialization and unnecessary intermediate array allocations for each interaction on every UI refresh.
+**Action:** Added a `WeakMap` cache (`bodyStringCache`) to pre-compute and store the stringified body representation, replacing redundant O(N) serializations with O(1) cache lookups. Replaced `Object.entries` with a simple `for...in` loop to avoid intermediate array allocations during header filtering.
