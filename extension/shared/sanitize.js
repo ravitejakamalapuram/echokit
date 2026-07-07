@@ -26,17 +26,21 @@ export function sanitizeHTML(dirty) {
   // Remove all dangerous attributes from all elements
   const dangerousAttributes = /^on|^formaction$|^form$|^xmlns$/i;
   fragment.querySelectorAll('*').forEach(el => {
-    Array.from(el.attributes).forEach(attr => {
+    // Use Element.prototype to prevent DOM Clobbering (e.g. <form><input name="attributes"></form>)
+    const attrNames = Element.prototype.getAttributeNames.call(el);
+    attrNames.forEach(name => {
       // Remove event handlers (onclick, onerror, etc.)
-      if (dangerousAttributes.test(attr.name)) {
-        el.removeAttribute(attr.name);
-      }
-      // Sanitize href and src to remove javascript: and data: URIs
-      if ((attr.name === 'href' || attr.name === 'src') && attr.value) {
-        // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
-        const cleanVal = attr.value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
-        if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
-          el.setAttribute(attr.name, '#');
+      if (dangerousAttributes.test(name)) {
+        Element.prototype.removeAttribute.call(el, name);
+      } else if (name === 'href' || name === 'src') {
+        // Sanitize href and src to remove javascript: and data: URIs
+        const value = Element.prototype.getAttribute.call(el, name);
+        if (value) {
+          // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
+          const cleanVal = value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
+          if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
+            Element.prototype.setAttribute.call(el, name, '#');
+          }
         }
       }
     });
