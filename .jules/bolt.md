@@ -10,3 +10,9 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
+## 2025-02-18 - O(N) Array Filtering Bottleneck via Object Stringification
+**Learning:** Repeatedly stringifying objects (JSON.stringify(body).toLowerCase()) inside filter loops (like searchBodyContent in app.js) causes severe performance degradation and object allocations on every UI render pass.
+**Action:** Use a WeakMap cached mechanism to pre-compute and store the stringified representations of object bodies, achieving O(1) performance inside filtering loops.
+## 2024-07-07 - Avoid JSON.stringify in filter loops
+**Learning:** Calling `JSON.stringify` on request/response bodies repeatedly within array filter operations creates a significant CPU bottleneck and O(N) allocation overhead. Similarly, using `Object.entries` inside frequent header searches creates unnecessary object allocations.
+**Action:** Use a `WeakMap` cache to store stringified representations of object bodies (`JSON.stringify(body).toLowerCase()`) to ensure stringification happens at most once per object reference. Replace `Object.entries` with `for...in` loops in high-frequency path functions like `searchHeaders`.
