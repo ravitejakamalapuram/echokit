@@ -18,3 +18,12 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
+## 2026-07-07 - DOM Clobbering in HTML Sanitizer
+**Vulnerability:** DOM Clobbering allowed bypassing the HTML sanitizer because it relied on `el.attributes`, `el.removeAttribute`, and `el.setAttribute`. An injected form with inputs named `attributes`, `removeAttribute`, or `setAttribute` would clobber these properties.
+**Learning:** Never trust properties or methods on potentially untrusted DOM elements (especially `<form>`).
+**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when interacting with untrusted DOM nodes.
+
+## 2026-07-09 - Fix DOM Clobbering vulnerability in DOM sanitizer
+**Vulnerability:** The `sanitizeHTML` function was vulnerable to DOM clobbering. An attacker could inject a payload like `<form><input name="attributes"><input name="removeAttribute"><input name="remove"></form>` to overwrite standard DOM properties on the element instance, causing the sanitizer to crash or bypass attribute/element sanitization logic when it tried to access `el.attributes` or call `el.removeAttribute()` or `el.remove()$.
+**Learning:** When writing DOM-based HTML sanitizers or interacting with potentially untrusted DOM elements (especially `<form>`), always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`, `Element.prototype.getAttribute.call(el, ...)`, `Element.prototype.remove.call(el)`) instead of properties or methods on the element instance to completely prevent DOM Clobbering vulnerabilities.
+**Prevention:** Updated `sanitizeHTML` to iterate over attributes using `Element.prototype.getAttributeNames.call(el)` and explicitly use `Element.prototype.getAttribute`, `removeAttribute`, `setAttribute`, and `remove` via `.call(el, ...)` rather than relying on instance properties.
