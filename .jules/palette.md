@@ -13,3 +13,7 @@
 ## 2025-02-22 - Missing tooltips on filter toolbar buttons
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
+
+## 2024-07-08 - Add tooltips and aria-labels to destructive action buttons
+**Learning:** Destructive action buttons like "Delete" and "Wipe" need both visual tooltips for mouse users and context for screen readers to ensure safe interactions.
+**Action:** Always provide explicit `title` and `aria-label` attributes on destructive buttons to ensure parity between mouse and screen reader experiences.
