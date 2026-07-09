@@ -3177,6 +3177,9 @@ function matchesStatusFilter(status, filters) {
   return false;
 }
 
+// Cache stringified body content to avoid O(N) allocation in filter loops
+const bodyStringCache = new WeakMap();
+
 // Helper: Search body content
 function searchBodyContent(body, query) {
   if (!query) return true;
@@ -3186,7 +3189,11 @@ function searchBodyContent(body, query) {
 
   // Handle JSON bodies
   if (typeof body === 'object') {
-    const str = JSON.stringify(body).toLowerCase();
+    let str = bodyStringCache.get(body);
+    if (!str) {
+      str = JSON.stringify(body).toLowerCase();
+      bodyStringCache.set(body, str);
+    }
     return str.includes(q);
   }
 
@@ -3206,10 +3213,13 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   const nq = nameQuery.toLowerCase();
   const vq = valueQuery.toLowerCase();
 
-  for (const [name, value] of Object.entries(headers)) {
-    const nameMatch = !nq || name.toLowerCase().includes(nq);
-    const valueMatch = !vq || String(value).toLowerCase().includes(vq);
-    if (nameMatch && valueMatch) return true;
+  for (const name in headers) {
+    if (Object.prototype.hasOwnProperty.call(headers, name)) {
+      const value = headers[name];
+      const nameMatch = !nq || name.toLowerCase().includes(nq);
+      const valueMatch = !vq || String(value).toLowerCase().includes(vq);
+      if (nameMatch && valueMatch) return true;
+    }
   }
   return false;
 }
