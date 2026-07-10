@@ -3190,6 +3190,7 @@ function searchBodyContent(body, query) {
   // Handle JSON bodies
   if (typeof body === 'object') {
     // ⚡ Bolt: Use WeakMap to cache stringified representation avoiding O(N) re-allocations
+    // We assume body objects here are mostly immutable or recreated when changed.
     let str = bodyStringCache.get(body);
     if (str === undefined) {
       str = JSON.stringify(body).toLowerCase();
