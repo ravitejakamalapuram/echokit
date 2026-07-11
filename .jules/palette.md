@@ -13,3 +13,7 @@
 ## 2025-02-22 - Missing tooltips on filter toolbar buttons
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
+
+## 2026-07-10 - Add explicit text context to isolated form inputs
+**Learning:** Screen readers and mouse users alike struggle with inputs (e.g. checkboxes, fields) implemented without explicit `<label for="...">` mapping, even if wrapped in a semantic layout. We need direct text context on the element itself when not using a proper label structure.
+**Action:** Always add explicit `aria-label` and `title` attributes on input elements within the mock detail UI to provide accessible context to screen reader users and tooltips for mouse navigation.
