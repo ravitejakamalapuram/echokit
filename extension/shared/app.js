@@ -477,12 +477,12 @@ function renderHeader() {
           ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
           : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
-          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
+          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking" title="Toggle mocking">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">MOCK</span>
         </label>
         <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
-          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
+          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master" aria-label="Toggle CORS override" title="Toggle CORS override">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">CORS</span>
         </label>
@@ -828,7 +828,7 @@ function showPasteDialog(count, origin, payload) {
       ${origin && state.tab.host && !origin.includes(state.tab.host) ? `<div class="ek-subtle" style="color:var(--amber)">⚠ Origins differ — paste will write into the current tab's origin, which may overwrite unrelated data.</div>` : ''}
       <div style="max-height:220px;overflow:auto">${preview}${more}</div>
       <label class="ek-row-inline" style="gap:6px;margin-top:4px">
-        <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first"/> <span>Clear existing localStorage before pasting</span>
+        <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first" aria-label="Clear existing localStorage before pasting"/> <span>Clear existing localStorage before pasting</span>
       </label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
@@ -869,14 +869,14 @@ function showGistUploadDialog() {
       <div class="ek-subtle">Uploads your full mock set as a JSON file to a new gist. Teammates can import from the URL.</div>
       <div class="ek-field">
         <div class="ek-label">GitHub Personal Access Token <span class="ek-subtle">(gist scope)</span></div>
-        <input class="ek-input" type="password" value="${escapeHtml(lastToken)}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off"/>
+        <input class="ek-input" type="password" value="${escapeHtml(lastToken)}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off" aria-label="GitHub Personal Access Token" title="GitHub Personal Access Token"/>
         <div class="ek-subtle" style="margin-top:4px">Create at <span class="ek-tag">github.com/settings/tokens</span> with just <span class="ek-tag">gist</span> scope. Stored locally in this extension only.</div>
       </div>
       <div class="ek-field">
         <div class="ek-label">Description</div>
-        <input class="ek-input" type="text" value="EchoKit mock set — ${escapeHtml(state.tab.host || '')}" data-a="desc" data-testid="gist-desc"/>
+        <input class="ek-input" type="text" value="EchoKit mock set — ${escapeHtml(state.tab.host || '')}" data-a="desc" data-testid="gist-desc" aria-label="Gist Description" title="Gist Description"/>
       </div>
-      <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
+      <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public" aria-label="Make gist public" title="Make gist public"/> <span>Public gist</span></label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="upload" data-testid="gist-upload-confirm">Upload</button>
@@ -909,9 +909,9 @@ function showGistImportDialog() {
     <div class="ek-modal" data-testid="gist-import-modal">
       <div class="ek-modal-title">Import mocks from Gist</div>
       <div class="ek-subtle">Paste a public gist URL or a raw file URL. No token needed for public gists.</div>
-      <input class="ek-input" type="text" placeholder="https://gist.github.com/user/abc123..." data-a="url" data-testid="gist-url"/>
-      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked/> <span>Merge (replace by id)</span></label>
-      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override"/> <span>Override (wipe existing)</span></label>
+      <input class="ek-input" type="text" placeholder="https://gist.github.com/user/abc123..." data-a="url" data-testid="gist-url" aria-label="Gist URL to import" title="Gist URL to import"/>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked aria-label="Merge (replace by id)" title="Merge (replace by id)"/> <span>Merge (replace by id)</span></label>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override" aria-label="Override (wipe existing)" title="Override (wipe existing)"/> <span>Override (wipe existing)</span></label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="import" data-testid="gist-import-confirm">Import</button>
@@ -941,7 +941,7 @@ function renderToolbar(filteredCount) {
     // POPUP: Simple toolbar (current implementation)
     return `
       <div class="ek-toolbar">
-        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
+        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false" aria-label="Search URLs" title="Search URLs"/>
         <div class="ek-method-chips">
           ${methods.map(m => `<button type="button" class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" title="Filter by ${m}" aria-label="Filter by ${m}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}">${m}</button>`).join('')}
         </div>
@@ -1610,7 +1610,7 @@ function renderDetail(i, conflicts) {
           <span>Mock Behaviour</span>
           <div class="ek-row-inline-end">
             <label class="ek-switch ${i.mockEnabled ? 'on' : ''}">
-              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}"/>
+              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}" aria-label="Toggle mock for this request" title="Toggle mock for this request"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">${i.mockEnabled ? 'ON' : 'OFF'}</span>
             </label>
@@ -1713,7 +1713,7 @@ function renderDetail(i, conflicts) {
           <span>${i.method === 'WS' ? 'WebSocket Frames' : 'SSE Events'}</span>
           <div class="ek-row-inline-end">
             <label class="ek-switch ${i.wsLoop ? 'on' : ''}" title="Loop replay">
-              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}"/>
+              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}" aria-label="Toggle WebSocket loop replay" title="Toggle WebSocket loop replay"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">Loop</span>
             </label>
@@ -1758,7 +1758,7 @@ function renderDetail(i, conflicts) {
             ${(i.mockChain && i.mockChain.length > 0) ? `
               <span class="ek-subtle" data-testid="mock-chain-cursor">step ${((i.mockChainCursor || 0) % i.mockChain.length) + 1}/${i.mockChain.length}</span>
               <label class="ek-row-inline" style="gap:4px;margin-left:8px">
-                <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
+                <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle" aria-label="Loop chain replay"/>
                 <span class="ek-subtle">loop</span>
               </label>
               <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
@@ -2463,10 +2463,10 @@ function showImportDialog() {
       <textarea class="ek-textarea" style="min-height:120px" placeholder='{"version":2,"interactions":[…]}'></textarea>
       <input type="file" accept="application/json,.json" data-testid="import-file"/>
       <label class="ek-row-inline" style="gap:6px">
-        <input type="radio" name="ek-strategy" value="merge" checked/> <span>Merge (replace by id)</span>
+        <input type="radio" name="ek-strategy" value="merge" checked aria-label="Merge (replace by id)" title="Merge (replace by id)"/> <span>Merge (replace by id)</span>
       </label>
       <label class="ek-row-inline" style="gap:6px">
-        <input type="radio" name="ek-strategy" value="override"/> <span>Override (wipe existing)</span>
+        <input type="radio" name="ek-strategy" value="override" aria-label="Override (wipe existing)" title="Override (wipe existing)"/> <span>Override (wipe existing)</span>
       </label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
@@ -2501,7 +2501,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}" aria-label="Toggle request header ${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
@@ -2516,7 +2516,7 @@ function renderBlocklistRule(b, idx) {
   return `
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
-                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
+                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}" aria-label="Toggle blocklist pattern ${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
                 <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
               </div>
             `;
@@ -2528,7 +2528,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.from || '')}" data-a="rw-from" data-idx="${idx}" placeholder="from (substring or /regex/flags)" data-testid="rewrite-from-${idx}"/>
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}" aria-label="Toggle rewrite rule ${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
               </div>
@@ -2546,7 +2546,7 @@ function renderTransformRule(r, idx) {
                     <option value="set-body" ${r.action==='set-body'?'selected':''}>set body</option>
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}" aria-label="Toggle transform rule ${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
@@ -2624,7 +2624,7 @@ function renderSettingsGeneral(s, isDevTools) {
           </div>
         </div>
         <label class="ek-switch ${s.corsOverride?'on':''}">
-          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
+          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle" aria-label="Toggle CORS override globally" title="Toggle CORS override globally"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.corsOverride?'ON':'OFF'}</span>
         </label>
@@ -2636,7 +2636,7 @@ function renderSettingsGeneral(s, isDevTools) {
           <div class="ek-settings-hint">When a tab reloads while recording, pop this panel back open.</div>
         </div>
         <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}">
-          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle"/>
+          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle" aria-label="Auto-open popup on refresh" title="Auto-open popup on refresh"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
         </label>
@@ -3179,6 +3179,7 @@ function matchesStatusFilter(status, filters) {
   return false;
 }
 
+// Performance optimization: Cache stringified bodies
 // Helper: Search body content
 const bodyCache = new WeakMap();
 
