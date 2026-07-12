@@ -851,6 +851,8 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
+  t.setAttribute('role', 'status');
+  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -1631,7 +1633,7 @@ function renderDetail(i, conflicts) {
               <div class="ek-label">Latency (ms)</div>
               <div class="ek-row-inline">
                 <input class="ek-slider" type="range" min="0" max="10000" step="50" value="${i.mockLatency || 0}" data-action="update-latency" data-id="${i.id}" data-testid="latency-slider"/>
-                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}"/>
+                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}" aria-label="Latency in milliseconds" title="Latency in milliseconds"/>
               </div>
             </div>
           </div>
@@ -1653,7 +1655,7 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-body">
           <div class="ek-field">
             <div class="ek-label">Status Code</div>
-            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input"/>
+            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input" aria-label="HTTP Status Code" title="HTTP Status Code"/>
           </div>
           <div class="ek-field">
             <div class="ek-label">Body (raw JSON or text)</div>
@@ -1672,8 +1674,8 @@ function renderDetail(i, conflicts) {
             <div data-testid="headers-list">
               ${Object.entries(overrideHeaders).map(([k, v], idx) => `
                 <div class="ek-kv-row">
-                  <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
-                  <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
+                  <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}" aria-label="Header name" title="Header name"/>
+                  <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}" aria-label="Header value" title="Header value"/>
                   <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
                 </div>
               `).join('')}
@@ -1741,7 +1743,7 @@ function renderDetail(i, conflicts) {
           <div class="ek-field ek-row-inline" style="gap:8px;align-items:center">
             <div class="ek-label" style="min-width:60px">Max uses</div>
             <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
-              value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
+              value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input" aria-label="Maximum number of times to mock" title="Maximum number of times to mock"/>
             <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
             ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
           </div>
@@ -1770,7 +1772,7 @@ function renderDetail(i, conflicts) {
               <div style="border:1px solid ${active ? 'var(--amber)' : 'var(--border)'};border-radius:6px;padding:6px;margin-bottom:6px" data-testid="chain-step-${sIdx}">
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
-                  <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
+                  <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status" aria-label="Chain step status code" title="Chain step status code"/>
                   <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
@@ -3181,6 +3183,8 @@ function matchesStatusFilter(status, filters) {
 const bodyStringCache = new WeakMap();
 
 // Helper: Search body content
+const bodyCache = new WeakMap();
+
 function searchBodyContent(body, query) {
   if (!query) return true;
   if (!body) return false;
@@ -3189,12 +3193,10 @@ function searchBodyContent(body, query) {
 
   // Handle JSON bodies
   if (typeof body === 'object') {
-    // ⚡ Bolt: Use WeakMap to cache stringified representation avoiding O(N) re-allocations
-    // We assume body objects here are mostly immutable or recreated when changed.
-    let str = bodyStringCache.get(body);
+    let str = bodyCache.get(body);
     if (str === undefined) {
       str = JSON.stringify(body).toLowerCase();
-      bodyStringCache.set(body, str);
+      bodyCache.set(body, str);
     }
     return str.includes(q);
   }
@@ -3212,10 +3214,9 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   if (!nameQuery && !valueQuery) return true;
   if (!headers || typeof headers !== 'object') return false;
 
-  const nq = nameQuery.toLowerCase();
-  const vq = valueQuery.toLowerCase();
+  const nq = nameQuery ? nameQuery.toLowerCase() : '';
+  const vq = valueQuery ? valueQuery.toLowerCase() : '';
 
-  // ⚡ Bolt: Favor for...in loop over Object.entries() to avoid object allocations in hot loops
   for (const name in headers) {
     if (Object.prototype.hasOwnProperty.call(headers, name)) {
       const value = headers[name];
