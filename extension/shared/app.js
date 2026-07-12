@@ -851,6 +851,8 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
+  t.setAttribute('role', 'status');
+  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -3178,6 +3180,8 @@ function matchesStatusFilter(status, filters) {
 }
 
 // Helper: Search body content
+const bodyCache = new WeakMap();
+
 function searchBodyContent(body, query) {
   if (!query) return true;
   if (!body) return false;
@@ -3186,7 +3190,11 @@ function searchBodyContent(body, query) {
 
   // Handle JSON bodies
   if (typeof body === 'object') {
-    const str = JSON.stringify(body).toLowerCase();
+    let str = bodyCache.get(body);
+    if (str === undefined) {
+      str = JSON.stringify(body).toLowerCase();
+      bodyCache.set(body, str);
+    }
     return str.includes(q);
   }
 
@@ -3203,13 +3211,16 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   if (!nameQuery && !valueQuery) return true;
   if (!headers || typeof headers !== 'object') return false;
 
-  const nq = nameQuery.toLowerCase();
-  const vq = valueQuery.toLowerCase();
+  const nq = nameQuery ? nameQuery.toLowerCase() : '';
+  const vq = valueQuery ? valueQuery.toLowerCase() : '';
 
-  for (const [name, value] of Object.entries(headers)) {
-    const nameMatch = !nq || name.toLowerCase().includes(nq);
-    const valueMatch = !vq || String(value).toLowerCase().includes(vq);
-    if (nameMatch && valueMatch) return true;
+  for (const name in headers) {
+    if (Object.prototype.hasOwnProperty.call(headers, name)) {
+      const value = headers[name];
+      const nameMatch = !nq || name.toLowerCase().includes(nq);
+      const valueMatch = !vq || String(value).toLowerCase().includes(vq);
+      if (nameMatch && valueMatch) return true;
+    }
   }
   return false;
 }
