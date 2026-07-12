@@ -10,9 +10,6 @@
 ## 2025-02-18 - O(N) Performance Bottleneck from Redundant Function Calls in Render Loop
 **Learning:** Calling `filteredInteractions()` multiple times within the rendering loop (e.g., inside `render()` and nested components like `renderFilterChips`) creates an O(N) performance bottleneck because it re-runs expensive filtering logic for every call unnecessarily.
 **Action:** Pass pre-computed arrays or derived values (like `list.length`) down as arguments to child components instead of re-evaluating the expensive function at multiple levels in the component hierarchy.
-## 2024-07-10 - O(N) Performance Bottlenecks in Render Loops
-**Learning:** Frequent rendering loops like \`filteredInteractions\` repeatedly stringify JSON bodies and allocate new arrays with \`Object.entries()\`, causing severe O(N) performance bottlenecks.
-**Action:** Use a \`WeakMap\` to cache stringified representations of object bodies and favor \`for...in\` loops over \`Object.entries()\` inside frequent update loops to eliminate redundant allocations.
-## 2025-03-01 - O(N) Filter Stringification and Array Allocation
-**Learning:** During array filtering (e.g. `filteredInteractions`), calling `JSON.stringify(body)` and allocating arrays inside the loop using `Object.entries()` creates severe O(N) performance bottlenecks and memory pressure.
-**Action:** Use a `WeakMap` to cache stringified representations of immutable objects (e.g., `bodyStringCache.set(body, str)`), and replace `Object.entries()` with `for...in` loops (with `hasOwnProperty` checks) to eliminate repeated overhead.
+## 2024-05-18 - Avoid repeated stringification and object allocations in filter loops
+**Learning:** Filtering arrays in rendering loops (like filteredInteractions) that stringify JSON bodies repeatedly or use Object.entries on headers causes severe O(N) performance bottlenecks and massive garbage collection pauses.
+**Action:** Utilize a WeakMap to cache stringified representations of immutable object bodies (JSON.stringify(body).toLowerCase()) and favor for...in loops over Object.entries() (with Object.prototype.hasOwnProperty.call check) to eliminate these bottlenecks.
