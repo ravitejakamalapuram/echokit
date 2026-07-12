@@ -851,6 +851,8 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
+  t.setAttribute('role', 'status');
+  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
