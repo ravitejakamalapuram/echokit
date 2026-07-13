@@ -474,8 +474,8 @@ function renderHeader() {
         ${trialBadge}
         <div class="ek-header-spacer"></div>
         ${recording
-          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
-          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
+          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn" aria-label="Stop recording" title="Stop recording">STOP</button>`
+          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn" aria-label="Start recording" title="Start recording">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
           <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking" title="Toggle mocking">
           <span class="ek-switch-track"></span>
