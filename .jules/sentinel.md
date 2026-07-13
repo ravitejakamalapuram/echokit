@@ -18,8 +18,12 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
+## 2024-07-12 - DOM Clobbering Vulnerability in Sanitizer
+**Vulnerability:** The HTML sanitizer in `extension/shared/sanitize.js` used element properties like `el.attributes`, `el.removeAttribute`, and `el.setAttribute` which can be clobbered by an attacker injecting an input with a specific name, e.g., `<form><input name="attributes"></form>`. This would throw an exception and potentially bypass further sanitization.
+**Learning:** When writing DOM-based HTML sanitizers, relying on DOM element properties or methods directly is unsafe against clobbering attacks if untrusted content is present.
+**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) to securely interact with elements and avoid clobbering risks.
 
-## 2026-07-06 - DOM Clobbering in SanitizeHTML
-**Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
-**Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
-**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
+## 2026-07-12 - Prevent reverse tabnabbing on external links
+**Vulnerability:** The website contained anchor tags (`<a>`) pointing to external websites with `target="_blank"` but missing the `rel="noopener noreferrer"` attributes. This could allow the newly opened tab to retain a reference to the original window object via `window.opener`, potentially enabling malicious sites to perform phishing attacks or redirect the original page.
+**Learning:** Using `target="_blank"` without `rel="noopener noreferrer"` is a classic security vulnerability known as reverse tabnabbing. Modern security best practices require always pairing these attributes.
+**Prevention:** Added `rel="noopener noreferrer"` to all `target="_blank"` links in the website HTML files to sever the `window.opener` connection.
