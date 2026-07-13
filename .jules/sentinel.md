@@ -18,7 +18,7 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
-## 2026-07-07 - DOM Clobbering in HTML Sanitizer
-**Vulnerability:** DOM Clobbering allowed bypassing the HTML sanitizer because it relied on `el.attributes`, `el.removeAttribute`, and `el.setAttribute`. An injected form with inputs named `attributes`, `removeAttribute`, or `setAttribute` would clobber these properties.
-**Learning:** Never trust properties or methods on potentially untrusted DOM elements (especially `<form>`).
-**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when interacting with untrusted DOM nodes.
+## 2024-07-12 - DOM Clobbering Vulnerability in Sanitizer
+**Vulnerability:** The HTML sanitizer in `extension/shared/sanitize.js` used element properties like `el.attributes`, `el.removeAttribute`, and `el.setAttribute` which can be clobbered by an attacker injecting an input with a specific name, e.g., `<form><input name="attributes"></form>`. This would throw an exception and potentially bypass further sanitization.
+**Learning:** When writing DOM-based HTML sanitizers, relying on DOM element properties or methods directly is unsafe against clobbering attacks if untrusted content is present.
+**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) to securely interact with elements and avoid clobbering risks.

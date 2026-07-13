@@ -15,32 +15,30 @@ export function sanitizeHTML(dirty) {
   const fragment = template.content;
 
   // Remove all script tags
-  fragment.querySelectorAll('script').forEach(el => el.remove());
+  fragment.querySelectorAll('script').forEach(el => Element.prototype.remove.call(el));
 
   // Remove all elements with dangerous tags
   const dangerousTags = ['iframe', 'object', 'embed', 'link', 'style', 'base', 'meta'];
   dangerousTags.forEach(tag => {
-    fragment.querySelectorAll(tag).forEach(el => el.remove());
+    fragment.querySelectorAll(tag).forEach(el => Element.prototype.remove.call(el));
   });
 
   // Remove all dangerous attributes from all elements
   const dangerousAttributes = /^on|^formaction$|^form$|^xmlns$/i;
   fragment.querySelectorAll('*').forEach(el => {
-    // Use Element.prototype to prevent DOM Clobbering (e.g. <form><input name="attributes"></form>)
     const attrNames = Element.prototype.getAttributeNames.call(el);
-    attrNames.forEach(name => {
+    attrNames.forEach(attrName => {
+      const attrValue = Element.prototype.getAttribute.call(el, attrName);
       // Remove event handlers (onclick, onerror, etc.)
-      if (dangerousAttributes.test(name)) {
-        Element.prototype.removeAttribute.call(el, name);
-      } else if (name === 'href' || name === 'src') {
-        // Sanitize href and src to remove javascript: and data: URIs
-        const value = Element.prototype.getAttribute.call(el, name);
-        if (value) {
-          // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
-          const cleanVal = value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
-          if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
-            Element.prototype.setAttribute.call(el, name, '#');
-          }
+      if (dangerousAttributes.test(attrName)) {
+        Element.prototype.removeAttribute.call(el, attrName);
+      }
+      // Sanitize href and src to remove javascript: and data: URIs
+      if ((attrName === 'href' || attrName === 'src') && attrValue) {
+        // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
+        const cleanVal = attrValue.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
+        if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
+          Element.prototype.setAttribute.call(el, attrName, '#');
         }
       }
     });
