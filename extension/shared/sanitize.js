@@ -15,12 +15,12 @@ export function sanitizeHTML(dirty) {
   const fragment = template.content;
 
   // Remove all script tags
-  fragment.querySelectorAll('script').forEach(el => el.remove());
+  fragment.querySelectorAll('script').forEach(el => Element.prototype.remove.call(el));
 
   // Remove all elements with dangerous tags
   const dangerousTags = ['iframe', 'object', 'embed', 'link', 'style', 'base', 'meta'];
   dangerousTags.forEach(tag => {
-    fragment.querySelectorAll(tag).forEach(el => el.remove());
+    fragment.querySelectorAll(tag).forEach(el => Element.prototype.remove.call(el));
   });
 
   // Remove all dangerous attributes from all elements
