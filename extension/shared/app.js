@@ -3180,6 +3180,8 @@ function matchesStatusFilter(status, filters) {
 }
 
 // Performance optimization: Cache stringified bodies
+const bodyStringCache = new WeakMap();
+
 // Helper: Search body content
 const bodyCache = new WeakMap();
 
