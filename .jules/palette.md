@@ -14,6 +14,6 @@
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
 
-## 2025-05-19 - Missing hover tooltips and aria-labels on status buttons
-**Learning:** Action buttons relying on Unicode symbols (like ● REC) or short labels (like STOP, Wipe) lacked explicit `aria-label` and `title` attributes, causing screen readers to incorrectly pronounce symbols and sighted users to miss hover context.
-**Action:** Always provide explicit `aria-label` and matching `title` attributes on stateful status or destructive action buttons to ensure correct screen reader pronunciation and visual hover tooltips.
+## 2025-02-22 - Missing ARIA attributes on toast notifications
+**Learning:** The custom `toast()` notification UI used to display brief feedback messages to the user lacked `role="status"` and `aria-live="polite"` attributes, meaning screen reader users would not be aware of these important success/error updates.
+**Action:** Always add `role="status"` and `aria-live="polite"` (or `assertive` for critical errors) to dynamic toast notifications to ensure they are announced to screen readers.
