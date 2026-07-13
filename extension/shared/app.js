@@ -246,9 +246,8 @@ function applyTheme() {
 /**
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
- * @param {Array<Object>} filtered - Pre-computed list of interactions to prevent O(N) recalculation.
  */
-function renderInteractionListNew(filtered) {
+function renderInteractionListNew() {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -325,6 +324,7 @@ function renderInteractionListNew(filtered) {
   }
 
   // Update layout with current data
+  const filtered = filteredInteractions();
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -384,7 +384,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew(list);
+    renderInteractionListNew();
   }
 
   bindEvents();
@@ -474,8 +474,8 @@ function renderHeader() {
         ${trialBadge}
         <div class="ek-header-spacer"></div>
         ${recording
-          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn" aria-label="Stop recording" title="Stop recording">STOP</button>`
-          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn" aria-label="Start recording" title="Start recording">● REC</button>`}
+          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
+          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
           <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking" title="Toggle mocking">
           <span class="ek-switch-track"></span>
@@ -1703,7 +1703,7 @@ function renderDetail(i, conflicts) {
       </div>
 
       <div class="ek-row-inline">
-        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn" aria-label="Delete this mock completely" title="Delete this mock completely">Delete this mock</button>
+        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn">Delete this mock</button>
         <div class="ek-row-inline-end ek-subtle">hash <span class="ek-tag">${i.hash}</span></div>
       </div>
 
@@ -2718,7 +2718,7 @@ function renderSettingsLicense() {
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
         </div>
-        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn" aria-label="Wipe all recordings completely" title="Wipe all recordings completely">Wipe</button>
+        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
       </div>
 
       <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
@@ -3180,7 +3180,7 @@ function matchesStatusFilter(status, filters) {
 }
 
 // Performance optimization: Cache stringified bodies
-// const bodyStringCache = new WeakMap();
+const bodyStringCache = new WeakMap();
 
 // Helper: Search body content
 const bodyCache = new WeakMap();
