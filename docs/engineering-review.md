@@ -1,118 +1,108 @@
-# Repository Engineering Review
+# EchoKit Engineering Review Report
 
 ## Executive Summary
-* **Overall Repo Health Score**: 70/100
-* **Biggest Risks**: Extremely large "God files" (`extension/shared/app.js` is >3200 lines, `extension/background.js` is >1800 lines) which violate the max 2000 lines rule in `DEVELOPMENT_RULES.md`. Manual DOM manipulation and tight coupling between UI and data fetching logic make testing and scaling difficult.
-* **Highest ROI Improvements**: Decompose `app.js` and `background.js` into smaller, highly cohesive modules. Implement a robust caching mechanism for O(N) URL parsing operations. Standardize Vanilla JS UI component creation.
-* **Architecture Concerns**: The architecture relies heavily on imperative Vanilla JS, which is reaching its limit. There's a severe lack of separation of concerns in the UI layer (rendering, event handling, network, and storage are intermingled). State management is fragmented.
+* **Overall repo health score**: 70/100
+* **Biggest risks**:
+    * Monolithic frontend (`extension/shared/app.js` is over 3253 lines).
+    * Duplicated logic between `extension/shared/matcher.js` and `extension/injected.js`.
+    * Potential DOM-based vulnerabilities in UI rendering (e.g., `innerHTML` usage).
+* **Highest ROI improvements**:
+    * Decompose `app.js` into modular vanilla JS components or adopt a lightweight framework.
+    * Centralize and deduplicate URL matching logic.
+* **Architecture concerns**:
+    * Tight coupling of UI rendering, state management, and business logic in `app.js`.
+    * State synchronization complexities between background worker and injected scripts.
 
 ## Critical Issues
-1. **God Files**: `extension/shared/app.js` (3252 lines) and `extension/background.js` (1816 lines) are far too large. They handle rendering, routing, state, and API communication.
-2. **Performance Bottleneck (O(N) new URL())**: In `extension/shared/app.js`, `extension/background.js`, and `extension/injected.js`, repeatedly creating `new URL()` within loops (e.g., during array filtering or rendering lists) causes massive CPU spikes.
-3. **Tight Coupling**: UI rendering logic is tightly coupled to specific DOM structures and `chrome.storage`/`IndexedDB` calls.
-4. **Memory Leaks**: Potential unmanaged event listeners and closures in `app.js` during rapid DOM re-renders (soft rendering vs full wiping).
+1. **app.js Monolith:** `extension/shared/app.js` is a massive file (~3253 lines), making it extremely difficult to maintain, test, and onboard new developers. It violates separation of concerns.
+2. **Duplicated Matching Logic:** Significant duplication exists between `cli/lib/match.js`, `extension/shared/matcher.js`, and the hand-inlined copy in `extension/injected.js`. This creates a high risk of inconsistent behavior between environments.
+3. **Security Risks:** The use of `innerHTML` or unsafe DOM manipulations in the UI codebase could lead to DOM Clobbering or XSS. Specifically, `Element.prototype` methods should be strictly used when interacting with DOM elements (as per agent instructions).
 
 ## Duplication Report
-1. **DOM Element Creation**: Repeated `document.createElement`, `setAttribute`, `classList.add` blocks. Needs a shared helper or UI component factory.
-2. **Message Passing**: `chrome.runtime.sendMessage` and `window.postMessage` logic is duplicated across `app.js`, `background.js`, `injected.js`, and `content.js` without a unified abstraction.
-3. **Error Handling**: `try/catch` blocks for `JSON.parse` and `chrome.storage` are repeated everywhere.
-4. **URL Normalization/Parsing**: Similar logic for parsing URLs and query strings exists in `matcher.js`, `app.js`, and `background.js`.
+* **URL/Body Normalization & Matching:** Logic is duplicated across `cli/lib/match.js`, `extension/shared/matcher.js`, and `extension/injected.js`.
+    * *Why problematic:* Changes to matching logic must be manually synchronized across three locations, leading to bugs and API inconsistencies.
+    * *Spread:* Core to all request interception.
+    * *Suggestion:* Create a truly shared core package/module (perhaps bundled via a build step for `injected.js`) that defines a single source of truth.
+* **UI Event Binding:** Repeated boilerplate for DOM event listeners throughout `app.js`.
+    * *Suggestion:* Abstract into a simple generic event delegation or UI binding utility.
 
 ## Reusability Opportunities
-1. **UI Component Factory**: Extract `createButton`, `createToggle`, `createModal` functions to standardise DOM creation and accessibility attributes (`aria-label`, `title`).
-2. **Message Router**: A central `MessageBus` to handle cross-world/cross-script communication (`MAIN` to `ISOLATED` to `BACKGROUND`).
-3. **State Management**: A lightweight `Store` or `PubSub` system to separate data fetching from UI rendering.
-4. **Storage Abstraction**: Wrap `IndexedDB` and `chrome.storage` in a repository class (`StorageService`).
+* **Reusable UI Components:** Extract common UI elements (dialogs, chips, form inputs) from `app.js` into standalone classes or functions (e.g., `Dialog`, `Toggle`, `SearchInput`).
+* **Reusable State Management:** Decouple state updates from DOM updates. Implement a simple observer pattern or reactive store (e.g., a lightweight `Proxy`-based store).
+* **Reusable Fetch/XHR Interceptor:** The interception logic in `injected.js` could be abstracted into a reusable hook pattern for extensibility.
 
 ## Architecture Review
-* **Scalability**: The vanilla JS architecture is straining under the weight of a >3000-line main app file. It is difficult for new developers to safely add features.
-* **Maintainability**: Low. Finding specific bugs requires navigating massive files and tracking imperative DOM updates.
-* **Separation of Concerns**: Poor. `app.js` contains business logic, layout management, event binding, and data fetching.
-* **Extensibility**: Hard to extend without breaking existing fragile DOM references.
-* **Consistency**: Inconsistent error handling and state updates.
+* **Scalability:** Poor. The current monolithic approach limits the ability to add complex new features without exponentially increasing technical debt.
+* **Maintainability:** Low for the frontend. High dependency chains and tight coupling make localized changes risky.
+* **Separation of Concerns:** Weak in `app.js`. It handles API communication, local storage, complex state, and DOM manipulation simultaneously.
+* **Violations:** `app.js` and `background.js` exceed the recommended file size limits defined in `DEVELOPMENT_RULES.md` (no file > 2000 lines, warning at 1000).
 
 ## Performance Findings
-* **Frontend Performance**: Repeated manual DOM updates and `.innerHTML` assignments are slower than necessary and risk layout thrashing. Soft rendering is attempted but complex to maintain manually.
-* **Parsing Bottlenecks**: Heavy use of `JSON.parse` and `new URL()` in critical paths (e.g., filtering lists). Needs caching.
-* **Bundle Size Risks**: While small now, continuing to build a custom UI framework inside `app.js` will bloat the extension.
+* **DOM Updates:** Direct and frequent DOM manipulation in `app.js` (e.g., re-rendering lists) without diffing can cause jank on large datasets.
+* **JSON Parsing:** Frequent JSON stringify/parse operations in filtering and matching loops (O(N) operations).
+    * *Recommendation:* Use WeakMap caching for stringified bodies as noted in codebase memory.
 
 ## Security & Reliability Findings
-* **XSS Risks**: Direct use of `.innerHTML` and unsanitized template strings in some UI components. The `sanitizeHTML` helper is present but must be strictly enforced.
-* **Message Validation**: `content.js` must strictly validate `event.source === window` to prevent spoofing from malicious iframes.
-* **JSON Parsing**: Unsafe `JSON.parse` operations could throw and halt execution if not properly wrapped (Rule: "Naked JSON.parse").
+* **DOM Clobbering:** Risks when interacting with potentially untrusted DOM elements.
+    * *Fix:* Enforce the use of `Element.prototype.getAttribute.call(el)` over `el.getAttribute()`.
+* **Injection Risks:** Ensure all user inputs (e.g., request bodies, URLs) are properly sanitized before rendering in the UI.
 
 ## Testing Gaps
-* **Unit Tests**: Missing unit tests for critical UI logic in `app.js`. Testing relies almost entirely on Playwright E2E smoke tests which are fragile to UI changes.
-* **Test Isolation**: Cannot easily test UI components in isolation because they depend heavily on the global `window.chrome` API and complex DOM state.
-* **Edge Cases**: Missing tests for DNR rule limit exceptions and IndexedDB quota exceeded scenarios.
+* **Unit Testing for UI:** Lacking isolated unit tests for UI rendering logic because it's tightly coupled to the DOM and global state in `app.js`.
+* **Mock Testing:** Need stronger contract tests to ensure `cli/lib/match.js` and `extension/shared/matcher.js` behave identically.
 
 ## Rules Compliance Findings
-* **Violation of `.augment/rules` / `DEVELOPMENT_RULES.md`**:
-  * **Rule**: "No file > 2000 lines; warning flag at 1000"
-    * **Violation**: `app.js` (3252 lines), `background.js` (1816 lines).
-  * **Rule**: "No magic numbers"
-    * **Violation**: Hardcoded timeouts (e.g., 300ms debounce), layout dimensions, and API limits throughout the codebase.
-  * **Rule**: "Function size within limits — no function > 150 lines"
-    * **Violation**: Several rendering and initialization functions in `app.js` exceed this.
+* **Rule:** File size limits (no file > 2000 lines).
+    * *Violation:* `extension/shared/app.js` (~3253 lines).
+    * *Impact:* Code readability and maintainability severely impacted.
+    * *Fix:* Decompose into smaller modules (e.g., `sidebar.js`, `details-panel.js`, `settings-dialog.js`).
 
 ## Recommended Refactor Plan
+### Quick Wins
+1. **Security Review:** Enforce `Element.prototype` usage for DOM attribute access.
+2. **Performance:** Implement WeakMap caching for JSON stringification in filtering loops.
+3. **Accessibility:** Audit and fix `<label>` and `aria-label` implementations in form components.
 
-### Phase 1: Quick Wins & Performance (Weeks 1-2)
-1. **URL Caching**: Implement an LRU Map cache for `parseUrl` to eliminate O(N) performance bottlenecks in filtering/rendering.
-2. **Magic Numbers Extraction**: Extract hardcoded limits, timeouts, and string literals into a central `constants.js` file.
-3. **Message Validation**: Audit and fix all `window.addEventListener('message')` listeners to ensure strict `event.source === window` checks.
+### Medium Effort
+1. **Deduplicate Matcher:** Create a build step (e.g., esbuild/rollup) to inject the shared matcher into `injected.js` to ensure a single source of truth.
+2. **Extract UI Utilities:** Move generic DOM helpers (e.g., show/hide, element creation) into a dedicated `ui-utils.js`.
 
-### Phase 2: Medium Effort Refactors (Weeks 3-4)
-1. **Decompose `background.js`**: Split into `storage.js`, `dnr-manager.js`, `messaging.js`, and `license-check.js`.
-2. **Create UI Component Factory**: Create `ui-components.js` to standardize the creation of Buttons, Toggles, and Inputs, enforcing `aria-label` and `title` parity.
-3. **Storage Repository**: Abstract IndexedDB and Chrome Storage interactions into a centralized module.
+### Long-Term Architecture
+1. **Decompose app.js:** Break the monolith into logical feature components (Sidebar, Main Panel, Settings).
+2. **State Management:** Introduce a robust state management pattern to decouple logic from the view.
 
-### Phase 3: Long-term Architecture Improvements (Months 2-3)
-1. **Decompose `app.js`**: Break down the 3200+ line monolith into smaller, focused modules (e.g., `sidebar.js`, `details-pane.js`, `toolbar.js`, `state-manager.js`).
-2. **State Management**: Implement a simple Pub/Sub or unidirectional data flow architecture to decouple UI from data.
-3. **Mock Environment for UI Tests**: Build a lightweight wrapper/mock for `chrome.*` APIs so UI components can be unit tested in Node using Jest/Mocha without a browser.
-
----
-
-## Top 10 Highest-Value Fixes
-1. Decompose `extension/shared/app.js` to eliminate the 3200+ line "God file" violation.
-2. Decompose `extension/background.js` into cohesive domain modules.
-3. Implement `urlHostCache` to prevent O(N) allocations in `new URL()` during list filtering.
-4. Add strict `event.source === window` validation in `content.js` message listeners.
-5. Extract DOM creation logic into a reusable `UIComponentFactory` to ensure accessibility and reduce duplication.
-6. Centralize and wrap all `chrome.runtime.sendMessage` calls into a `MessageRouter`.
-7. Enforce usage of `sanitizeHTML` for all dynamic HTML rendering to prevent DOM XSS.
-8. Extract magic numbers (timeouts, sizes, limits) into `constants.js`.
-9. Wrap all scattered `chrome.storage` calls into a single `StorageRepository`.
-10. Refactor large functions (>150 lines) in `app.js` into smaller helper methods.
-
-## Top 10 Duplication-Removal Opportunities
-1. DOM element creation logic (imperative `createElement` sequences).
-2. Cross-script messaging handlers and routers.
-3. Error handling blocks for `JSON.parse` and storage APIs.
-4. URL and query string normalization logic.
-5. Layout computation for standard panes and lists.
-6. Theme toggling and state persistence.
-7. Status indicator and badge rendering.
-8. IndexedDB transaction wrappers.
-9. Fetch/XHR interception mocking logic in testing vs injected scripts.
-10. Debounce and throttling utility functions scattered across files.
-
-## Top Reusable Abstractions
-1. **UI Component Factory**: Declarative wrapper for creating accessible DOM elements.
-2. **State Manager / Event Bus**: Pub/sub system for decoupled UI reactivity.
-3. **Message Router**: Typed wrapper for cross-world extension messaging.
-4. **Storage Repository**: Unified async API for IndexedDB and Chrome Storage.
-5. **Safe Renderer**: Centralized template parser and HTML sanitizer.
-
-## Files with Highest Technical Debt
-1. `extension/shared/app.js` (Violates size limits, God component)
-2. `extension/background.js` (Violates size limits, tight coupling)
-3. `extension/injected.js` (Complex fetch/XHR interception logic mixed with state)
-
-## Suggested Engineering Standards
-1. **Max File Size Enforcement**: Add an ESLint rule or CI script to strictly enforce the 2000-line limit.
-2. **Component Architecture Guidelines**: Standardize how Vanilla JS UI components are structured, instantiated, and destroyed.
-3. **State Management Pattern**: Document a required pattern (e.g., unidirectional flow) for managing application state.
-4. **Accessibility (a11y) Baseline**: Require `title` and `aria-label` for all interactive elements.
-5. **Mocking Standards**: Provide a standard `chrome.*` API mock library for frontend unit testing.
+# Final Requirement
+1. **Top 10 highest-value fixes:**
+    1. Break down `app.js`.
+    2. Unify matcher logic via build step.
+    3. Fix DOM clobbering vulnerabilities using `Element.prototype`.
+    4. Implement O(N) optimizations with WeakMap caching.
+    5. Fix non-semantic `<div class="ek-label">` to proper accessibility standards.
+    6. Ensure strict input sanitization on all raw API data displayed.
+    7. Decouple background state sync from UI rendering.
+    8. Abstract event binding logic.
+    9. Implement UI unit testing strategy.
+    10. Address file size limit violations.
+2. **Top 10 duplication-removal opportunities:**
+    1. `matcher.js` vs `injected.js` URL matching.
+    2. `matcher.js` vs `cli/lib/match.js`.
+    3. DOM event listeners in `app.js`.
+    4. API request formatting.
+    5. JSON parsing try-catch blocks.
+    6. Modal/Dialog show/hide logic.
+    7. Storage sync callbacks.
+    8. Header normalization logic.
+    9. Date formatting utilities.
+    10. State toggle handlers.
+3. **Top reusable abstractions worth introducing:**
+    1. UI Component Base Class/Function.
+    2. Reactive State Store.
+    3. Safe DOM Manipulator Utility.
+    4. Generic HTTP Interceptor Hook.
+4. **Files/components with highest technical debt:** `extension/shared/app.js`, `extension/background.js`, `extension/injected.js`.
+5. **Suggested engineering standards missing from the repository:**
+    1. Component-driven development guidelines.
+    2. State management architecture standards.
+    3. Mandatory performance profiling for large list renders.
+    4. Automated bundle size monitoring.
+    5. Strict DOM manipulation safety guidelines (DOM Clobbering prevention).
