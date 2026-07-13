@@ -15,12 +15,12 @@ export function sanitizeHTML(dirty) {
   const fragment = template.content;
 
   // Remove all script tags
-  fragment.querySelectorAll('script').forEach(el => el.remove());
+  fragment.querySelectorAll('script').forEach(el => Element.prototype.remove.call(el));
 
   // Remove all elements with dangerous tags
   const dangerousTags = ['iframe', 'object', 'embed', 'link', 'style', 'base', 'meta'];
   dangerousTags.forEach(tag => {
-    fragment.querySelectorAll(tag).forEach(el => el.remove());
+    fragment.querySelectorAll(tag).forEach(el => Element.prototype.remove.call(el));
   });
 
   // Remove all dangerous attributes from all elements
@@ -34,7 +34,7 @@ export function sanitizeHTML(dirty) {
         Element.prototype.removeAttribute.call(el, attrName);
       }
       // Sanitize href and src to remove javascript: and data: URIs
-      else if ((attrName === 'href' || attrName === 'src') && attrValue) {
+      if ((attrName === 'href' || attrName === 'src') && attrValue) {
         // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
         const cleanVal = attrValue.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
         if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
