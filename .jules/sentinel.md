@@ -18,8 +18,12 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
 **Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
 **Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
+## 2024-07-12 - DOM Clobbering Vulnerability in Sanitizer
+**Vulnerability:** The HTML sanitizer in `extension/shared/sanitize.js` used element properties like `el.attributes`, `el.removeAttribute`, and `el.setAttribute` which can be clobbered by an attacker injecting an input with a specific name, e.g., `<form><input name="attributes"></form>`. This would throw an exception and potentially bypass further sanitization.
+**Learning:** When writing DOM-based HTML sanitizers, relying on DOM element properties or methods directly is unsafe against clobbering attacks if untrusted content is present.
+**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) to securely interact with elements and avoid clobbering risks.
 
-## 2026-07-03 - Secure postMessage listeners in injected scripts
-**Vulnerability:** The `window.addEventListener('message', ...)` in `extension/injected.js` lacked an `ev.source === window` check, exposing the extension to state spoofing via unauthorized cross-origin messaging from malicious iframes.
-**Learning:** Injected extension scripts must always validate the event source when handling `postMessage` events to prevent cross-origin attacks, even if they check for specific custom payloads or types.
-**Prevention:** Added `if (ev.source !== window) return;` at the beginning of the message event listener to ensure messages originate strictly from the same window.
+## 2026-07-12 - Prevent reverse tabnabbing on external links
+**Vulnerability:** The website contained anchor tags (`<a>`) pointing to external websites with `target="_blank"` but missing the `rel="noopener noreferrer"` attributes. This could allow the newly opened tab to retain a reference to the original window object via `window.opener`, potentially enabling malicious sites to perform phishing attacks or redirect the original page.
+**Learning:** Using `target="_blank"` without `rel="noopener noreferrer"` is a classic security vulnerability known as reverse tabnabbing. Modern security best practices require always pairing these attributes.
+**Prevention:** Added `rel="noopener noreferrer"` to all `target="_blank"` links in the website HTML files to sever the `window.opener` connection.
