@@ -1,91 +1,108 @@
 # EchoKit Engineering Review Report
 
 ## Executive Summary
-- **Overall Repo Health Score**: 70/100
-- **Biggest Risks**: Severe DOM Clobbering vulnerability in the HTML sanitizer (`extension/shared/sanitize.js`), and performance bottlenecks from unoptimized `new URL()` instantiation.
-- **Highest ROI Improvements**: Fix `sanitizeHTML` by using `Element.prototype` methods, cache URL parsing with a local Map or variable, and decompose the `app.js` god component.
-- **Architecture Concerns**: The frontend relies on a large monolithic `app.js` file (~3000 lines) which tightly couples UI rendering, state management, and business logic, lacking functional abstractions or reusable components.
+* **Overall repo health score**: 70/100
+* **Biggest risks**:
+    * Monolithic frontend (`extension/shared/app.js` is over 3253 lines).
+    * Duplicated logic between `extension/shared/matcher.js` and `extension/injected.js`.
+    * Potential DOM-based vulnerabilities in UI rendering (e.g., `innerHTML` usage).
+* **Highest ROI improvements**:
+    * Decompose `app.js` into modular vanilla JS components or adopt a lightweight framework.
+    * Centralize and deduplicate URL matching logic.
+* **Architecture concerns**:
+    * Tight coupling of UI rendering, state management, and business logic in `app.js`.
+    * State synchronization complexities between background worker and injected scripts.
 
 ## Critical Issues
-1. **DOM Clobbering Vulnerability in Sanitizer**:
-   - **Location**: `extension/shared/sanitize.js`
-   - **Impact**: The sanitizer accesses `el.attributes` to iterate over attributes. If a malicious user injects `<form><input name="attributes"></form>`, `el.attributes` returns the input element instead of the expected `NamedNodeMap`. This causes the sanitizer loop to fail or behave unexpectedly, bypassing sanitization and leading to DOM XSS.
-   - **Fix**: Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`, `Element.prototype.getAttribute.call(el, ...)`) instead of properties or methods on the element instance to completely prevent DOM Clobbering vulnerabilities.
-
-2. **O(N) Performance Bottleneck in URL Parsing**:
-   - **Location**: `extension/background.js` (e.g., lines 92, 1067, 1082, 1564), `extension/injected.js` (e.g., lines 182, 193, 255), `extension/shared/matcher.js`
-   - **Impact**: `new URL()` is instantiated inside frequent operations and loops. This causes severe object allocation overhead and GC pressure.
-   - **Fix**: Pre-calculate and cache the results of expensive normalization functions (e.g., `normalizeUrl`, `stripQuery`) in local variables or use a module-level LRU `Map` cache to avoid redundant `new URL()` allocations.
+1. **app.js Monolith:** `extension/shared/app.js` is a massive file (~3253 lines), making it extremely difficult to maintain, test, and onboard new developers. It violates separation of concerns.
+2. **Duplicated Matching Logic:** Significant duplication exists between `cli/lib/match.js`, `extension/shared/matcher.js`, and the hand-inlined copy in `extension/injected.js`. This creates a high risk of inconsistent behavior between environments.
+3. **Security Risks:** The use of `innerHTML` or unsafe DOM manipulations in the UI codebase could lead to DOM Clobbering or XSS. Specifically, `Element.prototype` methods should be strictly used when interacting with DOM elements (as per agent instructions).
 
 ## Duplication Report
-1. **Matcher Logic Duplication**:
-   - **Location**: `extension/shared/matcher.js` vs `extension/injected.js`
-   - **Impact**: Complex logic is duplicated across these files.
-   - **Suggestion**: Consider leveraging a build step to allow module sharing, eliminating the need to maintain redundant copies.
+* **URL/Body Normalization & Matching:** Logic is duplicated across `cli/lib/match.js`, `extension/shared/matcher.js`, and `extension/injected.js`.
+    * *Why problematic:* Changes to matching logic must be manually synchronized across three locations, leading to bugs and API inconsistencies.
+    * *Spread:* Core to all request interception.
+    * *Suggestion:* Create a truly shared core package/module (perhaps bundled via a build step for `injected.js`) that defines a single source of truth.
+* **UI Event Binding:** Repeated boilerplate for DOM event listeners throughout `app.js`.
+    * *Suggestion:* Abstract into a simple generic event delegation or UI binding utility.
 
 ## Reusability Opportunities
-1. **UI Component Abstraction**:
-   - **Location**: `extension/shared/app.js`
-   - **Impact**: Tight coupling of UI rendering, state management, and business logic.
-   - **Suggestion**: Extract rendering logic into reusable vanilla JS components. Create separate modules for Header, FilterBar, InteractionList, and SettingsModal.
+* **Reusable UI Components:** Extract common UI elements (dialogs, chips, form inputs) from `app.js` into standalone classes or functions (e.g., `Dialog`, `Toggle`, `SearchInput`).
+* **Reusable State Management:** Decouple state updates from DOM updates. Implement a simple observer pattern or reactive store (e.g., a lightweight `Proxy`-based store).
+* **Reusable Fetch/XHR Interceptor:** The interception logic in `injected.js` could be abstracted into a reusable hook pattern for extensibility.
 
 ## Architecture Review
-- **Scalability & Maintainability**: `app.js` is an oversized file. This severely limits maintainability. The codebase relies on large, monolithic vanilla JavaScript files that tightly couple UI rendering and state management.
-- **Suggestion**: Move towards smaller, modular JavaScript files with clear separation of concerns.
+* **Scalability:** Poor. The current monolithic approach limits the ability to add complex new features without exponentially increasing technical debt.
+* **Maintainability:** Low for the frontend. High dependency chains and tight coupling make localized changes risky.
+* **Separation of Concerns:** Weak in `app.js`. It handles API communication, local storage, complex state, and DOM manipulation simultaneously.
+* **Violations:** `app.js` and `background.js` exceed the recommended file size limits defined in `DEVELOPMENT_RULES.md` (no file > 2000 lines, warning at 1000).
 
 ## Performance Findings
-- **Object Allocation in Loops**: Instantiating `new URL()` inside loops (such as UI rendering loops or array filtering loops) is a severe performance bottleneck. Mitigate this using a local cache.
+* **DOM Updates:** Direct and frequent DOM manipulation in `app.js` (e.g., re-rendering lists) without diffing can cause jank on large datasets.
+* **JSON Parsing:** Frequent JSON stringify/parse operations in filtering and matching loops (O(N) operations).
+    * *Recommendation:* Use WeakMap caching for stringified bodies as noted in codebase memory.
 
 ## Security & Reliability Findings
-- **Unsafe Data Handling in Messaging**: The `injected.js` script receives messages via `postMessage`. It should strictly validate the event source (`if (ev.source !== window) return;`) to prevent unauthorized cross-origin messaging and state spoofing from malicious iframes.
+* **DOM Clobbering:** Risks when interacting with potentially untrusted DOM elements.
+    * *Fix:* Enforce the use of `Element.prototype.getAttribute.call(el)` over `el.getAttribute()`.
+* **Injection Risks:** Ensure all user inputs (e.g., request bodies, URLs) are properly sanitized before rendering in the UI.
 
 ## Testing Gaps
-- **Missing Edge Cases in Sanitizer**: The test suite should include DOM clobbering payloads to verify the sanitizer's robustness.
-- **Performance Tests**: Add tests to ensure repeated string interpolations and URL parsing do not degrade performance.
+* **Unit Testing for UI:** Lacking isolated unit tests for UI rendering logic because it's tightly coupled to the DOM and global state in `app.js`.
+* **Mock Testing:** Need stronger contract tests to ensure `cli/lib/match.js` and `extension/shared/matcher.js` behave identically.
 
 ## Rules Compliance Findings
-- **Rule Violated**: Missing modularity in frontend scripts.
-- **Impact**: Technical debt is accumulating in `app.js`.
-- **Fix**: Decompose `app.js` into smaller modules.
+* **Rule:** File size limits (no file > 2000 lines).
+    * *Violation:* `extension/shared/app.js` (~3253 lines).
+    * *Impact:* Code readability and maintainability severely impacted.
+    * *Fix:* Decompose into smaller modules (e.g., `sidebar.js`, `details-panel.js`, `settings-dialog.js`).
 
 ## Recommended Refactor Plan
-- **Quick Wins**: Fix the DOM clobbering vulnerability in `sanitize.js` and add `ev.source === window` check in `injected.js`.
-- **Medium Effort**: Introduce caching for `new URL()` in `matcher.js` and `background.js`.
-- **Long-term**: Split `app.js` into modular files (`header.js`, `menu.js`, etc.) and introduce a bundler for `injected.js`.
+### Quick Wins
+1. **Security Review:** Enforce `Element.prototype` usage for DOM attribute access.
+2. **Performance:** Implement WeakMap caching for JSON stringification in filtering loops.
+3. **Accessibility:** Audit and fix `<label>` and `aria-label` implementations in form components.
 
-## Final Requirement
-1. **Top 10 highest-value fixes**:
-   - Fix DOM clobbering in `sanitize.js`
-   - Cache `new URL()` inside loops
-   - Validate `postMessage` source in `injected.js`
-   - Decompose `app.js` into smaller modules
-   - Pre-calculate hash keys optimally
-   - Move inline styles to CSS classes in `app.js`
-   - Add DOM clobbering tests
-   - Add large dataset performance tests
-   - Ensure proper error boundary wrapping
-   - Add strict Content Security Policy checks
-2. **Top 10 duplication-removal opportunities**:
-   - Matcher logic
-   - URL parsing logic
-   - Message dispatching logic
-   - Badge rendering logic
-   - Layout template strings
-   - Event listener attachment patterns
-   - Debounce implementations
-   - State synchronization handlers
-   - Error handling try-catch blocks
-   - Storage read wrappers
-3. **Top reusable abstractions**:
-   - `URLParserCache`
-   - `EventDispatcher`
-   - `SafeDOMElement`
-   - `VirtualList`
-4. **Files/components with highest technical debt**:
-   - `extension/shared/app.js`
-   - `extension/background.js`
-   - `extension/injected.js`
-5. **Suggested engineering standards missing**:
-   - Strict Content Security Policy (CSP) enforcement.
-   - Bundling process for content/injected scripts.
-   - Automated performance benchmarking in CI.
+### Medium Effort
+1. **Deduplicate Matcher:** Create a build step (e.g., esbuild/rollup) to inject the shared matcher into `injected.js` to ensure a single source of truth.
+2. **Extract UI Utilities:** Move generic DOM helpers (e.g., show/hide, element creation) into a dedicated `ui-utils.js`.
+
+### Long-Term Architecture
+1. **Decompose app.js:** Break the monolith into logical feature components (Sidebar, Main Panel, Settings).
+2. **State Management:** Introduce a robust state management pattern to decouple logic from the view.
+
+# Final Requirement
+1. **Top 10 highest-value fixes:**
+    1. Break down `app.js`.
+    2. Unify matcher logic via build step.
+    3. Fix DOM clobbering vulnerabilities using `Element.prototype`.
+    4. Implement O(N) optimizations with WeakMap caching.
+    5. Fix non-semantic `<div class="ek-label">` to proper accessibility standards.
+    6. Ensure strict input sanitization on all raw API data displayed.
+    7. Decouple background state sync from UI rendering.
+    8. Abstract event binding logic.
+    9. Implement UI unit testing strategy.
+    10. Address file size limit violations.
+2. **Top 10 duplication-removal opportunities:**
+    1. `matcher.js` vs `injected.js` URL matching.
+    2. `matcher.js` vs `cli/lib/match.js`.
+    3. DOM event listeners in `app.js`.
+    4. API request formatting.
+    5. JSON parsing try-catch blocks.
+    6. Modal/Dialog show/hide logic.
+    7. Storage sync callbacks.
+    8. Header normalization logic.
+    9. Date formatting utilities.
+    10. State toggle handlers.
+3. **Top reusable abstractions worth introducing:**
+    1. UI Component Base Class/Function.
+    2. Reactive State Store.
+    3. Safe DOM Manipulator Utility.
+    4. Generic HTTP Interceptor Hook.
+4. **Files/components with highest technical debt:** `extension/shared/app.js`, `extension/background.js`, `extension/injected.js`.
+5. **Suggested engineering standards missing from the repository:**
+    1. Component-driven development guidelines.
+    2. State management architecture standards.
+    3. Mandatory performance profiling for large list renders.
+    4. Automated bundle size monitoring.
+    5. Strict DOM manipulation safety guidelines (DOM Clobbering prevention).
