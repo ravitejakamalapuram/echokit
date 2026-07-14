@@ -14,13 +14,6 @@
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
 
-## 2025-02-23 - Missing tooltips on destructive action buttons
-**Learning:** Destructive buttons (like "Wipe" or "Delete this mock") lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users and screen reader users had insufficient visual tooltips or context for what the button does.
-**Action:** Always provide explicit `title` and `aria-label` attributes for destructive buttons to ensure parity between mouse users and screen reader users, giving clear context on what they do.
-
-## 2025-02-23 - Missing tooltips on toggle switches
-**Learning:** Form toggle switches implemented as `<label>` elements missing the `title` attribute failed to provide visual hover tooltips for mouse users, although they had adjacent text content inside.
-**Action:** Add explicit `title` attributes to `<label>` wrappers acting as toggle switches to provide clear tooltip context on hover, aligning with expected UX for custom checkbox components.
-## 2025-02-23 - Missing tooltips on custom toggle switches
-**Learning:** Custom toggle switch elements (`<label class="ek-switch">`) often rely solely on adjacent text or their visually distinct on/off state to convey their purpose. However, users frequently hover over interactive components expecting clarification.
-**Action:** Always provide explicit `title` attributes on custom toggle wrappers (like `.ek-switch`) to ensure mouse users receive clear visual tooltips explaining the exact effect of toggling the state, especially in dense panels.
+## 2025-02-22 - Missing ARIA attributes on toast notifications
+**Learning:** The custom `toast()` notification UI used to display brief feedback messages to the user lacked `role="status"` and `aria-live="polite"` attributes, meaning screen reader users would not be aware of these important success/error updates.
+**Action:** Always add `role="status"` and `aria-live="polite"` (or `assertive` for critical errors) to dynamic toast notifications to ensure they are announced to screen readers.
