@@ -247,9 +247,7 @@ function applyTheme() {
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
  */
-// ⚡ Bolt Performance: Pass in the pre-computed filtered array to prevent an O(N)
-// redundant filter cycle across the interactions array when rendering.
-function renderInteractionListNew(filteredList) {
+function renderInteractionListNew() {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -326,7 +324,7 @@ function renderInteractionListNew(filteredList) {
   }
 
   // Update layout with current data
-  const filtered = filteredList || filteredInteractions();
+  const filtered = filteredInteractions();
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -386,7 +384,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew(list);
+    renderInteractionListNew();
   }
 
   bindEvents();
@@ -476,15 +474,15 @@ function renderHeader() {
         ${trialBadge}
         <div class="ek-header-spacer"></div>
         ${recording
-          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn" aria-label="Stop recording" title="Stop recording">STOP</button>`
-          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn" aria-label="Start recording" title="Start recording">● REC</button>`}
+          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
+          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
-          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking" title="Toggle mocking">
+          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">MOCK</span>
         </label>
         <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
-          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master" aria-label="Toggle CORS override" title="Toggle CORS override">
+          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">CORS</span>
         </label>
@@ -830,7 +828,7 @@ function showPasteDialog(count, origin, payload) {
       ${origin && state.tab.host && !origin.includes(state.tab.host) ? `<div class="ek-subtle" style="color:var(--amber)">⚠ Origins differ — paste will write into the current tab's origin, which may overwrite unrelated data.</div>` : ''}
       <div style="max-height:220px;overflow:auto">${preview}${more}</div>
       <label class="ek-row-inline" style="gap:6px;margin-top:4px">
-        <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first" aria-label="Clear existing localStorage before pasting"/> <span>Clear existing localStorage before pasting</span>
+        <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first"/> <span>Clear existing localStorage before pasting</span>
       </label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
@@ -853,8 +851,6 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
-  t.setAttribute('role', 'status');
-  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -871,14 +867,14 @@ function showGistUploadDialog() {
       <div class="ek-subtle">Uploads your full mock set as a JSON file to a new gist. Teammates can import from the URL.</div>
       <div class="ek-field">
         <div class="ek-label">GitHub Personal Access Token <span class="ek-subtle">(gist scope)</span></div>
-        <input class="ek-input" type="password" value="${escapeHtml(lastToken)}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off" aria-label="GitHub Personal Access Token" title="GitHub Personal Access Token"/>
+        <input class="ek-input" type="password" value="${escapeHtml(lastToken)}" placeholder="ghp_..." data-a="token" data-testid="gist-token" autocomplete="off"/>
         <div class="ek-subtle" style="margin-top:4px">Create at <span class="ek-tag">github.com/settings/tokens</span> with just <span class="ek-tag">gist</span> scope. Stored locally in this extension only.</div>
       </div>
       <div class="ek-field">
         <div class="ek-label">Description</div>
-        <input class="ek-input" type="text" value="EchoKit mock set — ${escapeHtml(state.tab.host || '')}" data-a="desc" data-testid="gist-desc" aria-label="Gist Description" title="Gist Description"/>
+        <input class="ek-input" type="text" value="EchoKit mock set — ${escapeHtml(state.tab.host || '')}" data-a="desc" data-testid="gist-desc"/>
       </div>
-      <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public" aria-label="Make gist public" title="Make gist public"/> <span>Public gist</span></label>
+      <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="upload" data-testid="gist-upload-confirm">Upload</button>
@@ -911,9 +907,9 @@ function showGistImportDialog() {
     <div class="ek-modal" data-testid="gist-import-modal">
       <div class="ek-modal-title">Import mocks from Gist</div>
       <div class="ek-subtle">Paste a public gist URL or a raw file URL. No token needed for public gists.</div>
-      <input class="ek-input" type="text" placeholder="https://gist.github.com/user/abc123..." data-a="url" data-testid="gist-url" aria-label="Gist URL to import" title="Gist URL to import"/>
-      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked aria-label="Merge (replace by id)" title="Merge (replace by id)"/> <span>Merge (replace by id)</span></label>
-      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override" aria-label="Override (wipe existing)" title="Override (wipe existing)"/> <span>Override (wipe existing)</span></label>
+      <input class="ek-input" type="text" placeholder="https://gist.github.com/user/abc123..." data-a="url" data-testid="gist-url"/>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked/> <span>Merge (replace by id)</span></label>
+      <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override"/> <span>Override (wipe existing)</span></label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="import" data-testid="gist-import-confirm">Import</button>
@@ -943,7 +939,7 @@ function renderToolbar(filteredCount) {
     // POPUP: Simple toolbar (current implementation)
     return `
       <div class="ek-toolbar">
-        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false" aria-label="Search URLs" title="Search URLs"/>
+        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
           ${methods.map(m => `<button type="button" class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" title="Filter by ${m}" aria-label="Filter by ${m}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}">${m}</button>`).join('')}
         </div>
@@ -1612,7 +1608,7 @@ function renderDetail(i, conflicts) {
           <span>Mock Behaviour</span>
           <div class="ek-row-inline-end">
             <label class="ek-switch ${i.mockEnabled ? 'on' : ''}">
-              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}" aria-label="Toggle mock for this request" title="Toggle mock for this request"/>
+              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">${i.mockEnabled ? 'ON' : 'OFF'}</span>
             </label>
@@ -1635,7 +1631,7 @@ function renderDetail(i, conflicts) {
               <div class="ek-label">Latency (ms)</div>
               <div class="ek-row-inline">
                 <input class="ek-slider" type="range" min="0" max="10000" step="50" value="${i.mockLatency || 0}" data-action="update-latency" data-id="${i.id}" data-testid="latency-slider"/>
-                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}" aria-label="Latency in milliseconds" title="Latency in milliseconds"/>
+                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}"/>
               </div>
             </div>
           </div>
@@ -1657,7 +1653,7 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-body">
           <div class="ek-field">
             <div class="ek-label">Status Code</div>
-            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input" aria-label="HTTP Status Code" title="HTTP Status Code"/>
+            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input"/>
           </div>
           <div class="ek-field">
             <div class="ek-label">Body (raw JSON or text)</div>
@@ -1676,8 +1672,8 @@ function renderDetail(i, conflicts) {
             <div data-testid="headers-list">
               ${Object.entries(overrideHeaders).map(([k, v], idx) => `
                 <div class="ek-kv-row">
-                  <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}" aria-label="Header name" title="Header name"/>
-                  <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}" aria-label="Header value" title="Header value"/>
+                  <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
+                  <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
                   <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
                 </div>
               `).join('')}
@@ -1705,7 +1701,7 @@ function renderDetail(i, conflicts) {
       </div>
 
       <div class="ek-row-inline">
-        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn" aria-label="Delete this mock" title="Delete this mock">Delete this mock</button>
+        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn">Delete this mock</button>
         <div class="ek-row-inline-end ek-subtle">hash <span class="ek-tag">${i.hash}</span></div>
       </div>
 
@@ -1715,7 +1711,7 @@ function renderDetail(i, conflicts) {
           <span>${i.method === 'WS' ? 'WebSocket Frames' : 'SSE Events'}</span>
           <div class="ek-row-inline-end">
             <label class="ek-switch ${i.wsLoop ? 'on' : ''}" title="Loop replay">
-              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}" aria-label="Toggle WebSocket loop replay" title="Toggle WebSocket loop replay"/>
+              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">Loop</span>
             </label>
@@ -1745,7 +1741,7 @@ function renderDetail(i, conflicts) {
           <div class="ek-field ek-row-inline" style="gap:8px;align-items:center">
             <div class="ek-label" style="min-width:60px">Max uses</div>
             <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
-              value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input" aria-label="Maximum number of times to mock" title="Maximum number of times to mock"/>
+              value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
             <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
             ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
           </div>
@@ -1760,7 +1756,7 @@ function renderDetail(i, conflicts) {
             ${(i.mockChain && i.mockChain.length > 0) ? `
               <span class="ek-subtle" data-testid="mock-chain-cursor">step ${((i.mockChainCursor || 0) % i.mockChain.length) + 1}/${i.mockChain.length}</span>
               <label class="ek-row-inline" style="gap:4px;margin-left:8px">
-                <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle" aria-label="Loop chain replay"/>
+                <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
                 <span class="ek-subtle">loop</span>
               </label>
               <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
@@ -1774,7 +1770,7 @@ function renderDetail(i, conflicts) {
               <div style="border:1px solid ${active ? 'var(--amber)' : 'var(--border)'};border-radius:6px;padding:6px;margin-bottom:6px" data-testid="chain-step-${sIdx}">
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
-                  <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status" aria-label="Chain step status code" title="Chain step status code"/>
+                  <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
                   <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
@@ -2465,10 +2461,10 @@ function showImportDialog() {
       <textarea class="ek-textarea" style="min-height:120px" placeholder='{"version":2,"interactions":[…]}'></textarea>
       <input type="file" accept="application/json,.json" data-testid="import-file"/>
       <label class="ek-row-inline" style="gap:6px">
-        <input type="radio" name="ek-strategy" value="merge" checked aria-label="Merge (replace by id)" title="Merge (replace by id)"/> <span>Merge (replace by id)</span>
+        <input type="radio" name="ek-strategy" value="merge" checked/> <span>Merge (replace by id)</span>
       </label>
       <label class="ek-row-inline" style="gap:6px">
-        <input type="radio" name="ek-strategy" value="override" aria-label="Override (wipe existing)" title="Override (wipe existing)"/> <span>Override (wipe existing)</span>
+        <input type="radio" name="ek-strategy" value="override"/> <span>Override (wipe existing)</span>
       </label>
       <div class="ek-modal-actions">
         <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
@@ -2503,7 +2499,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="override" ${(!r.mode || r.mode==='override')?'selected':''}>Override</option>
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}" aria-label="Toggle request header ${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
@@ -2518,7 +2514,7 @@ function renderBlocklistRule(b, idx) {
   return `
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
-                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}" aria-label="Toggle blocklist pattern ${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
+                <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
                 <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
               </div>
             `;
@@ -2530,7 +2526,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.from || '')}" data-a="rw-from" data-idx="${idx}" placeholder="from (substring or /regex/flags)" data-testid="rewrite-from-${idx}"/>
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}" aria-label="Toggle rewrite rule ${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
               </div>
@@ -2548,7 +2544,7 @@ function renderTransformRule(r, idx) {
                     <option value="set-body" ${r.action==='set-body'?'selected':''}>set body</option>
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
-                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}" aria-label="Toggle transform rule ${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
+                  <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
                   <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
@@ -2626,7 +2622,7 @@ function renderSettingsGeneral(s, isDevTools) {
           </div>
         </div>
         <label class="ek-switch ${s.corsOverride?'on':''}">
-          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle" aria-label="Toggle CORS override globally" title="Toggle CORS override globally"/>
+          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.corsOverride?'ON':'OFF'}</span>
         </label>
@@ -2638,7 +2634,7 @@ function renderSettingsGeneral(s, isDevTools) {
           <div class="ek-settings-hint">When a tab reloads while recording, pop this panel back open.</div>
         </div>
         <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}">
-          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle" aria-label="Auto-open popup on refresh" title="Auto-open popup on refresh"/>
+          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
         </label>
@@ -2720,7 +2716,7 @@ function renderSettingsLicense() {
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
         </div>
-        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn" aria-label="Wipe all recordings" title="Wipe all recordings">Wipe</button>
+        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
       </div>
 
       <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
@@ -3181,12 +3177,7 @@ function matchesStatusFilter(status, filters) {
   return false;
 }
 
-// Performance optimization: Cache stringified bodies
-// const bodyStringCache = new WeakMap();
-
 // Helper: Search body content
-const bodyCache = new WeakMap();
-
 function searchBodyContent(body, query) {
   if (!query) return true;
   if (!body) return false;
@@ -3195,11 +3186,7 @@ function searchBodyContent(body, query) {
 
   // Handle JSON bodies
   if (typeof body === 'object') {
-    let str = bodyCache.get(body);
-    if (str === undefined) {
-      str = JSON.stringify(body).toLowerCase();
-      bodyCache.set(body, str);
-    }
+    const str = JSON.stringify(body).toLowerCase();
     return str.includes(q);
   }
 
@@ -3216,16 +3203,13 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   if (!nameQuery && !valueQuery) return true;
   if (!headers || typeof headers !== 'object') return false;
 
-  const nq = nameQuery ? nameQuery.toLowerCase() : '';
-  const vq = valueQuery ? valueQuery.toLowerCase() : '';
+  const nq = nameQuery.toLowerCase();
+  const vq = valueQuery.toLowerCase();
 
-  for (const name in headers) {
-    if (Object.prototype.hasOwnProperty.call(headers, name)) {
-      const value = headers[name];
-      const nameMatch = !nq || name.toLowerCase().includes(nq);
-      const valueMatch = !vq || String(value).toLowerCase().includes(vq);
-      if (nameMatch && valueMatch) return true;
-    }
+  for (const [name, value] of Object.entries(headers)) {
+    const nameMatch = !nq || name.toLowerCase().includes(nq);
+    const valueMatch = !vq || String(value).toLowerCase().includes(vq);
+    if (nameMatch && valueMatch) return true;
   }
   return false;
 }

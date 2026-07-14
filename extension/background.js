@@ -1378,9 +1378,6 @@ async function handleEchokitMockHit(msg) {
   if (existing.mockMaxCount != null) {
     const newCount = (existing.mockCallCount || 0) + 1;
     updates.mockCallCount = newCount;
-    if (newCount >= existing.mockMaxCount) {
-      updates.mockEnabled = false;
-    }
   }
   // Mock chain advancement
   if (existing.mockChain && existing.mockChain.length > 0) {
