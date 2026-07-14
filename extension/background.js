@@ -1378,6 +1378,7 @@ async function handleEchokitMockHit(msg) {
   if (existing.mockMaxCount != null) {
     const newCount = (existing.mockCallCount || 0) + 1;
     updates.mockCallCount = newCount;
+    // Automatically disable the mock if we've hit the max count so the UI updates
     if (newCount >= existing.mockMaxCount) {
       updates.mockEnabled = false;
     }
