@@ -1,6 +1,6 @@
-{
-  "title": "🎨 Palette: Add tooltips and ARIA labels to destructive buttons",
-  "body": "💡 What: Added aria-label and title to destructive action buttons (Wipe, Delete this mock).\n🎯 Why: Ensure visual tooltips on hover for sighted users and proper context for screen readers.\n📸 Before/After: Visual tooltips are now shown.\n♿ Accessibility: Added explicit ARIA labels and titles to destructive action buttons.",
-  "head": "feature/palette-a11y-destructive-buttons",
-  "base": "main"
-}
+    {
+      "title": "Engineering Review",
+      "body": "This PR adds the comprehensive engineering review report to docs/engineering-review.md.",
+      "head": "engineering-review-docs",
+      "base": "main"
+    }

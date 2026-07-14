@@ -222,11 +222,11 @@ function bind() {
   root.querySelector('#clear')?.addEventListener('click', () => { if (confirm('Clear simulator recordings?')) { state.interactions=[]; state.selectedId=null; renderEk(); }});
   root.querySelectorAll('[data-sel]').forEach(el => el.addEventListener('click', (e) => {
     if (e.target.closest('[data-mt]')) return;
-    state.selectedId = el.getAttribute('data-sel'); renderEk();
+    state.selectedId = Element.prototype.getAttribute.call(el, 'data-sel'); renderEk();
   }));
   root.querySelectorAll('[data-mt]').forEach(el => el.addEventListener('click', (e) => {
     e.stopPropagation();
-    const it = state.interactions.find(i => i.id === el.getAttribute('data-mt'));
+    const it = state.interactions.find(i => i.id === Element.prototype.getAttribute.call(el, 'data-mt'));
     if (it) it.mockEnabled = !it.mockEnabled;
     renderEk();
   }));
