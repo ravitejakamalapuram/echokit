@@ -1,6 +1,6 @@
-{
-  "title": "⚡ Bolt: [performance improvement] optimize UI search filters using WeakMap and for...in loops",
-  "body": "💡 What: The optimization implemented\nReplaced repeatedly evaluated `JSON.stringify()` in body search with a `WeakMap` cache and replaced `Object.entries()` inside header search with a `for...in` loop.\n\n🎯 Why: The performance problem it solves\nInside the `filteredInteractions()` UI render loop, the repetitive allocations and O(N) operations cause serious performance bottleneck on rendering.\n\n📊 Impact: Expected performance improvement\nReduces execution time for body searches substantially by skipping `JSON.stringify()` repeatedly.\n\n🔬 Measurement: How to verify the improvement\nLocally check filtering interactions responsiveness via the UI extensions. ",
-  "head": "bolt-perf-search",
-  "base": "main"
-}
+    {
+      "title": "Engineering Review",
+      "body": "This PR adds the comprehensive engineering review report to docs/engineering-review.md.",
+      "head": "engineering-review-docs",
+      "base": "main"
+    }
