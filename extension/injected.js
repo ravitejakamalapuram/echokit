@@ -415,6 +415,10 @@ class MockEventSource {
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
         mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        // Temporarily disable local copy so subsequent immediate hits within same tick skip
+        if (mock.mockCallCount >= mock.mockMaxCount) {
+          mock.mockEnabled = false;
+        }
         emit('mock-hit', { id: mock.id });
       } else if (mock.hasChain) {
         // Mock chain: notify background to advance cursor

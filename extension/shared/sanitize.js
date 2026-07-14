@@ -26,19 +26,17 @@ export function sanitizeHTML(dirty) {
   // Remove all dangerous attributes from all elements
   const dangerousAttributes = /^on|^formaction$|^form$|^xmlns$/i;
   fragment.querySelectorAll('*').forEach(el => {
-    const attrNames = Element.prototype.getAttributeNames.call(el);
-    attrNames.forEach(attrName => {
-      const attrValue = Element.prototype.getAttribute.call(el, attrName);
+    Array.from(el.attributes).forEach(attr => {
       // Remove event handlers (onclick, onerror, etc.)
-      if (dangerousAttributes.test(attrName)) {
-        Element.prototype.removeAttribute.call(el, attrName);
+      if (dangerousAttributes.test(attr.name)) {
+        el.removeAttribute(attr.name);
       }
       // Sanitize href and src to remove javascript: and data: URIs
-      if ((attrName === 'href' || attrName === 'src') && attrValue) {
+      if ((attr.name === 'href' || attr.name === 'src') && attr.value) {
         // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
-        const cleanVal = attrValue.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
+        const cleanVal = attr.value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
         if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
-          Element.prototype.setAttribute.call(el, attrName, '#');
+          el.setAttribute(attr.name, '#');
         }
       }
     });
