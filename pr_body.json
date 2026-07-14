@@ -1,6 +1,6 @@
-{
-  "title": "⚡ Bolt: Prevent redundant URL/body normalization in match key computation",
-  "head": "bolt/optimize-compute-match-keys",
-  "base": "main",
-  "body": "💡 What: Pre-calculate and cache the results of normalizeUrl, stripQuery, and normalizeBody in local variables instead of calling them repeatedly when computing match keys.\n🎯 Why: Calling expensive normalization functions like `normalizeUrl` (which allocates `new URL()`) and `normalizeBody` (which uses JSON stringify/parse on potentially large bodies) multiple times with the same input within string templates causes a significant performance bottleneck due to redundant operations.\n📊 Impact: Over 2x performance improvement in `computeMatchKeys` execution time for large payloads and URLs.\n🔬 Measurement: Ran a benchmark testing the execution time of 1000 computations with a large JSON payload. Original: 2.5s, Optimized: 1.1s."
-}
+    {
+      "title": "Engineering Review",
+      "body": "This PR adds the comprehensive engineering review report to docs/engineering-review.md.",
+      "head": "engineering-review-docs",
+      "base": "main"
+    }
