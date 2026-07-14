@@ -247,7 +247,9 @@ function applyTheme() {
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
  */
-function renderInteractionListNew() {
+// ⚡ Bolt Performance: Pass in the pre-computed filtered array to prevent an O(N)
+// redundant filter cycle across the interactions array when rendering.
+function renderInteractionListNew(filteredList) {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -324,7 +326,7 @@ function renderInteractionListNew() {
   }
 
   // Update layout with current data
-  const filtered = filteredInteractions();
+  const filtered = filteredList || filteredInteractions();
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -384,7 +386,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew();
+    renderInteractionListNew(list);
   }
 
   bindEvents();
@@ -474,8 +476,8 @@ function renderHeader() {
         ${trialBadge}
         <div class="ek-header-spacer"></div>
         ${recording
-          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
-          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
+          ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn" aria-label="Stop recording" title="Stop recording">STOP</button>`
+          : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn" aria-label="Start recording" title="Start recording">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
           <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking" title="Toggle mocking">
           <span class="ek-switch-track"></span>
@@ -522,7 +524,7 @@ function renderMenu() {
   if (!anchor) return;
   const panel = document.createElement('div');
   panel.className = 'ek-menu-panel';
-  Element.prototype.setAttribute.call(panel, 'data-testid', 'menu-panel');
+  panel.setAttribute('data-testid', 'menu-panel');
   const addSep = () => {
     const sep = document.createElement('div');
     sep.className = 'ek-menu-sep';
@@ -595,7 +597,7 @@ function renderMenu() {
   panel.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
 
   panel.querySelectorAll('[data-menu]').forEach(el => el.addEventListener('click', () => {
-    const which = Element.prototype.getAttribute.call(el, 'data-menu');
+    const which = el.getAttribute('data-menu');
     state.menuOpen = false;
     if (which === 'stop-all') onStopAllRecordings();
     else if (which === 'clear') onClearSession();
@@ -1703,7 +1705,7 @@ function renderDetail(i, conflicts) {
       </div>
 
       <div class="ek-row-inline">
-        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn">Delete this mock</button>
+        <button class="ek-btn ek-btn-danger" data-action="delete-interaction" data-id="${i.id}" data-testid="delete-btn" aria-label="Delete this mock" title="Delete this mock">Delete this mock</button>
         <div class="ek-row-inline-end ek-subtle">hash <span class="ek-tag">${i.hash}</span></div>
       </div>
 
@@ -1902,7 +1904,7 @@ function bindGlobalEvents(el, action, id) {
   if (action === 'switch-to-tab') {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const tabId = parseInt(Element.prototype.getAttribute.call(el, 'data-tab-id'), 10);
+      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
       if (Number.isNaN(tabId)) return;
       try { await chrome.tabs.update(tabId, { active: true }); } catch (err) { console.error('Failed to switch to tab:', err); }
     });
@@ -1970,7 +1972,7 @@ function bindFilterEvents(el, action, _id) {
   }
   if (action === 'filter-method') {
     el.addEventListener('click', () => {
-      const m = Element.prototype.getAttribute.call(el, 'data-method');
+      const m = el.getAttribute('data-method');
       state.methodFilter = state.methodFilter === m ? null : m;
       render();
     });
@@ -1980,7 +1982,7 @@ function bindFilterEvents(el, action, _id) {
   if (action === 'toggle-advanced-filters') { el.addEventListener('click', () => { state.advancedFilterOpen = !state.advancedFilterOpen; render(); }); return true; }
   if (action === 'filter-method-toggle') {
     el.addEventListener('change', (e) => {
-      const method = Element.prototype.getAttribute.call(el, 'data-method');
+      const method = el.getAttribute('data-method');
       if (e.target.checked) {
         if (!state.filters.methods.includes(method)) state.filters.methods.push(method);
       } else {
@@ -1992,7 +1994,7 @@ function bindFilterEvents(el, action, _id) {
   }
   if (action === 'filter-status-toggle') {
     el.addEventListener('change', (e) => {
-      const status = Element.prototype.getAttribute.call(el, 'data-status');
+      const status = el.getAttribute('data-status');
       if (e.target.checked) {
         if (!state.filters.statusCodes.includes(status)) state.filters.statusCodes.push(status);
       } else {
@@ -2004,7 +2006,7 @@ function bindFilterEvents(el, action, _id) {
   }
   if (action === 'filter-source-toggle') {
     el.addEventListener('change', (e) => {
-      const source = Element.prototype.getAttribute.call(el, 'data-source');
+      const source = el.getAttribute('data-source');
       state.filters.sources[source] = e.target.checked;
       softRenderList();
     });
@@ -2018,8 +2020,8 @@ function bindFilterEvents(el, action, _id) {
   if (action === 'filter-res-header-value') { debounceInput(el, (value) => { state.filters.responseHeader.value = value; softRenderList(); }, DEBOUNCE_DELAY); return true; }
   if (action === 'remove-filter') {
     el.addEventListener('click', () => {
-      const type = Element.prototype.getAttribute.call(el, 'data-type');
-      const value = Element.prototype.getAttribute.call(el, 'data-value');
+      const type = el.getAttribute('data-type');
+      const value = el.getAttribute('data-value');
       if (type === 'method') { state.filters.methods = state.filters.methods.filter(m => m !== value); }
       else if (type === 'status') { state.filters.statusCodes = state.filters.statusCodes.filter(s => s !== value); }
       else if (type === 'request-body') { state.filters.requestBodyContains = ''; }
@@ -2032,7 +2034,7 @@ function bindFilterEvents(el, action, _id) {
     });
     return true;
   }
-  if (action === 'sort-by') { el.addEventListener('click', () => { applySort(Element.prototype.getAttribute.call(el, 'data-column')); }); return true; }
+  if (action === 'sort-by') { el.addEventListener('click', () => { applySort(el.getAttribute('data-column')); }); return true; }
   if (action === 'clear-all-filters') {
     el.addEventListener('click', () => {
       state.filters = {
@@ -2057,7 +2059,7 @@ function bindMockEvents(el, action, id) {
       await BG({ type: 'echokit:interaction:update', id, patch: { mockEnabled: !current.mockEnabled } });
       await refresh(); render();
     };
-    if (Object.getOwnPropertyDescriptor(Element.prototype, 'tagName').get.call(el) === 'INPUT') el.addEventListener('change', handler);
+    if (el.tagName === 'INPUT') el.addEventListener('change', handler);
     else el.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
     return true;
   }
@@ -2163,7 +2165,7 @@ function bindChainEvents(el, action, id) {
   }
   if (action === 'chain-remove') {
     el.addEventListener('click', async () => {
-      const sIdx = Number(Element.prototype.getAttribute.call(el, 'data-step'));
+      const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
       chain.splice(sIdx, 1);
@@ -2175,7 +2177,7 @@ function bindChainEvents(el, action, id) {
   }
   if (action === 'chain-status') {
     el.addEventListener('change', async (e) => {
-      const sIdx = Number(Element.prototype.getAttribute.call(el, 'data-step'));
+      const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
       chain[sIdx] = { ...(chain[sIdx] || {}), status: Number(e.target.value) || 200 };
@@ -2186,7 +2188,7 @@ function bindChainEvents(el, action, id) {
   }
   if (action === 'chain-body') {
     el.addEventListener('change', async (e) => {
-      const sIdx = Number(Element.prototype.getAttribute.call(el, 'data-step'));
+      const sIdx = Number(el.getAttribute('data-step'));
       const curr = state.interactions.find(x => x.id === id);
       const chain = [...(curr?.mockChain || [])];
       chain[sIdx] = { ...(chain[sIdx] || {}), body: e.target.value };
@@ -2227,7 +2229,7 @@ function bindHeaderEvents(el, action, id) {
   }
   if (action === 'header-remove') {
     el.addEventListener('click', async () => {
-      const key = Element.prototype.getAttribute.call(el, 'data-key');
+      const key = el.getAttribute('data-key');
       const curr = state.interactions.find(x => x.id === id);
       const headers = { ...(curr.overrideHeaders || curr.responseHeaders || {}) };
       delete headers[key];
@@ -2238,7 +2240,7 @@ function bindHeaderEvents(el, action, id) {
   }
   if (action === 'header-key') {
     el.addEventListener('change', async (e) => {
-      const orig = Element.prototype.getAttribute.call(el, 'data-orig');
+      const orig = el.getAttribute('data-orig');
       const next = e.target.value.trim();
       if (!next || next === orig) return;
       const curr = state.interactions.find(x => x.id === id);
@@ -2251,7 +2253,7 @@ function bindHeaderEvents(el, action, id) {
   }
   if (action === 'header-val') {
     el.addEventListener('change', async (e) => {
-      const key = Element.prototype.getAttribute.call(el, 'data-key');
+      const key = el.getAttribute('data-key');
       const curr = state.interactions.find(x => x.id === id);
       const headers = { ...(curr.overrideHeaders || curr.responseHeaders || {}) };
       headers[key] = e.target.value;
@@ -2265,8 +2267,8 @@ function bindHeaderEvents(el, action, id) {
 
 function bindEvents() {
   root.querySelectorAll('[data-action]').forEach(el => {
-    const action = Element.prototype.getAttribute.call(el, 'data-action');
-    const id = Element.prototype.getAttribute.call(el, 'data-id');
+    const action = el.getAttribute('data-action');
+    const id = el.getAttribute('data-id');
 
     if (bindGlobalEvents(el, action, id)) return;
     if (bindFilterEvents(el, action, id)) return;
@@ -2344,13 +2346,13 @@ function softRenderList() {
   // Rebind list-level events
   list.querySelectorAll('[data-action="select"]').forEach(el => el.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="toggle-mock"]') || e.target.closest('[data-action="toggle-block"]')) return;
-    state.selectedId = Element.prototype.getAttribute.call(el, 'data-id'); state.detailOpen = true; render();
+    state.selectedId = el.getAttribute('data-id'); state.detailOpen = true; render();
   }));
 
   list.querySelectorAll('[data-action="toggle-mock"]').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const tid = Element.prototype.getAttribute.call(el, 'data-id');
+      const tid = el.getAttribute('data-id');
       const current = state.interactions.find(x => x.id === tid);
       if (!current) return;
       await BG({ type: 'echokit:interaction:update', id: tid, patch: { mockEnabled: !current.mockEnabled } });
@@ -2363,7 +2365,7 @@ function softRenderList() {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!state.isPro) { showProGate('API Blocking'); return; }
-      const tid = Element.prototype.getAttribute.call(el, 'data-id');
+      const tid = el.getAttribute('data-id');
       const current = state.interactions.find(x => x.id === tid);
       if (!current) return;
       await BG({ type: 'echokit:interaction:update', id: tid, patch: { blocked: !current.blocked } });
@@ -2375,7 +2377,7 @@ function softRenderList() {
   if (!isPopup && features.sortableColumns) {
     list.querySelectorAll('[data-action="sort-by"]').forEach(el => {
       el.addEventListener('click', () => {
-        const column = Element.prototype.getAttribute.call(el, 'data-column');
+        const column = el.getAttribute('data-column');
         applySort(column);
       });
     });
@@ -2385,7 +2387,7 @@ function softRenderList() {
   list.querySelectorAll('[data-action="switch-to-tab"]').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const tabId = parseInt(Element.prototype.getAttribute.call(el, 'data-tab-id'), 10);
+      const tabId = parseInt(el.getAttribute('data-tab-id'), 10);
       if (!tabId) return;
       try {
         await chrome.tabs.update(tabId, { active: true });
@@ -2718,7 +2720,7 @@ function renderSettingsLicense() {
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
         </div>
-        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
+        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn" aria-label="Wipe all recordings" title="Wipe all recordings">Wipe</button>
       </div>
 
       <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
@@ -2806,21 +2808,21 @@ ${diag.error}`;
 
 function bindSettingsBlocklistEvents(overlay, reopen) {
   overlay.querySelectorAll('[data-a="bl-pattern"]').forEach(el => el.addEventListener('change', async (e) => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const bl = [...(state.settings.blocklist || [])];
     bl[idx] = { ...(bl[idx] || {}), pattern: e.target.value };
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
     await refresh();
   }));
   overlay.querySelectorAll('[data-a="bl-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const bl = [...(state.settings.blocklist || [])];
     bl[idx] = { ...(bl[idx] || {}), enabled: e.target.checked };
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
     await refresh(); reopen();
   }));
   overlay.querySelectorAll('[data-a="bl-remove"]').forEach(el => el.addEventListener('click', async () => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const bl = [...(state.settings.blocklist || [])];
     bl.splice(idx, 1);
     await BG({ type: 'echokit:settings:update', patch: { blocklist: bl } });
@@ -2835,28 +2837,28 @@ function bindSettingsBlocklistEvents(overlay, reopen) {
 
 function bindSettingsRewriteRulesEvents(overlay, reopen) {
   overlay.querySelectorAll('[data-a="rw-from"]').forEach(el => el.addEventListener('change', async (e) => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.rewriteRules || [])];
     rules[idx] = { ...(rules[idx] || {}), from: e.target.value };
     await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
     await refresh();
   }));
   overlay.querySelectorAll('[data-a="rw-to"]').forEach(el => el.addEventListener('change', async (e) => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.rewriteRules || [])];
     rules[idx] = { ...(rules[idx] || {}), to: e.target.value };
     await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
     await refresh();
   }));
   overlay.querySelectorAll('[data-a="rw-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.rewriteRules || [])];
     rules[idx] = { ...(rules[idx] || {}), enabled: e.target.checked };
     await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
     await refresh(); reopen();
   }));
   overlay.querySelectorAll('[data-a="rw-remove"]').forEach(el => el.addEventListener('click', async () => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.rewriteRules || [])];
     rules.splice(idx, 1);
     await BG({ type: 'echokit:settings:update', patch: { rewriteRules: rules } });
@@ -2876,19 +2878,19 @@ function bindSettingsTransformRulesEvents(overlay, reopen) {
     await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
     await refresh();
   };
-  overlay.querySelectorAll('[data-a="tr-url"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { urlPattern: e.target.value })));
-  overlay.querySelectorAll('[data-a="tr-key"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { key: e.target.value })));
-  overlay.querySelectorAll('[data-a="tr-value"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { value: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-url"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { urlPattern: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-key"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { key: e.target.value })));
+  overlay.querySelectorAll('[data-a="tr-value"]').forEach(el => el.addEventListener('change', (e) => trUpdate(Number(el.getAttribute('data-idx')), { value: e.target.value })));
   overlay.querySelectorAll('[data-a="tr-action"]').forEach(el => el.addEventListener('change', async (e) => {
-    await trUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { action: e.target.value });
+    await trUpdate(Number(el.getAttribute('data-idx')), { action: e.target.value });
     reopen();
   }));
   overlay.querySelectorAll('[data-a="tr-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
-    await trUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { enabled: e.target.checked });
+    await trUpdate(Number(el.getAttribute('data-idx')), { enabled: e.target.checked });
     reopen();
   }));
   overlay.querySelectorAll('[data-a="tr-remove"]').forEach(el => el.addEventListener('click', async () => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const rules = [...(state.settings.transformRules || [])];
     rules.splice(idx, 1);
     await BG({ type: 'echokit:settings:update', patch: { transformRules: rules } });
@@ -2908,19 +2910,19 @@ function bindSettingsRequestHeadersEvents(overlay, reopen) {
     await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
     await refresh();
   };
-  overlay.querySelectorAll('[data-a="rh-key"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { key: e.target.value })));
-  overlay.querySelectorAll('[data-a="rh-value"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { value: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-key"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { key: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-value"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { value: e.target.value })));
   overlay.querySelectorAll('[data-a="rh-mode"]').forEach(el => el.addEventListener('change', async (e) => {
-    await rhUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { mode: e.target.value });
+    await rhUpdate(Number(el.getAttribute('data-idx')), { mode: e.target.value });
     reopen();
   }));
-  overlay.querySelectorAll('[data-a="rh-url"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { urlPattern: e.target.value })));
+  overlay.querySelectorAll('[data-a="rh-url"]').forEach(el => el.addEventListener('change', (e) => rhUpdate(Number(el.getAttribute('data-idx')), { urlPattern: e.target.value })));
   overlay.querySelectorAll('[data-a="rh-toggle"]').forEach(el => el.addEventListener('change', async (e) => {
-    await rhUpdate(Number(Element.prototype.getAttribute.call(el, 'data-idx')), { enabled: e.target.checked });
+    await rhUpdate(Number(el.getAttribute('data-idx')), { enabled: e.target.checked });
     reopen();
   }));
   overlay.querySelectorAll('[data-a="rh-remove"]').forEach(el => el.addEventListener('click', async () => {
-    const idx = Number(Element.prototype.getAttribute.call(el, 'data-idx'));
+    const idx = Number(el.getAttribute('data-idx'));
     const headers = [...(state.settings.requestHeaders || [])];
     headers.splice(idx, 1);
     await BG({ type: 'echokit:settings:update', patch: { requestHeaders: headers } });
@@ -3180,6 +3182,7 @@ function matchesStatusFilter(status, filters) {
 }
 
 // Performance optimization: Cache stringified bodies
+// const bodyStringCache = new WeakMap();
 
 // Helper: Search body content
 const bodyCache = new WeakMap();
