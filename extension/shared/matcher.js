@@ -84,14 +84,10 @@ function extractOpName(query) {
 
 export function computeMatchKeys(method, url, body) {
   const M = String(method || 'GET').toUpperCase();
-  const normUrl = normalizeUrl(url);
-  const normBody = normalizeBody(body);
-  const strQuery = stripQuery(url);
-
-  const full = `${M}|${normUrl}|${normBody}`;
-  const noQuery = `${M}|${strQuery}|${normBody}`;
-  const noBody = `${M}|${normUrl}|`;
-  const pathOnly = `${M}|${strQuery}|`;
+  const full = `${M}|${normalizeUrl(url)}|${normalizeBody(body)}`;
+  const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
+  const noBody = `${M}|${normalizeUrl(url)}|`;
+  const pathOnly = `${M}|${stripQuery(url)}|`;
   const out = {
     strict: fnv1a(full) + '-' + full.length.toString(16),
     'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),

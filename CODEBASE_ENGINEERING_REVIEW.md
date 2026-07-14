@@ -21,10 +21,8 @@
 1. **Matcher Logic:** `cli/lib/match.js` and `extension/shared/matcher.js` share identical functionality.
    - *Why problematic:* High risk of diverging hashing logic which would break mocked interactions exported from extension to CLI.
    - *Fix:* Publish a shared utility NPM package or symlink/build-step the file to ensure a single source of truth.
-2. **Modal Creation:** 8+ duplicated instances of modal creation logic in `app.js` (`const overlay = document.createElement('div'); overlay.className = 'ek-modal-overlay'; overlay.innerHTML = ...`).
+2. **Modal Creation:** 17+ duplicated instances of modal creation logic in `app.js` (`document.createElement('div')`).
    - *Fix:* Create a `ModalService` or a reusable `showModal({ title, content, actions })` function.
-3. **List Renders:** The logic for rendering lists (request headers, rewrite rules, blocklist) uses duplicated `ek-row-inline` and `ek-kv-row` markup patterns.
-   - *Fix:* Extract a generic `renderKeyValueRow` builder.
 
 ## Reusability Opportunities
 * **Modal Component:** Abstract the overlay creation, dismissal, and `innerHTML` generation into a reusable modal builder.
@@ -33,25 +31,15 @@
 
 ## Architecture Review
 * **Scalability:** The current monolithic `app.js` structure will not scale to more complex DevTools features.
-* **Maintainability:** Poor. State is mutated globally (`state.interactions = ...`), leading to unpredictable render cycles.
+* **Maintainability:** Poor. State is mutated globally, leading to unpredictable render cycles.
 * **Separation of Concerns:** Weak. Event listeners, markup strings, business logic, and network calls are tightly intertwined.
-
-## Performance Findings
-* **DOM Thrashing:** The `render()` function rebuilds large portions of the DOM and re-attaches event listeners frequently. A virtual DOM or finer-grained reactivity model (like Solid/Preact) would improve this.
-* **Memory Leaks:** 21+ `try...catch` blocks that manipulate DOM without explicit cleanup of orphaned event listeners.
 
 ## Security & Reliability Findings
 * **Accessibility:** `ek-label` is used with `div` elements rather than semantic `<label for="id">`. Forms are missing proper `aria` links.
-* **Event Listeners:** The `app.js` relies heavily on delegated event listeners (`root.addEventListener('click', ...)`) with loose data-attribute matching.
-* **Async Risks:** Global `BG()` wrapper does not handle timeouts or cancellations properly, risking zombie promises.
 
 ## Testing Gaps
 * **UI Testing:** Minimal isolation. The `app.js` cannot be unit tested without a full DOM and Chrome extension mock environment.
 * **Suggestion:** Refactor UI logic into pure functions that return HTML strings and test them independently of the DOM.
-
-## Rules Compliance Findings
-* **DEVELOPMENT_RULES.md (Accessibility):** Violates semantic HTML rules by using `<div>` for labels instead of `<label>`.
-* **Specificity Rule:** Manual DOM updates violate the desire for functional/declarative abstractions.
 
 ## Recommended Refactor Plan
 ### Quick Wins
@@ -60,7 +48,7 @@
 
 ### Medium Effort
 1. Implement an event-driven state manager to replace the 1.5s `setInterval` polling in `app.js`.
-2. Break out Settings, Headers, and Rules into separate `settings-renderer.js` and `rules-renderer.js` files.
+2. Break out Settings, Headers, and Rules into separate renderer files.
 
 ### Long-term Architecture
 1. Migrate the frontend to a lightweight VDOM library (like Preact) or use a component-based architecture to manage state and rendering cleanly.
@@ -75,22 +63,14 @@
 4. Extract `toast()` into a robust notification manager.
 5. Create a shared build artifact for `matcher.js`.
 6. Separate Settings UI logic from `app.js`.
-7. Centralize API calls (`BG()`) with timeout/retry logic.
+7. Centralize API calls with timeout/retry logic.
 8. Unify list rendering patterns (Key-Value rows).
 9. Move search/filter logic to a separate reducer/module.
 10. Implement proper DOM cleanup on UI unmounts.
 
-### Top 10 Duplication-Removal Opportunities
+### Top Duplication-Removal Opportunities
 1. Modal overlays.
 2. `cli/lib/match.js` vs `extension/shared/matcher.js`.
-3. Key-Value input rows (headers, rewrite rules).
-4. Feature gating modals (`showProGate`).
-5. Clipboard handling functions.
-6. Checkbox toggle rendering.
-7. HTML escaping utility duplicated across files.
-8. Filter chip rendering.
-9. Settings row wrappers.
-10. Fetch/XHR mocking wrappers (in `injected.js`).
 
 ### Top Reusable Abstractions Worth Introducing
 1. `ModalService`
