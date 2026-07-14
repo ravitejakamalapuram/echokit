@@ -26,17 +26,21 @@ export function sanitizeHTML(dirty) {
   // Remove all dangerous attributes from all elements
   const dangerousAttributes = /^on|^formaction$|^form$|^xmlns$/i;
   fragment.querySelectorAll('*').forEach(el => {
-    Array.from(el.attributes).forEach(attr => {
+    const attributeNames = Element.prototype.getAttributeNames.call(el);
+    attributeNames.forEach(attrName => {
       // Remove event handlers (onclick, onerror, etc.)
-      if (dangerousAttributes.test(attr.name)) {
-        el.removeAttribute(attr.name);
+      if (dangerousAttributes.test(attrName)) {
+        Element.prototype.removeAttribute.call(el, attrName);
       }
       // Sanitize href and src to remove javascript: and data: URIs
-      if ((attr.name === 'href' || attr.name === 'src') && attr.value) {
-        // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
-        const cleanVal = attr.value.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
-        if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
-          el.setAttribute(attr.name, '#');
+      else if (attrName === 'href' || attrName === 'src') {
+        const attrValue = Element.prototype.getAttribute.call(el, attrName);
+        if (attrValue) {
+          // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
+          const cleanVal = attrValue.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
+          if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {
+            Element.prototype.setAttribute.call(el, attrName, '#');
+          }
         }
       }
     });
