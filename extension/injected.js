@@ -277,8 +277,6 @@ class MockEventSource {
     }
   }
   window.addEventListener('message', (ev) => {
-    if (ev.source !== window) return;
-
     // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
     try {
       const d = ev.data;
