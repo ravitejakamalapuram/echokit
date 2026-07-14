@@ -84,10 +84,18 @@ function extractOpName(query) {
 
 export function computeMatchKeys(method, url, body) {
   const M = String(method || 'GET').toUpperCase();
-  const full = `${M}|${normalizeUrl(url)}|${normalizeBody(body)}`;
-  const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
-  const noBody = `${M}|${normalizeUrl(url)}|`;
-  const pathOnly = `${M}|${stripQuery(url)}|`;
+
+  // ⚡ Bolt: Cache normalized inputs in local variables to prevent
+  // redundant O(N) operations (like `new URL` and JSON parsing)
+  // across the multiple match keys below.
+  const nUrl = normalizeUrl(url);
+  const sUrl = stripQuery(url);
+  const nBody = normalizeBody(body);
+
+  const full = `${M}|${nUrl}|${nBody}`;
+  const noQuery = `${M}|${sUrl}|${nBody}`;
+  const noBody = `${M}|${nUrl}|`;
+  const pathOnly = `${M}|${sUrl}|`;
   const out = {
     strict: fnv1a(full) + '-' + full.length.toString(16),
     'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),
