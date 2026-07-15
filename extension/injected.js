@@ -406,7 +406,10 @@ class MockEventSource {
       const versions = bucket[keys[mode]];
       if (!versions || !versions.length) continue;
       // Filter out conditional mocks that have hit their limit (local count)
-      const available = versions.filter(v => !v.mockMaxCount || (v.mockCallCount || 0) < v.mockMaxCount);
+      const available = versions.filter(v => {
+        if (!v.mockMaxCount) return true;
+        return (v.mockCallCount || 0) < v.mockMaxCount;
+      });
       if (!available.length) continue;
       const active = available[0].activeVersionId;
       let mock = null;
