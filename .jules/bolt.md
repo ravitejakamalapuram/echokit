@@ -13,3 +13,7 @@
 ## 2026-07-14 - O(N) Object Allocation and Stringification in Render Loops
 **Learning:** Filtering arrays in frequent update loops (e.g., \`filteredInteractions\`) by allocating new arrays inside \`Object.entries\` and repeatedly calling \`JSON.stringify\` inside \`searchBodyContent\` causes severe GC pressure and O(N) performance bottlenecks.
 **Action:** Cache stringified object representations using a \`WeakMap\` for \`searchBodyContent\` and replace \`Object.entries\` with safe \`for...in\` loops to eliminate allocations and redundant processing during loops.
+
+## 2026-07-16 - Math.max/min Call Stack Limit with Spread Syntax
+**Learning:** Using `Math.max(...array)` or `Math.min(...array)` on very large arrays (e.g. mapping thousands of interactions in a waterfall view) causes a `Maximum call stack size exceeded` error because the spread operator passes each element as a separate argument to the function, hitting the JavaScript engine's argument limit.
+**Action:** Use a `for` loop to iteratively calculate the min/max values for large datasets instead of using the spread operator with `Math.max` or `Math.min`.
