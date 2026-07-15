@@ -1305,7 +1305,13 @@ function _renderWaterfall(interactions) {
   })).sort((a, b) => a.startAt - b.startAt);
 
   const minT = rows[0].startAt;
-  const maxT = Math.max(...rows.map(r => r.startAt + (r.durationMs || 1)));
+  let maxT = rows[0].startAt + (rows[0].durationMs || 1);
+  for (let i = 1; i < rows.length; i++) {
+    const endT = rows[i].startAt + (rows[i].durationMs || 1);
+    if (endT > maxT) {
+      maxT = endT;
+    }
+  }
   const totalSpan = Math.max(maxT - minT, 1);
 
   const METHOD_COLORS = {
