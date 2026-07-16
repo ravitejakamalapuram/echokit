@@ -14,6 +14,6 @@
 **Learning:** The "Advanced Filters" toggle and "Clear All" filter buttons in this app's UI lacked corresponding `title` and `aria-label` attributes, meaning sighted mouse users had no visual explanation of their function, and the "Clear All" button lacked context for screen readers.
 **Action:** Always provide explicit `title` and `aria-label` attributes for utility buttons (especially those that toggle UI state or reset data) to ensure parity between mouse users and screen reader users.
 
-## 2025-02-23 - Missing tooltips on destructive settings buttons
-**Learning:** Destructive action buttons in settings panels (like the Wipe button) lacked corresponding title and aria-label attributes, leaving screen reader users without important context for dangerous actions and mouse users without visual confirmation.
-**Action:** Always pair aria-label with an identical title attribute on destructive buttons to clearly articulate the scope of the action being taken.
+## 2024-07-16 - Accessible Dynamic Notifications
+**Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
+**Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
