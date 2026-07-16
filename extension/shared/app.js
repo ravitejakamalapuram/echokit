@@ -851,6 +851,8 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
+  t.setAttribute('role', 'status');
+  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -1305,7 +1307,13 @@ function _renderWaterfall(interactions) {
   })).sort((a, b) => a.startAt - b.startAt);
 
   const minT = rows[0].startAt;
-  const maxT = Math.max(...rows.map(r => r.startAt + (r.durationMs || 1)));
+  let maxT = rows[0].startAt + (rows[0].durationMs || 1);
+  for (let i = 1; i < rows.length; i++) {
+    const endT = rows[i].startAt + (rows[i].durationMs || 1);
+    if (endT > maxT) {
+      maxT = endT;
+    }
+  }
   const totalSpan = Math.max(maxT - minT, 1);
 
   const METHOD_COLORS = {
