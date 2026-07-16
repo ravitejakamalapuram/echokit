@@ -13,3 +13,6 @@
 ## 2026-07-14 - O(N) Object Allocation and Stringification in Render Loops
 **Learning:** Filtering arrays in frequent update loops (e.g., \`filteredInteractions\`) by allocating new arrays inside \`Object.entries\` and repeatedly calling \`JSON.stringify\` inside \`searchBodyContent\` causes severe GC pressure and O(N) performance bottlenecks.
 **Action:** Cache stringified object representations using a \`WeakMap\` for \`searchBodyContent\` and replace \`Object.entries\` with safe \`for...in\` loops to eliminate allocations and redundant processing during loops.
+## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
+**Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
+**Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
