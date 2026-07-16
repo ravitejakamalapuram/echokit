@@ -406,7 +406,10 @@ class MockEventSource {
       const versions = bucket[keys[mode]];
       if (!versions || !versions.length) continue;
       // Filter out conditional mocks that have hit their limit (local count)
-      const available = versions.filter(v => !v.mockMaxCount || (v.mockCallCount || 0) < v.mockMaxCount);
+      const available = versions.filter(v => {
+        if (!v.mockMaxCount) return true;
+        return (v.mockCallCount || 0) < v.mockMaxCount;
+      });
       if (!available.length) continue;
       const active = available[0].activeVersionId;
       let mock = null;
@@ -415,10 +418,8 @@ class MockEventSource {
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
         mock.mockCallCount = (mock.mockCallCount || 0) + 1;
-        // Temporarily disable local copy so subsequent immediate hits within same tick skip
-        if (mock.mockCallCount >= mock.mockMaxCount) {
-          mock.mockEnabled = false;
-        }
+        // We intentionally don't set mockEnabled=false here so the state remains consistent
+        // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });
       } else if (mock.hasChain) {
         // Mock chain: notify background to advance cursor

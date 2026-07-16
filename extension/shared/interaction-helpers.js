@@ -365,9 +365,9 @@ export function calculateTimelineScale(interactions) {
     endAt: i.timestamp
   }));
 
-  let minTime = Infinity;
-  let maxTime = -Infinity;
-  for (let i = 0; i < rows.length; i++) {
+  let minTime = rows[0].startAt;
+  let maxTime = rows[0].endAt;
+  for (let i = 1; i < rows.length; i++) {
     if (rows[i].startAt < minTime) minTime = rows[i].startAt;
     if (rows[i].endAt > maxTime) maxTime = rows[i].endAt;
   }
