@@ -20,7 +20,7 @@
     "build:bump": "bash scripts/build-store-zip.sh --bump"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "playwright": "^1.60.0"
   },
   "repository": {
