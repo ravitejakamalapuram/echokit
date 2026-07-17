@@ -1378,9 +1378,7 @@ async function handleEchokitMockHit(msg) {
   if (existing.mockMaxCount != null) {
     const newCount = (existing.mockCallCount || 0) + 1;
     updates.mockCallCount = newCount;
-    if (newCount >= existing.mockMaxCount) {
-      updates.mockEnabled = false;
-    }
+    // We do NOT set mockEnabled = false here, relying instead on dynamic filtering in pickMock (mockCallCount < mockMaxCount)
   }
   // Mock chain advancement
   if (existing.mockChain && existing.mockChain.length > 0) {

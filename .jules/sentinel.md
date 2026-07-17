@@ -28,3 +28,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer's URI prefix checking (for `javascript:`, etc.) was only applied to `href` and `src` attributes, leaving other URL-accepting attributes like `action` and `xlink:href` vulnerable to DOM XSS bypasses.
 **Learning:** Checks for dangerous URL prefixes (like `javascript:`) must cover all URL-accepting attributes, specifically including `action` and `xlink:href`, to prevent XSS bypasses that evade standard `href` and `src` filters.
 **Prevention:** Modified the `sanitizeHTML` logic to check `['href', 'src', 'action', 'xlink:href'].includes(attrName)` instead of just `href` and `src`.
+
+## 2024-11-20 - Fix state desynchronization in mock evaluation logic
+**Vulnerability:** In EchoKit's mock evaluation logic (`extension/background.js`), a local mutation was setting `mockEnabled = false` when `mockMaxCount` was reached. This local mutation caused state desynchronization with the background script, breaking features that depended on dynamic filtering.
+**Learning:** Avoid locally mutating shared mock state properties. Such local mutations cause state desynchronization. Rely on dynamic filtering (e.g., checking `mockCallCount < mockMaxCount`) instead.
+**Prevention:** Removed the local mutation that sets `mockEnabled = false` when `mockMaxCount` is reached, ensuring consistency across scripts.
