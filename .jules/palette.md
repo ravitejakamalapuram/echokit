@@ -17,3 +17,11 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-22 - Missing accessible scope on destructive actions
+**Learning:** Destructive action buttons (like settings 'Wipe' or 'Delete this mock') in this app's UI lacked corresponding `title` and `aria-label` attributes to clarify their scope, which could lead to accidental data loss for screen reader and sighted mouse users.
+**Action:** Always provide explicit `title` and `aria-label` attributes detailing the scope of the action for destructive buttons to ensure safe usability.
+
+## 2025-02-22 - WCAG 2.5.3 (Label in Name) violation
+**Learning:** Overriding a button's accessible name using `aria-label` with a descriptive string that omits the button's visual text violates WCAG 2.5.3 (Label in Name). This breaks voice dictation software, as users cannot activate the button by saying its visible text.
+**Action:** Always ensure the visual text of an element is included within its `aria-label` (e.g., `<button aria-label="Wipe all recordings">Wipe</button>`), or use `aria-describedby` for additional context instead of overriding the label.
