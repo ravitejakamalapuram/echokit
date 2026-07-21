@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2026-07-21 - Destructive button a11y context
+**Learning:** Destructive buttons (like "Wipe") often lack context about their full scope (e.g., wiping *all* recordings), making them dangerous for both screen reader users and sighted mouse users.
+**Action:** Always pair `aria-label` with an identical `title` attribute on destructive buttons to explicitly articulate the full scope of the action before the user commits to it.
