@@ -1,106 +1,128 @@
-# Engineering Review Report
+# Repository Engineering Review Report
 
 ## Executive Summary
-* **Overall repo health score:** B- (Requires structural refactoring but functionally sound)
-* **Biggest risks:** High coupling in UI layer (`app.js`), duplicated hashing logic (Matcher), XSS risks in manual DOM string construction, missing architectural abstractions.
-* **Highest ROI improvements:** Breaking down `app.js` into smaller, reusable UI components, unifying the `Matcher` logic between CLI and extension, and fixing DOM clobbering/XSS vulnerabilities.
-* **Architecture concerns:** The project heavily relies on a monolithic `app.js` (3261 lines). Missing reusable abstractions and standardized API handling patterns.
+* **Overall repo health score**: B-
+* **Biggest risks**:
+  * God files like `extension/shared/app.js` (3269 lines).
+  * XSS and DOM Clobbering vulnerabilities due to manual DOM manipulation and HTML strings.
+  * O(N) performance bottlenecks in rendering loops and filtering.
+  * Inconsistent mocking logic duplicated across components.
+* **Highest ROI improvements**:
+  * Componentize the frontend UI logic into modular abstractions.
+  * Implement event-driven state management to replace polling.
+  * Introduce test-driven security linting for DOM interactions.
+* **Architecture concerns**:
+  * High coupling of UI and state in `app.js`.
+  * Repeated `fetch` and `setInterval` logic.
+  * Lack of standard reusable hooks or UI components.
+  * Redundant implementation of URL parsing and hashing.
 
 ## Critical Issues
-1. **Security (XSS/DOM Clobbering):** `app.js` and `layouts.js` use extensive manual string concatenation for HTML construction (`innerHTML`) and unsafe `Element.attributes` iteration, introducing XSS and DOM Clobbering risks.
-2. **Monolithic Architecture:** `extension/shared/app.js` is a 3200+ line god file tightly coupling rendering, state, and business logic.
-3. **Synchronous/Blocking Code:** Inefficient N+1 rendering loops inside `app.js` filter functions cause severe UI jank.
+* **XSS/DOM Clobbering**: In `extension/shared/app.js` and `extension/shared/layouts.js`, manual DOM manipulations (e.g., using `innerHTML`, `el.attributes`) expose the application to clobbering bypasses. All iterations over DOM elements must use `Element.prototype` methods (e.g., `Element.prototype.getAttributeNames.call(el)`).
+* **God Component (`app.js`)**: `extension/shared/app.js` is 3269 lines long. It handles state, DOM manipulation, feature toggling, and business logic. This drastically increases maintenance risk.
+* **Performance Bottlenecks**: Rendering functions like `renderInteractionListNew` and `renderWaterfallNew` are subject to O(N) constraints due to redundant filtering inside nested loops. WeakMap caching or pre-computed arrays must be utilized.
 
 ## Duplication Report
-1. `cli/lib/match.js` and `extension/shared/matcher.js` and `extension/injected.js` contain heavily duplicated URL parsing, normalization, and FNV-1a hashing logic. This is an intentional decision to maintain CLI zero-dependency isolation, but should be managed carefully.
-2. Form label structures (`<div class="ek-label">`) are manually repeated across UI dialogs instead of a unified `InputGroup` component.
-3. Empty state placeholders and Toast notifications are manually rendered across multiple views.
+* **Mock Logic**: Matcher logic and mock evaluation are duplicated across `extension/shared/matcher.js`, `extension/injected.js`, and `cli/lib/match.js`. This creates a drift risk (e.g., URL normalization differences).
+* **UI Patterns**: Empty states, toast notifications, form elements (`<div class="ek-label">`), and dialog wrappers are manually reconstructed throughout `app.js`.
+  * **Spread**: Dozens of manual DOM reconstructions.
+  * **Abstraction**: Create modular Web Components or standard JS UI builder functions (`createButton`, `createDialog`).
+* **Storage Access**: Polling `chrome.storage.local` is repeatedly hardcoded using `setInterval`.
 
 ## Reusability Opportunities
-* **UI Components:** Introduce reusable `Button`, `Modal/Dialog`, `FormInput`, and `Toast` abstractions instead of manual DOM element creation scattered throughout `app.js`.
-* **Hooks/State:** Extract indexedDB polling into a shared `useStore` or explicit EventBus model instead of `setInterval`.
-* **API Client:** Create a central API client for the Cloudflare worker instead of manual `fetch` calls scattered in `background.js`.
+* **State Management**: A pub/sub EventBus or shared store module to broadcast state changes instead of component-level polling.
+* **UI Components**:
+  * `NotificationToast(message, type)`
+  * `SettingsDialog(content)`
+  * `FormField(label, input)`
+* **Tight Coupling**: Features in `app.js` leak into one another. The dual interface strategy (popup vs. devtools) relies on brittle feature flags.
 
 ## Architecture Review
-* **Scalability:** The extension's rendering loop (manual DOM diffing and N+1 filtering) will not scale with thousands of interactions.
-* **Maintainability:** Poor separation of concerns in `app.js` makes bug fixing risky and onboarding difficult.
-* **Extensibility:** The lack of a component model means new features require boilerplate DOM manipulation.
-* **Testing:** The monolithic nature of `app.js` makes it untestable in isolation.
+* **Scalability**: Polling via `setInterval` for state synchronization is not scalable for many interactions.
+* **Maintainability**: Low cohesion in `app.js` makes adding features complex.
+* **Resiliency**: Fragile async flows with multiple unhandled rejections in UI handlers.
+* **Anti-patterns**:
+  * God files (`app.js`, `background.js`).
+  * Weak DOM manipulation and non-semantic HTML (`<div class="ek-label">`).
 
 ## Performance Findings
-* **Frontend:** `filteredInteractions()` in `app.js` does `JSON.stringify(body)` repeatedly inside a loop on every render, causing O(N) performance drops. `Math.max(...array)` is used on large arrays in waterfalls, risking call stack limits.
-* **Backend (CLI/Worker):** Efficient and lightweight, but repetitive polling could be optimized.
+* **Expensive Renders**: Redundant execution of `filteredInteractions()` causes UI freezing on large datasets.
+* **Inefficient Loops**: Spread operators used on large arrays (e.g., `Math.max(...array)`) cause stack overflows in `waterfall-renderer.js`. Iterative tracking should be used.
+* **Redundant Transformations**: Frequent JSON stringification during filtering should be cached using `WeakMap` or precomputed hashes.
 
 ## Security & Reliability Findings
-* **XSS:** Manual HTML string concatenation in `app.js` (e.g., `renderInteractionListNew`).
-* **DOM Clobbering:** Iterating over `el.attributes` instead of `Element.prototype.getAttributeNames.call(el)`.
-* **Side-Effects:** Unbounded `setInterval` polling in `app.js` can cause memory leaks if not cleaned up.
+* **Injection Risks**: Unsafe HTML insertion via `innerHTML` without comprehensive sanitization (e.g., bypassing `javascript:` links).
+* **DOM Clobbering**: In `sanitize.js`, using `el.attributes` can be clobbered by `<input name="attributes">`.
+* **State Sync**: Local mutation of shared mock state (e.g., setting `mockEnabled = false` locally) leads to desync with `background.js`.
 
 ## Testing Gaps
-* Missing E2E tests for the frontend UI.
-* DOM manipulation functions in `app.js` are virtually untested.
-* No contract tests for the interactions between CLI and Extension.
+* **Missing Coverage**: The monolithic `app.js` lacks unit tests due to tight DOM coupling.
+* **DOM Clobbering Mocks**: JSDOM doesn't perfectly emulate DOM Clobbering, meaning tests might falsely pass. Needs E2E browser tests for sanitizers.
 
 ## Rules Compliance Findings
-* **Rule:** "Form labels are commonly implemented using non-semantic \`<div class="ek-label">\`" -> Violates accessibility standards. Need `aria-label`/`title` on inputs.
-* **Rule:** "never refactor `extension/shared/app.js` in one shot" -> Need an incremental plan.
+* **Accessibility Rule Violation**: Non-semantic labels (`<div class="ek-label">`) lack `aria-label` and `title` attributes on inner inputs.
+  * *Impact*: Screen reader failure.
+  * *Fix*: Require `aria-label` and `title` for all inputs.
+* **Security Rule Violation**: Missing explicit DOM clobbering prevention (Rule: `Element.prototype` direct usage).
+  * *Impact*: High severity XSS bypass.
+  * *Fix*: Implement `Element.prototype` usage for all attribute handling.
+* **Performance Rule Violation**: O(N) array transformations inside render loops.
+  * *Impact*: UI stutter.
+  * *Fix*: Pre-compute arrays before passing them down to components.
 
 ## Recommended Refactor Plan
-### Quick Wins
-1. Fix DOM clobbering by using `Element.prototype` methods.
-2. Add `aria-label` and `title` to all inputs missing proper semantic labels.
-3. Optimize `filteredInteractions` by caching stringified JSON in a `WeakMap`.
+### 1. Quick Wins (1-2 weeks)
+* Fix DOM clobbering vulnerabilities in `sanitize.js` by strictly using `Element.prototype`.
+* Replace `Math.max(...array)` with iterative `for` loops in `waterfall-renderer.js`.
+* Pre-compute `filteredInteractions()` in `app.js` to eliminate rendering lag.
 
-### Medium Effort Improvements
-1. Replace manual DOM string construction with a safe HTML builder or template literals that automatically sanitize.
-2. Abstract common UI components (Toast, Modal, Input).
-3. Introduce an Event Bus for background-to-frontend communication instead of polling.
+### 2. Medium Effort (1-2 months)
+* Extract `Toast`, `Dialog`, and `Button` UI logic into standard reusable utility functions.
+* Move from `setInterval` polling to an Event-driven state sync mechanism using `chrome.storage.onChanged`.
+* Unify the FNV-1a hashing and URL parsing between `cli` and `extension`.
 
-### Long-Term Architecture Improvements
-1. Progressively decompose `app.js` into modular view components (e.g., `Sidebar`, `DetailsPanel`, `Settings`).
-2. Implement a proper reactive state management layer.
+### 3. Long-Term Architecture (3-6 months)
+* Decompose `app.js` (3269 lines) into domain-specific modules (`SettingsUI.js`, `InteractionListUI.js`, `EditorUI.js`).
+* Standardize on Web Components for the UI layer to naturally encapsulate styles and logic.
 
----
+# Top Priority Summary
+## Top 10 Highest-Value Fixes
+1. Prevent DOM Clobbering in HTML sanitizers.
+2. Fix maximum call stack errors in waterfall rendering (remove spread syntax).
+3. Pre-compute and cache expensive list filtering in `app.js`.
+4. Ensure `aria-label` and `title` pair matching on all destructive actions and inputs.
+5. Standardize on `Element.prototype` methods for DOM interactions.
+6. Centralize mock desynchronization logic instead of local mutations.
+7. Replace all non-semantic form labels with accessible attributes.
+8. Filter all `javascript:` URL prefixes on `action` and `xlink:href` attributes.
+9. Cache object stringification via `WeakMap` in rendering loops.
+10. Remove unhandled promise rejections on async UI clicks.
 
-### Top 10 Highest-Value Fixes
-1. Fix `filteredInteractions` O(N) `JSON.stringify` performance bottleneck.
-2. Mitigate XSS risks by sanitizing manual HTML construction in `app.js`.
-3. Fix DOM Clobbering vulnerabilities via `Element.prototype` usage.
-4. Replace `Math.max(...array)` with iterative loops for large datasets.
-5. Add missing accessible labels (`aria-label`, `title`) to inputs/buttons.
-6. Fix `setInterval` memory leak risks in UI polling.
-7. Ensure all dynamically created Toasts have `role="status"` and `aria-live="polite"`.
-8. Safely sanitize URL rendering in the UI.
-9. Fix any missing origin checks in `postMessage` listeners.
-10. Ensure unhandled promise rejections are caught in `background.js` API calls.
+## Top 10 Duplication-Removal Opportunities
+1. FNV-1a hashing (CLI vs Extension).
+2. URL parameter sorting and normalization (CLI vs Extension).
+3. DOM element creation logic (manual `document.createElement`).
+4. Toast notifications rendering.
+5. Empty state UI.
+6. Settings toggle UI.
+7. Modal/Dialog wrappers.
+8. Storage polling loops (`setInterval`).
+9. Tab state persistence logic.
+10. Mock conflict resolution display logic.
 
-### Top 10 Duplication-Removal Opportunities
-1. FNV-1a hashing logic (Matcher vs CLI).
-2. URL normalization (Matcher vs CLI).
-3. Header normalization functions.
-4. Settings dialog rendering.
-5. Import/Export dialog rendering.
-6. Paste dialog rendering.
-7. Empty state placeholders.
-8. Error toast notifications.
-9. Form input groups (label + input).
-10. Primary/Secondary button styles/DOM creation.
+## Top Reusable Abstractions Worth Introducing
+1. `UIFactory`: Reusable Web Components / JS renderers for common UI (Buttons, Modals, Inputs).
+2. `EventBus`: A pub/sub system to replace `setInterval` state polling.
+3. `SharedMatcher`: A unified matching engine shared across the Extension, CLI, and Worker.
+4. `DomUtils`: Safe, standardized wrappers for DOM manipulation that mitigate clobbering.
 
-### Top Reusable Abstractions Worth Introducing
-1. `UIComponent` base class for safe DOM generation.
-2. `EventManager` for cross-module messaging.
-3. `StorageService` wrapping IndexedDB.
-4. `Sanitizer` utility for all user inputs.
-5. `VirtualScroller` for large lists of interactions.
+## Files/Components with Highest Technical Debt
+1. `extension/shared/app.js` (Monolithic, highly coupled, security risks, performance bottlenecks)
+2. `extension/background.js` (Large state machine with mixed responsibilities)
+3. `extension/injected.js` (Complex state synching and duplication of matching logic)
 
-### Files/Components With Highest Technical Debt
-1. `extension/shared/app.js` (God file, mixed concerns)
-2. `extension/injected.js` (High complexity, monkey-patching)
-3. `extension/background.js` (Mixed state/API logic)
-
-### Suggested Engineering Standards Missing From Repository
-1. Explicit UI component boundaries (no DOM manipulation outside designated view functions).
-2. Strict CSP (Content Security Policy) enforcement for all `innerHTML` usage.
-3. Automated a11y (accessibility) linting.
-4. Centralized state management guidelines.
-5. E2E UI testing mandate for new features.
+## Suggested Engineering Standards Missing
+1. **Strict DOM Security Linting**: Require `Element.prototype` access for all untrusted DOM manipulations.
+2. **Pre-commit Performance Checks**: Static analysis for O(N) operations inside render functions.
+3. **Component Modularity Standard**: Maximum file length limit (e.g., 500 lines) and strict separation of UI and State.
+4. **Accessibility Linting**: Enforce `aria-label` and `title` matching for all interactable elements.
