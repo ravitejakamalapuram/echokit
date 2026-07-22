@@ -2724,7 +2724,7 @@ function renderSettingsLicense() {
           <div class="ek-settings-title">Wipe ALL recordings</div>
           <div class="ek-settings-hint">Delete every recorded interaction across every scope, tab, and domain.</div>
         </div>
-        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn">Wipe</button>
+        <button class="ek-btn ek-btn-danger" data-a="clear-all" data-testid="clear-all-btn" title="Wipe ALL recordings" aria-label="Wipe ALL recordings">Wipe</button>
       </div>
 
       <div class="ek-settings-row" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 16px;">
