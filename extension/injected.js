@@ -221,18 +221,10 @@ class MockEventSource {
   }
   function computeMatchKeys(method, url, body) {
     const M = String(method || 'GET').toUpperCase();
-
-    // ⚡ Bolt: Cache normalized inputs in local variables to prevent
-    // redundant O(N) operations (like `new URL` and JSON parsing)
-    // across the multiple match keys below.
-    const nUrl = normalizeUrl(url);
-    const sUrl = stripQuery(url);
-    const nBody = normalizeBody(body);
-
-    const full = `${M}|${nUrl}|${nBody}`;
-    const noQuery = `${M}|${sUrl}|${nBody}`;
-    const noBody = `${M}|${nUrl}|`;
-    const pathOnly = `${M}|${sUrl}|`;
+    const full = `${M}|${normalizeUrl(url)}|${normalizeBody(body)}`;
+    const noQuery = `${M}|${stripQuery(url)}|${normalizeBody(body)}`;
+    const noBody = `${M}|${normalizeUrl(url)}|`;
+    const pathOnly = `${M}|${stripQuery(url)}|`;
     const out = {
       strict: fnv1a(full) + '-' + full.length.toString(16),
       'ignore-query': fnv1a(noQuery) + '-' + noQuery.length.toString(16),
@@ -406,10 +398,7 @@ class MockEventSource {
       const versions = bucket[keys[mode]];
       if (!versions || !versions.length) continue;
       // Filter out conditional mocks that have hit their limit (local count)
-      const available = versions.filter(v => {
-        if (!v.mockMaxCount) return true;
-        return (v.mockCallCount || 0) < v.mockMaxCount;
-      });
+      const available = versions.filter(v => !v.mockMaxCount || (v.mockCallCount || 0) < v.mockMaxCount);
       if (!available.length) continue;
       const active = available[0].activeVersionId;
       let mock = null;
@@ -418,8 +407,6 @@ class MockEventSource {
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
         mock.mockCallCount = (mock.mockCallCount || 0) + 1;
-        // We intentionally don't set mockEnabled=false here so the state remains consistent
-        // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });
       } else if (mock.hasChain) {
         // Mock chain: notify background to advance cursor

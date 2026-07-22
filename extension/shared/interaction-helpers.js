@@ -365,12 +365,8 @@ export function calculateTimelineScale(interactions) {
     endAt: i.timestamp
   }));
 
-  let minTime = rows[0].startAt;
-  let maxTime = rows[0].endAt;
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i].startAt < minTime) minTime = rows[i].startAt;
-    if (rows[i].endAt > maxTime) maxTime = rows[i].endAt;
-  }
+  const minTime = Math.min(...rows.map(r => r.startAt));
+  const maxTime = Math.max(...rows.map(r => r.endAt));
   const totalSpan = Math.max(maxTime - minTime, 1);
 
   // Format timeline label

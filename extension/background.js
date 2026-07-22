@@ -82,19 +82,9 @@ function getTab(tabId) {
   });
   return tabState.get(tabId);
 }
-const hostCache = new Map();
-const MAX_HOST_CACHE_SIZE = 1000;
-
 function hostOf(url) {
-  if (!url) return '';
-  if (hostCache.has(url)) return hostCache.get(url);
   try {
-    const host = new URL(url).host;
-    if (hostCache.size >= MAX_HOST_CACHE_SIZE) {
-      hostCache.delete(hostCache.keys().next().value);
-    }
-    hostCache.set(url, host);
-    return host;
+    return new URL(url).host;
   } catch {
     return '';
   }
@@ -1378,9 +1368,6 @@ async function handleEchokitMockHit(msg) {
   if (existing.mockMaxCount != null) {
     const newCount = (existing.mockCallCount || 0) + 1;
     updates.mockCallCount = newCount;
-    if (newCount >= existing.mockMaxCount) {
-      updates.mockEnabled = false;
-    }
   }
   // Mock chain advancement
   if (existing.mockChain && existing.mockChain.length > 0) {

@@ -13,18 +13,3 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer's URI prefix checking (for `javascript:`, etc.) could be bypassed by inserting HTML entity-encoded control characters or spaces (like `&#09;` for tab) into the URI. The browser decodes these entities into control characters, but the standard `trim()` function only removes leading/trailing spaces, not internal control characters, allowing the payload to execute.
 **Learning:** Checking for dangerous URI prefixes requires stripping all control characters (`\x00-\x20` and `\x7F`) from the decoded value before prefix matching, because the browser's URI parser typically ignores these characters when executing the URI scheme.
 **Prevention:** Modified the `sanitizeHTML` logic to strip all control characters and spaces from the attribute value using `.replace(/[\x00-\x20\x7F]/g, '')` prior to executing the `startsWith` prefix checks.
-
-## 2026-06-25 - Prevent DOM XSS in code editor highlight and empty state
-**Vulnerability:** The application assigned unsanitized strings returned by `highlightJSON` and `renderEmpty` directly to `innerHTML` properties in `extension/shared/app.js`, creating vectors for Cross-Site Scripting (DOM XSS).
-**Learning:** Even helper functions generating UI elements internally within the app logic must be wrapped in a sanitization pass when injected via `innerHTML` to guarantee safety from unexpected injections or alterations in function output.
-**Prevention:** Ensured all assignments to `innerHTML` are defensively wrapped with the `sanitizeHTML` utility.
-
-## 2026-07-06 - DOM Clobbering in SanitizeHTML
-**Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
-**Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
-**Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
-
-## 2026-07-21 - Prevent XSS bypass via action and xlink:href attributes
-**Vulnerability:** The HTML sanitizer only checked `href` and `src` attributes for dangerous URI prefixes (like `javascript:`), leaving other URL-accepting attributes like `action` and `xlink:href` vulnerable to XSS bypasses.
-**Learning:** When sanitizing HTML to prevent dangerous URIs, all URL-accepting attributes must be checked, specifically including `action` and `xlink:href` to prevent XSS payloads that evade standard filters.
-**Prevention:** Expanded the attribute condition in `sanitizeHTML` to check `action` and `xlink:href` alongside `href` and `src`.

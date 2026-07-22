@@ -360,7 +360,7 @@ function render() {
   root.innerHTML = sanitizeHTML(`
     <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
-      ${renderToolbar(list.length)}
+      ${renderToolbar()}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
           ${state.waterfall ? renderWaterfallNew(list, { selectedId: state.selectedId }) : ''}
@@ -491,11 +491,11 @@ function renderHeader() {
           aria-pressed="${state.waterfall ? 'true' : 'false'}">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="8" height="2.5" rx="1"/><rect x="2" y="8.75" width="12" height="2.5" rx="1"/><rect x="2" y="13.5" width="6" height="2.5" rx="1"/></svg>
         </button>
-        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings (CORS, Headers, Blocklist, etc.)">
+        <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="open-settings" title="Advanced Settings (CORS, Headers, Blocklist, etc.)" data-testid="settings-btn" aria-label="Advanced Settings">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
         </button>
         <div class="ek-menu">
-          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="More actions"
+          <button class="ek-btn ek-btn-ghost ek-btn-icon" data-action="toggle-menu" title="More actions" data-testid="menu-btn" aria-label="menu"
             aria-expanded="${state.menuOpen ? 'true' : 'false'}" aria-haspopup="menu">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
           </button>
@@ -851,8 +851,6 @@ function showPasteDialog(count, origin, payload) {
 function toast(text) {
   const t = document.createElement('div');
   t.textContent = text;
-  t.setAttribute('role', 'status');
-  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -933,7 +931,7 @@ function showGistImportDialog() {
   });
 }
 
-function renderToolbar(filteredCount) {
+function renderToolbar() {
   const features = getFeatures();
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -957,11 +955,11 @@ function renderToolbar(filteredCount) {
     `;
   } else {
     // DEVTOOLS: Advanced toolbar with filter panel
-    return renderAdvancedToolbar(filteredCount);
+    return renderAdvancedToolbar();
   }
 }
 
-function renderAdvancedToolbar(filteredCount) {
+function renderAdvancedToolbar() {
   const features = getFeatures();
   const activeCount = getActiveFilterCount();
 
@@ -976,27 +974,22 @@ function renderAdvancedToolbar(filteredCount) {
                data-testid="search-input"
                autocomplete="off"
                spellcheck="false"/>
-        <button type="button"
-                class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
+        <button class="ek-btn ${state.advancedFilterOpen ? 'active' : ''}"
                 data-action="toggle-advanced-filters"
                 data-testid="toggle-advanced-filters"
-                title="Toggle advanced filters"
-                aria-label="Toggle advanced filters"
                 aria-expanded="${state.advancedFilterOpen ? 'true' : 'false'}"
                 aria-controls="advanced-filters-panel">
           🔍 Advanced ${state.advancedFilterOpen ? '▲' : '▼'}
         </button>
         ${activeCount > 0 ? `
-          <button type="button"
-                  class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters"
-                  title="Clear all active filters" aria-label="Clear all active filters">
+          <button class="ek-btn" data-action="clear-all-filters" data-testid="clear-filters">
             Clear All
           </button>
         ` : ''}
       </div>
 
       ${state.advancedFilterOpen ? renderAdvancedFilterPanel() : ''}
-      ${features.filterChips ? renderFilterChips(filteredCount) : ''}
+      ${features.filterChips ? renderFilterChips() : ''}
     </div>
   `;
 }
@@ -1179,7 +1172,7 @@ function renderAdvancedFilterPanel() {
  *
  * @returns {string} An HTML snippet with the filter chips and summary counts, or an empty string when no filters are active.
  */
-function renderFilterChips(filteredCount) {
+function renderFilterChips() {
   const chips = [];
 
   // Method chips
@@ -1190,7 +1183,7 @@ function renderFilterChips(filteredCount) {
             data-type="method"
             data-value="${m}"
             data-testid="chip-method-${m.toLowerCase()}"
-            title="Remove method filter ${m}" aria-label="Remove method filter ${m}">
+            aria-label="Remove method filter ${m}">
         × method:${m}
       </button>
     `);
@@ -1203,7 +1196,7 @@ function renderFilterChips(filteredCount) {
             data-action="remove-filter"
             data-type="status"
             data-value="${s}"
-            title="Remove status filter ${s}" aria-label="Remove status filter ${s}">
+            aria-label="Remove status filter ${s}">
         × status:${s}
       </button>
     `);
@@ -1215,7 +1208,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-body"
-            title="Remove request body filter" aria-label="Remove request body filter">
+            aria-label="Remove request body filter">
         × request:"${escapeHtml(state.filters.requestBodyContains.slice(0, 20))}"
       </button>
     `);
@@ -1226,7 +1219,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-body"
-            title="Remove response body filter" aria-label="Remove response body filter">
+            aria-label="Remove response body filter">
         × response:"${escapeHtml(state.filters.responseBodyContains.slice(0, 20))}"
       </button>
     `);
@@ -1238,7 +1231,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-name"
-            title="Remove request header name filter" aria-label="Remove request header name filter">
+            aria-label="Remove request header name filter">
         × req-header:"${escapeHtml(state.filters.requestHeader.name.slice(0, 20))}"
       </button>
     `);
@@ -1249,7 +1242,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="request-header-value"
-            title="Remove request header value filter" aria-label="Remove request header value filter">
+            aria-label="Remove request header value filter">
         × req-header-val:"${escapeHtml(state.filters.requestHeader.value.slice(0, 20))}"
       </button>
     `);
@@ -1260,7 +1253,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-name"
-            title="Remove response header name filter" aria-label="Remove response header name filter">
+            aria-label="Remove response header name filter">
         × res-header:"${escapeHtml(state.filters.responseHeader.name.slice(0, 20))}"
       </button>
     `);
@@ -1271,7 +1264,7 @@ function renderFilterChips(filteredCount) {
       <button type="button" class="ek-filter-chip"
             data-action="remove-filter"
             data-type="response-header-value"
-            title="Remove response header value filter" aria-label="Remove response header value filter">
+            aria-label="Remove response header value filter">
         × res-header-val:"${escapeHtml(state.filters.responseHeader.value.slice(0, 20))}"
       </button>
     `);
@@ -1280,7 +1273,7 @@ function renderFilterChips(filteredCount) {
   if (chips.length === 0) return '';
 
   const count = chips.length;
-
+  const filteredCount = filteredInteractions().length;
   const totalCount = state.interactions.length;
 
   return `
@@ -1307,13 +1300,7 @@ function _renderWaterfall(interactions) {
   })).sort((a, b) => a.startAt - b.startAt);
 
   const minT = rows[0].startAt;
-  let maxT = rows[0].startAt + (rows[0].durationMs || 1);
-  for (let i = 1; i < rows.length; i++) {
-    const endT = rows[i].startAt + (rows[i].durationMs || 1);
-    if (endT > maxT) {
-      maxT = endT;
-    }
-  }
+  const maxT = Math.max(...rows.map(r => r.startAt + (r.durationMs || 1)));
   const totalSpan = Math.max(maxT - minT, 1);
 
   const METHOD_COLORS = {
@@ -1427,8 +1414,8 @@ function renderRow(i) {
       ${conflict ? `<span class="ek-conflict-badge" title="${versionCount} versions">×${versionCount}</span>` : ''}
       ${showBadge ? renderSourceBadge(i, state.tabId) : ''}
       <span class="ek-status ${statusClass}">${i.responseStatus || 'ERR'}</span>
-      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"></button>
-      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'Unblock API' : 'Block API'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">⊘</button>
+      <button class="ek-mock-toggle ${i.mockEnabled ? 'on' : ''}" data-action="toggle-mock" data-id="${i.id}" title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}" data-testid="mock-toggle" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"></button>
+      <button class="ek-block-btn ${i.blocked ? 'on' : ''}" data-action="toggle-block" data-id="${i.id}" title="${i.blocked ? 'BLOCKED — click to unblock' : 'Block this API at network level'}" data-testid="block-btn" aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">⊘</button>
     </div>
   `;
 }
@@ -1545,7 +1532,7 @@ function renderInteractionRow(i) {
         <button class="ek-icon-btn ${i.mockEnabled ? 'on' : ''}"
                 data-action="toggle-mock"
                 data-id="${i.id}"
-                title="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"
+                title="${i.mockEnabled ? 'Mock ON' : 'Mock OFF'}"
                 data-testid="mock-toggle"
                 aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}">
           ${i.mockEnabled ? '✓' : '○'}
@@ -1553,7 +1540,7 @@ function renderInteractionRow(i) {
         <button class="ek-icon-btn ${i.blocked ? 'on' : ''}"
                 data-action="toggle-block"
                 data-id="${i.id}"
-                title="${i.blocked ? 'Unblock API' : 'Block API'}"
+                title="${i.blocked ? 'Blocked' : 'Block'}"
                 data-testid="block-btn"
                 aria-label="${i.blocked ? 'Unblock API' : 'Block API'}">
           ⊘
@@ -1592,7 +1579,7 @@ function renderDetail(i, conflicts) {
     <div class="ek-detail-head">
       <span class="ek-method ${(i.method||'GET').toUpperCase()}">${(i.method||'GET').toUpperCase()}</span>
       <div class="ek-detail-title">${escapeHtml(i.url)}</div>
-      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="close" aria-label="close">✕</button>
+      <button class="ek-close" data-action="close-detail" data-testid="close-detail" aria-label="close">✕</button>
     </div>
     <div class="ek-detail-body">
       ${conflicts.length > 1 ? `
@@ -1682,7 +1669,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-kv-row">
                   <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
                   <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
-                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" aria-label="remove">×</button>
                 </div>
               `).join('')}
             </div>
@@ -1779,7 +1766,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
                   <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
-                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" aria-label="remove">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
               </div>
@@ -1796,7 +1783,7 @@ function renderFooter(count) {
   const isPopup = state.mode === 'popup';
   const recTag = state.tab.recording ? `<span class="ek-tag on">REC</span>` : `<span class="ek-tag">idle</span>`;
   const mockTag = state.tab.mocking ? `<span class="ek-tag amber">MOCK ON</span>` : '';
-  const corsTag = state.settings.corsOverride ? `<button type="button" class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="Open settings for CORS override" aria-label="Open settings for CORS override">CORS</button>` : '';
+  const corsTag = state.settings.corsOverride ? `<button type="button" class="ek-tag amber" data-action="toggle-cors" data-testid="cors-chip" title="CORS override is ON — click to open settings" aria-label="Open settings for CORS override">CORS</button>` : '';
   const scope = state.settings.scope || 'domain';
   const freeLimit = !state.isPro ? `<span class="ek-subtle ${state.allCount >= 50 ? 'ek-limit-warn' : ''}" title="Free tier: 50 recordings max. Upgrade for unlimited.">${state.allCount}/50</span>` : '';
 
@@ -1814,7 +1801,7 @@ function renderFooter(count) {
     <div class="ek-footer">
       ${recTag} ${mockTag} ${corsTag}
       <span class="ek-subtle">${count} request${count === 1 ? '' : 's'}</span>
-      <span class="ek-subtle">· scope: <button type="button" class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="Change scope: currently ${scope}" aria-label="Change scope: currently ${scope}">${scope}</button></span>
+      <span class="ek-subtle">· scope: <button type="button" class="ek-tag" data-action="cycle-scope" data-testid="scope-chip" title="click to change scope" aria-label="Change scope: currently ${scope}">${scope}</button></span>
       ${freeLimit}
       ${devToolsLink}
       <span class="ek-row-inline-end ek-subtle">${state.tab.host ? escapeHtml(state.tab.host) : `tab #${state.tabId ?? '—'}`}</span>
@@ -1829,7 +1816,7 @@ function renderAllCodeEditors() {
     const mirror = root.querySelector(`.ek-code-mirror[data-mirror-for="${id}"]`);
     if (!mirror) return;
     const sync = () => {
-      mirror.innerHTML = sanitizeHTML(highlightJSON(ta.value) + '\n'); // trailing NL so last line aligns
+      mirror.innerHTML = highlightJSON(ta.value) + '\n'; // trailing NL so last line aligns
       mirror.scrollTop = ta.scrollTop;
       mirror.scrollLeft = ta.scrollLeft;
       const wrap = ta.closest('.ek-code-editor');
@@ -2339,7 +2326,7 @@ function softRenderList() {
   if (isPopup || !features.sortableColumns) {
     // Grouped list view
     const grouped = groupByDomain(items);
-    list.innerHTML = items.length === 0 ? sanitizeHTML(renderEmpty()) : sanitizeHTML(grouped.map(renderDomainGroup).join(''));
+    list.innerHTML = items.length === 0 ? renderEmpty() : sanitizeHTML(grouped.map(renderDomainGroup).join(''));
   } else {
     // Table view
     list.innerHTML = sanitizeHTML(renderSortableTable(items));
@@ -2508,7 +2495,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
@@ -2523,7 +2510,7 @@ function renderBlocklistRule(b, idx) {
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
                 <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
-                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" aria-label="remove">×</button>
               </div>
             `;
 }
@@ -2535,7 +2522,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" aria-label="remove">×</button>
                 </div>
               </div>
             `;
@@ -2553,7 +2540,7 @@ function renderTransformRule(r, idx) {
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" aria-label="remove">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
@@ -3185,9 +3172,6 @@ function matchesStatusFilter(status, filters) {
   return false;
 }
 
-// Cache for stringified JSON bodies to avoid O(N) re-stringification during filtering
-const stringifiedBodyCache = new WeakMap();
-
 // Helper: Search body content
 function searchBodyContent(body, query) {
   if (!query) return true;
@@ -3197,11 +3181,7 @@ function searchBodyContent(body, query) {
 
   // Handle JSON bodies
   if (typeof body === 'object') {
-    let str = stringifiedBodyCache.get(body);
-    if (str === undefined) {
-      str = JSON.stringify(body).toLowerCase();
-      stringifiedBodyCache.set(body, str);
-    }
+    const str = JSON.stringify(body).toLowerCase();
     return str.includes(q);
   }
 
@@ -3221,9 +3201,7 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   const nq = nameQuery.toLowerCase();
   const vq = valueQuery.toLowerCase();
 
-  for (const name in headers) {
-    if (!Object.prototype.hasOwnProperty.call(headers, name)) continue;
-    const value = headers[name];
+  for (const [name, value] of Object.entries(headers)) {
     const nameMatch = !nq || name.toLowerCase().includes(nq);
     const valueMatch = !vq || String(value).toLowerCase().includes(vq);
     if (nameMatch && valueMatch) return true;
