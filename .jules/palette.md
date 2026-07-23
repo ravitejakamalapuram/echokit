@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-23 - Explicit scope on destructive buttons
+**Learning:** In the EchoKit UI, destructive action buttons (e.g., settings panel 'Wipe' buttons or delete buttons) lacked `aria-label` and `title` attributes, making the scope of their actions potentially ambiguous for screen reader and sighted mouse users.
+**Action:** Destructive action buttons must pair `aria-label` with an identical `title` attribute to clearly articulate the scope of the action.
