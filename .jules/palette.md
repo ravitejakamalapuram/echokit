@@ -17,3 +17,6 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+## 2024-07-24 - Add accessible title and aria-label to Wipe button
+**Learning:** Destructive action buttons (e.g., settings panel "Wipe" buttons) in this app often lack contextual a11y labels when the text is short. Screen reader and sighted mouse users benefit from pairing `aria-label` with an identical `title` attribute to clearly articulate the scope of the action.
+**Action:** When adding accessible labels to destructive actions or buttons with brief text, pair `aria-label` with an identical `title` to benefit both screen reader and sighted users.
