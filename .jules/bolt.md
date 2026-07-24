@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2024-05-18 - Prevent redundant list filtering in render loop
+**Learning:** In the EchoKit UI codebase, rendering components can cause redundant O(N) array filtering. Invoking \`filteredInteractions()\` multiple times in nested components within the same render loop creates unnecessary CPU load.
+**Action:** Always pass pre-computed arrays (like the result of \`filteredInteractions()\`) down to components (e.g., \`renderInteractionListNew(list)\`) to avoid re-evaluating expensive filter chains on every render frame.
