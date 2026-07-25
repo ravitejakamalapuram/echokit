@@ -1671,7 +1671,7 @@ function renderDetail(i, conflicts) {
             </div>
             <div class="ek-row-inline" style="margin-top:6px;gap:6px">
               <button class="ek-btn ek-btn-ghost" data-action="format-json" data-id="${i.id}" data-testid="format-json-btn">Format JSON</button>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}">Reset</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}" title="Reset response body to recorded original" aria-label="Reset response body to recorded original">Reset</button>
               <span class="ek-subtle ek-row-inline-end" data-testid="body-save-status">saved</span>
             </div>
           </div>
@@ -1751,7 +1751,7 @@ function renderDetail(i, conflicts) {
             <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
               value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
             <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
-            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
+            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px" title="Reset hit count for this mock" aria-label="Reset hit count for this mock">Reset</button>` : ''}
           </div>
         </div>
       </div>
@@ -1767,7 +1767,7 @@ function renderDetail(i, conflicts) {
                 <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
                 <span class="ek-subtle">loop</span>
               </label>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn" title="Reset mock chain cursor to first step" aria-label="Reset mock chain cursor to first step">Reset cursor</button>
             ` : ''}
           </div>
         </div>

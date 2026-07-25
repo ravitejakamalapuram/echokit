@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2024-07-25 - Missing accessible scope on utility buttons
+**Learning:** Context-dependent utility buttons (like 'Reset') in this app's UI lacked corresponding `title` and `aria-label` attributes to clarify what exactly is being reset (e.g., body vs. count vs. chain cursor), creating ambiguity for screen reader and sighted mouse users.
+**Action:** Always provide explicit `title` and `aria-label` attributes detailing the specific scope of the action for utility buttons to ensure safe and clear usability.
