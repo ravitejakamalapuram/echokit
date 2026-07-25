@@ -32,7 +32,8 @@ export function sanitizeHTML(dirty) {
       // Remove event handlers (onclick, onerror, etc.)
       if (dangerousAttributes.test(attrName)) {
         Element.prototype.removeAttribute.call(el, attrName);
-      } else if ((attrName === 'href' || attrName === 'src') && attrValue) {
+      // 🛡️ Sentinel Optimization: Cover all URL-accepting attributes
+      } else if ((attrName === 'href' || attrName === 'src' || attrName === 'action' || attrName === 'xlink:href') && attrValue) {
         // Strip control characters (0x00-0x1F, 0x7F) before checking prefix to prevent bypasses
         const cleanVal = attrValue.replace(/[\x00-\x20\x7F]/g, '').toLowerCase();
         if (cleanVal.startsWith('javascript:') || cleanVal.startsWith('data:') || cleanVal.startsWith('vbscript:')) {

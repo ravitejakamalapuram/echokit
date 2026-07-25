@@ -23,3 +23,7 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
 **Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
 **Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
+## 2026-07-25 - Prevent DOM XSS via action/xlink:href attributes
+**Vulnerability:** The HTML sanitizer only checked `href` and `src` attributes for dangerous prefixes (like `javascript:`), omitting other URL-accepting attributes like `action` and `xlink:href`.
+**Learning:** XSS bypasses can exploit less common URL-accepting attributes if a sanitizer is not comprehensive.
+**Prevention:** Added `action` and `xlink:href` to the prefix validation check in `sanitizeHTML`.
