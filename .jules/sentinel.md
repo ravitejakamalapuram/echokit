@@ -23,3 +23,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
 **Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
 **Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
+
+## 2026-07-26 - Timing Attack on Admin Token
+**Vulnerability:** The `/v1/issue` endpoint in the Cloudflare Worker compared the `Authorization` header against the `ECHOKIT_ADMIN_TOKEN` using the strict equality operator (`!==`). This is vulnerable to timing attacks, allowing an attacker to guess the token by measuring response times.
+**Learning:** String comparisons for secrets, tokens, or signatures should always use constant-time comparison algorithms to prevent timing attacks.
+**Prevention:** Updated the authorization check to use the existing `timingSafeEqual` function, which performs a constant-time comparison.

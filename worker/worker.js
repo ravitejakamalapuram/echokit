@@ -147,7 +147,7 @@ export default {
     // Admin: issue a key. Requires Authorization: Bearer <ECHOKIT_ADMIN_TOKEN>.
     if (url.pathname === '/v1/issue' && request.method === 'POST') {
       const auth = request.headers.get('authorization') || '';
-      if (!env.ECHOKIT_ADMIN_TOKEN || auth !== `Bearer ${env.ECHOKIT_ADMIN_TOKEN}`) {
+      if (!env.ECHOKIT_ADMIN_TOKEN || !timingSafeEqual(auth, `Bearer ${env.ECHOKIT_ADMIN_TOKEN}`)) {
         return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders() });
       }
       const body = await readJson(request);
