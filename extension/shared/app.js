@@ -831,7 +831,7 @@ function showPasteDialog(count, origin, payload) {
         <input type="checkbox" data-a="clear-first" data-testid="paste-clear-first"/> <span>Clear existing localStorage before pasting</span>
       </label>
       <div class="ek-modal-actions">
-        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-ghost" data-a="cancel" title="Cancel and close dialog" aria-label="Cancel and close dialog">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="confirm" data-testid="paste-confirm">Apply</button>
       </div>
     </div>
@@ -878,7 +878,7 @@ function showGistUploadDialog() {
       </div>
       <label class="ek-row-inline" style="gap:6px"><input type="checkbox" data-a="public"/> <span>Public gist</span></label>
       <div class="ek-modal-actions">
-        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-ghost" data-a="cancel" title="Cancel and close dialog" aria-label="Cancel and close dialog">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="upload" data-testid="gist-upload-confirm">Upload</button>
       </div>
     </div>
@@ -913,7 +913,7 @@ function showGistImportDialog() {
       <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="merge" checked/> <span>Merge (replace by id)</span></label>
       <label class="ek-row-inline" style="gap:6px"><input type="radio" name="ek-gst" value="override"/> <span>Override (wipe existing)</span></label>
       <div class="ek-modal-actions">
-        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-ghost" data-a="cancel" title="Cancel and close dialog" aria-label="Cancel and close dialog">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="import" data-testid="gist-import-confirm">Import</button>
       </div>
     </div>
@@ -2475,7 +2475,7 @@ function showImportDialog() {
         <input type="radio" name="ek-strategy" value="override"/> <span>Override (wipe existing)</span>
       </label>
       <div class="ek-modal-actions">
-        <button class="ek-btn ek-btn-ghost" data-a="cancel">Cancel</button>
+        <button class="ek-btn ek-btn-ghost" data-a="cancel" title="Cancel and close dialog" aria-label="Cancel and close dialog">Cancel</button>
         <button class="ek-btn ek-btn-primary" data-a="confirm" data-testid="import-confirm">Import</button>
       </div>
     </div>
