@@ -17,3 +17,6 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+## 2024-07-29 - Contextual aria-labels for generic remove buttons
+**Learning:** Generic "remove" labels on icon-only buttons create ambiguity for screen reader users when multiple identical buttons exist in a list (e.g., removing different types of rules or headers).
+**Action:** Always provide explicit context in `aria-label` and `title` attributes for generic action buttons based on what they are removing.
