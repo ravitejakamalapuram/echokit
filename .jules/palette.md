@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-23 - Missing tooltips on primary state toggle buttons
+**Learning:** The primary recording state buttons ("STOP" and "● REC") lacked explicit `title` and `aria-label` attributes, meaning sighted mouse users had no visual tooltip explaining their function (e.g., "Start recording network traffic"), and screen readers lacked explicit context beyond the raw text.
+**Action:** Always provide explicit `title` and `aria-label` attributes for primary application state toggle buttons to ensure detailed context and tooltips for all users.
