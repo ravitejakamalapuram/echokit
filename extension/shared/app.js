@@ -1073,13 +1073,17 @@ function renderBodySearchFilter() {
              placeholder="Request body contains…"
              value="${escapeHtml(state.filters.requestBodyContains)}"
              data-action="filter-request-body"
-             data-testid="filter-request-body"/>
+             data-testid="filter-request-body"
+             aria-label="Filter by request body content"
+             title="Filter by request body content"/>
       <input class="ek-input"
              type="text"
              placeholder="Response body contains…"
              value="${escapeHtml(state.filters.responseBodyContains)}"
              data-action="filter-response-body"
-             data-testid="filter-response-body"/>
+             data-testid="filter-response-body"
+             aria-label="Filter by response body content"
+             title="Filter by response body content"/>
     </div>
   `;
 }
@@ -1095,24 +1099,32 @@ function renderHeaderSearchFilter() {
                  placeholder="Request header name"
                  value="${escapeHtml(state.filters.requestHeader.name)}"
                  data-action="filter-req-header-name"
-                 style="flex:1"/>
+                 style="flex:1"
+                 aria-label="Filter by request header name"
+                 title="Filter by request header name"/>
           <input class="ek-input"
                  placeholder="value"
                  value="${escapeHtml(state.filters.requestHeader.value)}"
                  data-action="filter-req-header-value"
-                 style="flex:1"/>
+                 style="flex:1"
+                 aria-label="Filter by request header value"
+                 title="Filter by request header value"/>
         </div>
         <div class="ek-row-inline">
           <input class="ek-input"
                  placeholder="Response header name"
                  value="${escapeHtml(state.filters.responseHeader.name)}"
                  data-action="filter-res-header-name"
-                 style="flex:1"/>
+                 style="flex:1"
+                 aria-label="Filter by response header name"
+                 title="Filter by response header name"/>
           <input class="ek-input"
                  placeholder="value"
                  value="${escapeHtml(state.filters.responseHeader.value)}"
                  data-action="filter-res-header-value"
-                 style="flex:1"/>
+                 style="flex:1"
+                 aria-label="Filter by response header value"
+                 title="Filter by response header value"/>
         </div>
       </div>
     </div>
