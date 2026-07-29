@@ -23,3 +23,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
 **Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
 **Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
+
+## 2026-07-29 - Missing origin check on postMessage listener
+**Vulnerability:** The application listened to `message` events in the MAIN world (`extension/injected.js`) without verifying that `ev.source === window`. This meant any cross-origin iframe or popup could send messages to the script to alter the application state (e.g. inject fake mocks, enable/disable mocking).
+**Learning:** Even if a message contains a specific `source` property in its payload (like `SRC_CONTENT`), that payload can be forged by attackers. The browser-provided `ev.source` or `ev.origin` must be verified.
+**Prevention:** Always verify `ev.source === window` for same-window communication or check `ev.origin` against an allowlist before processing `postMessage` payloads.

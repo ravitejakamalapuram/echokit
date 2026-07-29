@@ -285,6 +285,9 @@ class MockEventSource {
     }
   }
   window.addEventListener('message', (ev) => {
+    // Security: must originate from the same window (blocks iframes/workers)
+    if (ev.source !== window) return;
+
     // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
     try {
       const d = ev.data;
