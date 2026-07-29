@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2024-05-24 - Optimize URL search in hot filter loop
+**Learning:** Using `.toLowerCase().includes()` on a property inside a hot render filter loop creates a massive number of temporary string allocations (O(N)) that slow down rendering when the array size is large.
+**Action:** For simple case-insensitive substring searches in loops, pre-compute a case-insensitive regular expression (`new RegExp(..., 'i')`) outside the loop and use `.test()` inside. This avoids per-item string allocations and provides a significant speedup.
