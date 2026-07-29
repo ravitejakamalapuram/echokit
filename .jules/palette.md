@@ -17,3 +17,6 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+## 2026-07-29 - Missing ARIA labels on advanced filter inputs
+**Learning:** In the `extension/shared/app.js` UI, `<input>` elements used for filtering APIs (e.g., body content and headers) lacked explicit accessibility labels (`aria-label` or `title`), making them inaccessible for screen-reader users relying on generic placeholder texts.
+**Action:** Always verify that all input fields, especially those without explicitly associated `<label>` tags (such as text inputs used in advanced filters or search bars), have clear `aria-label` and `title` attributes providing context on their purpose.
