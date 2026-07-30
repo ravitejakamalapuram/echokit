@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2026-07-20 - O(N) Array Allocation Bottleneck from chained .filter().map()
+**Learning:** Chaining `.filter(x => ...).map(y => ...)` on arrays (such as declarativeNetRequest rules arrays) creates a performance bottleneck due to iterating over the data twice and allocating an intermediate, throw-away array in memory.
+**Action:** Combine `.filter()` and `.map()` loops into a single-pass `.reduce()` to iterate the data only once and push directly to the final result array, eliminating the intermediate array allocation and GC pressure.
