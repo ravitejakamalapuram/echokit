@@ -4,7 +4,7 @@
 * **Overall repo health score:** B- (Requires structural refactoring but functionally sound)
 * **Biggest risks:** High coupling in UI layer (`app.js`), duplicated hashing logic (Matcher), XSS risks in manual DOM string construction, missing architectural abstractions.
 * **Highest ROI improvements:** Breaking down `app.js` into smaller, reusable UI components, unifying the `Matcher` logic between CLI and extension, and fixing DOM clobbering/XSS vulnerabilities.
-* **Architecture concerns:** The project heavily relies on a monolithic `app.js` (3261 lines). Missing reusable abstractions and standardized API handling patterns.
+* **Architecture concerns:** The project heavily relies on a monolithic `app.js` (3270 lines). Missing reusable abstractions and standardized API handling patterns.
 
 ## Critical Issues
 1. **Security (XSS/DOM Clobbering):** `app.js` and `layouts.js` use extensive manual string concatenation for HTML construction (`innerHTML`) and unsafe `Element.attributes` iteration, introducing XSS and DOM Clobbering risks.
@@ -12,7 +12,7 @@
 3. **Synchronous/Blocking Code:** Inefficient N+1 rendering loops inside `app.js` filter functions cause severe UI jank.
 
 ## Duplication Report
-1. `cli/lib/match.js` and `extension/shared/matcher.js` and `extension/injected.js` contain heavily duplicated URL parsing, normalization, and FNV-1a hashing logic. This is an intentional decision to maintain CLI zero-dependency isolation, but should be managed carefully.
+1. `cli/lib/match.js`, `extension/shared/matcher.js` and `extension/injected.js` contain heavily duplicated URL parsing, normalization, and FNV-1a hashing logic. This is an intentional decision to maintain CLI zero-dependency isolation, but should be managed carefully.
 2. Form label structures (`<div class="ek-label">`) are manually repeated across UI dialogs instead of a unified `InputGroup` component.
 3. Empty state placeholders and Toast notifications are manually rendered across multiple views.
 
@@ -60,47 +60,42 @@
 1. Progressively decompose `app.js` into modular view components (e.g., `Sidebar`, `DetailsPanel`, `Settings`).
 2. Implement a proper reactive state management layer.
 
----
-
-### Top 10 Highest-Value Fixes
-1. Fix `filteredInteractions` O(N) `JSON.stringify` performance bottleneck.
-2. Mitigate XSS risks by sanitizing manual HTML construction in `app.js`.
-3. Fix DOM Clobbering vulnerabilities via `Element.prototype` usage.
-4. Replace `Math.max(...array)` with iterative loops for large datasets.
-5. Add missing accessible labels (`aria-label`, `title`) to inputs/buttons.
-6. Fix `setInterval` memory leak risks in UI polling.
-7. Ensure all dynamically created Toasts have `role="status"` and `aria-live="polite"`.
-8. Safely sanitize URL rendering in the UI.
-9. Fix any missing origin checks in `postMessage` listeners.
-10. Ensure unhandled promise rejections are caught in `background.js` API calls.
-
-### Top 10 Duplication-Removal Opportunities
-1. FNV-1a hashing logic (Matcher vs CLI).
-2. URL normalization (Matcher vs CLI).
-3. Header normalization functions.
-4. Settings dialog rendering.
-5. Import/Export dialog rendering.
-6. Paste dialog rendering.
-7. Empty state placeholders.
-8. Error toast notifications.
-9. Form input groups (label + input).
-10. Primary/Secondary button styles/DOM creation.
-
-### Top Reusable Abstractions Worth Introducing
-1. `UIComponent` base class for safe DOM generation.
-2. `EventManager` for cross-module messaging.
-3. `StorageService` wrapping IndexedDB.
-4. `Sanitizer` utility for all user inputs.
-5. `VirtualScroller` for large lists of interactions.
-
-### Files/Components With Highest Technical Debt
-1. `extension/shared/app.js` (God file, mixed concerns)
-2. `extension/injected.js` (High complexity, monkey-patching)
-3. `extension/background.js` (Mixed state/API logic)
-
-### Suggested Engineering Standards Missing From Repository
-1. Explicit UI component boundaries (no DOM manipulation outside designated view functions).
-2. Strict CSP (Content Security Policy) enforcement for all `innerHTML` usage.
-3. Automated a11y (accessibility) linting.
-4. Centralized state management guidelines.
-5. E2E UI testing mandate for new features.
+# Final Requirement
+1. Top 10 highest-value fixes.
+   1. Fix `filteredInteractions` O(N) `JSON.stringify` performance bottleneck.
+   2. Mitigate XSS risks by sanitizing manual HTML construction in `app.js`.
+   3. Fix DOM Clobbering vulnerabilities via `Element.prototype` usage.
+   4. Replace `Math.max(...array)` with iterative loops for large datasets.
+   5. Add missing accessible labels (`aria-label`, `title`) to inputs/buttons.
+   6. Fix `setInterval` memory leak risks in UI polling.
+   7. Ensure all dynamically created Toasts have `role="status"` and `aria-live="polite"`.
+   8. Safely sanitize URL rendering in the UI.
+   9. Fix any missing origin checks in `postMessage` listeners.
+   10. Ensure unhandled promise rejections are caught in `background.js` API calls.
+2. Top 10 duplication-removal opportunities.
+   1. FNV-1a hashing logic (Matcher vs CLI vs injected.js).
+   2. URL normalization (Matcher vs CLI vs injected.js).
+   3. Header normalization functions.
+   4. Settings dialog rendering logic in `app.js`.
+   5. Import/Export dialog rendering logic.
+   6. Paste dialog rendering logic.
+   7. Empty state placeholders.
+   8. Error toast notifications.
+   9. Form input groups (label + input).
+   10. Primary/Secondary button styles/DOM creation.
+3. Top reusable abstractions worth introducing.
+   1. `UIComponent` base class for safe DOM generation.
+   2. `EventManager` for cross-module messaging.
+   3. `StorageService` wrapping IndexedDB.
+   4. `Sanitizer` utility for all user inputs.
+   5. `VirtualScroller` for large lists of interactions.
+4. Files/components with highest technical debt.
+   1. `extension/shared/app.js` (God file, mixed concerns)
+   2. `extension/injected.js` (High complexity, monkey-patching)
+   3. `extension/background.js` (Mixed state/API logic)
+5. Suggested engineering standards missing from the repository.
+   1. Explicit UI component boundaries (no DOM manipulation outside designated view functions).
+   2. Strict CSP (Content Security Policy) enforcement for all `innerHTML` usage.
+   3. Automated a11y (accessibility) linting.
+   4. Centralized state management guidelines.
+   5. E2E UI testing mandate for new features.
