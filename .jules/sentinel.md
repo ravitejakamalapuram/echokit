@@ -23,3 +23,8 @@ This approach is more secure than regex-based sanitization as it uses the browse
 **Vulnerability:** The HTML sanitizer (`extension/shared/sanitize.js`) iterated over `el.attributes` to remove dangerous attributes. This could be bypassed using DOM clobbering (e.g. `<form><input name="attributes"></form>`), which overwrites `el.attributes` with the input element, causing the sanitizer to silently fail and leave dangerous attributes (like `onsubmit` or `href="javascript:..."`) intact.
 **Learning:** Interacting with untrusted DOM elements (especially `<form>`) via their properties/methods is unsafe because attackers can inject elements with names like `attributes` or `getAttributeNames` to hijack those properties.
 **Prevention:** Always use `Element.prototype` methods directly (e.g., `Element.prototype.getAttributeNames.call(el)`) when iterating over or modifying attributes of potentially untrusted elements.
+
+## 2026-07-15 - DOM XSS bypass via postMessage lacking origin check
+**Vulnerability:** The `message` event listener in `extension/injected.js` processed messages blindly by checking `d.source === SRC_CONTENT`, without verifying the `ev.source` origin. A cross-origin iframe could have forged a payload bypassing security.
+**Learning:** Checking payload properties alone isn't sufficient for postMessage handlers; you must verify that the sender (`ev.source`) matches the expected window to prevent cross-origin injection.
+**Prevention:** Added `if (ev.source !== window) return;` to the `message` event listener to enforce that it only processes messages originating from the same execution context.
