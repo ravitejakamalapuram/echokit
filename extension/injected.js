@@ -287,6 +287,8 @@ class MockEventSource {
   window.addEventListener('message', (ev) => {
     // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
     try {
+      // Guard: must originate from the same window (blocks iframes)
+      if (ev.source !== window) return;
       const d = ev.data;
       if (!d || d.source !== SRC_CONTENT) return;
       if (d.type === 'echokit:mockIndex') {
