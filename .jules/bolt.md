@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2024-05-15 - Optimize Header Search Loop
+**Learning:** During array filtering, unconditionally lowercasing object properties inside the loop creates unnecessary string allocations and garbage collection pressure, especially when only one side of the search condition (name vs value) is actively being queried.
+**Action:** When filtering objects based on optional partial matches, conditionally evaluate and lowercase properties only if the respective query is present, and utilize early `continue` exits to prevent evaluating the rest of the loop block.
