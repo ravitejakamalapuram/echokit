@@ -3107,6 +3107,13 @@ function filteredInteractions() {
   const hasReqHeaderFilter = features.headerSearch && (state.filters.requestHeader.name || state.filters.requestHeader.value);
   const hasResHeaderFilter = features.headerSearch && (state.filters.responseHeader.name || state.filters.responseHeader.value);
 
+  // ⚡ Bolt Optimization: Pre-compute header query lowercasing to avoid O(N) re-lowercasing in the loop
+  // Expected impact: Significant reduction in GC pressure and string allocations during hot filter loops
+  const reqHeaderNameQ = state.filters.requestHeader.name ? state.filters.requestHeader.name.toLowerCase() : '';
+  const reqHeaderValueQ = state.filters.requestHeader.value ? state.filters.requestHeader.value.toLowerCase() : '';
+  const resHeaderNameQ = state.filters.responseHeader.name ? state.filters.responseHeader.name.toLowerCase() : '';
+  const resHeaderValueQ = state.filters.responseHeader.value ? state.filters.responseHeader.value.toLowerCase() : '';
+
   // Single pass filtering
   results = results.filter(i => {
     // PHASE 1: Method filter
@@ -3136,8 +3143,8 @@ function filteredInteractions() {
     if (resBodyQuery && !searchBodyContent(i.responseBody, resBodyQuery)) return false;
 
     // PHASE 5: Header search
-    if (hasReqHeaderFilter && !searchHeaders(i.requestHeaders, state.filters.requestHeader.name, state.filters.requestHeader.value)) return false;
-    if (hasResHeaderFilter && !searchHeaders(i.responseHeaders, state.filters.responseHeader.name, state.filters.responseHeader.value)) return false;
+    if (hasReqHeaderFilter && !searchHeaders(i.requestHeaders, reqHeaderNameQ, reqHeaderValueQ)) return false;
+    if (hasResHeaderFilter && !searchHeaders(i.responseHeaders, resHeaderNameQ, resHeaderValueQ)) return false;
 
     // PHASE 6: Boolean filters
     if (state.filters.mockEnabled !== null && i.mockEnabled !== state.filters.mockEnabled) return false;
@@ -3218,8 +3225,8 @@ function searchHeaders(headers, nameQuery, valueQuery) {
   if (!nameQuery && !valueQuery) return true;
   if (!headers || typeof headers !== 'object') return false;
 
-  const nq = nameQuery.toLowerCase();
-  const vq = valueQuery.toLowerCase();
+  const nq = nameQuery; // Already lowercased
+  const vq = valueQuery; // Already lowercased
 
   for (const name in headers) {
     if (!Object.prototype.hasOwnProperty.call(headers, name)) continue;
