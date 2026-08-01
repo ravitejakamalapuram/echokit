@@ -3237,8 +3237,11 @@ function sortInteractions(interactions, sortBy, sortOrder) {
 
   const comparators = {
     timestamp: (a, b) => a.timestamp - b.timestamp,
-    url: (a, b) => a.url.localeCompare(b.url),
-    method: (a, b) => a.method.localeCompare(b.method),
+    // ⚡ Bolt Optimization: Replacing localeCompare with explicit comparison operators
+    // for string sorting to avoid the significant O(N log N) performance bottleneck
+    // caused by locale-aware collation. Expected impact: Faster sorting execution.
+    url: (a, b) => a.url < b.url ? -1 : (a.url > b.url ? 1 : 0),
+    method: (a, b) => a.method < b.method ? -1 : (a.method > b.method ? 1 : 0),
     status: (a, b) => (a.responseStatus || 0) - (b.responseStatus || 0),
     duration: (a, b) => (a.durationMs || 0) - (b.durationMs || 0)
   };

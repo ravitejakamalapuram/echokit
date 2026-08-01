@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2023-10-24 - O(N log N) String Sorting Bottleneck
+**Learning:** `String.prototype.localeCompare` acts as a severe performance bottleneck for string sorting optimizations in JavaScript (especially within O(N log N) array sort comparators), because native locale-aware string parsing is computationally expensive.
+**Action:** Use standard explicit comparison operators (e.g., `a < b ? -1 : (a > b ? 1 : 0)`) for properties like URLs or HTTP methods to achieve significant speedups without losing functionality.
