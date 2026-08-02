@@ -671,6 +671,7 @@ def main():
                 # First call — should be mocked (202)
                 r1 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_first_call_mocked', r1 == 202, f'status={r1}')
+                time.sleep(0.5)
                 # Second call — should be mocked (202)
                 r2 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_second_call_mocked', r2 == 202, f'status={r2}')
