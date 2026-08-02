@@ -3110,6 +3110,8 @@ function filteredInteractions() {
   const resBodyQuery = features.bodySearch && state.filters.responseBodyContains ? state.filters.responseBodyContains.toLowerCase() : null;
   const hasReqHeaderFilter = features.headerSearch && (state.filters.requestHeader.name || state.filters.requestHeader.value);
   const hasResHeaderFilter = features.headerSearch && (state.filters.responseHeader.name || state.filters.responseHeader.value);
+  const hasStatusFilter = features.multiSelect && state.filters.statusCodes.length > 0;
+  const parsedStatusFilter = hasStatusFilter ? parseStatusFilters(state.filters.statusCodes) : null;
 
   // Single pass filtering
   results = results.filter(i => {
@@ -3121,8 +3123,8 @@ function filteredInteractions() {
     }
 
     // PHASE 2: Status filter
-    if (features.multiSelect && state.filters.statusCodes.length > 0) {
-      if (!matchesStatusFilter(i.responseStatus, state.filters.statusCodes)) return false;
+    if (hasStatusFilter) {
+      if (!matchesParsedStatusFilter(i.responseStatus, parsedStatusFilter)) return false;
     } else if (state.statusFilter != null) {
       const bucket = String(Math.floor((i.responseStatus || 0) / 100));
       if (state.statusFilter === '0') {
@@ -3174,17 +3176,32 @@ function filteredInteractions() {
   return results;
 }
 
-// Helper: Match status filter
-function matchesStatusFilter(status, filters) {
-  if (!filters || filters.length === 0) return true;
+// Helper: Parse status filters to avoid string operations in O(N) loops
+function parseStatusFilters(filters) {
+  const parsed = { exact: new Set(), ranges: [], hasZero: false };
+  if (!filters || filters.length === 0) return parsed;
   for (const f of filters) {
-    if (f === '0' && status === 0) return true;
-    if (f.endsWith('xx')) {
-      const bucket = Math.floor(status / 100);
-      if (String(bucket) === f.charAt(0)) return true;
-    } else if (String(status) === f) {
-      return true;
+    if (f === '0') {
+      parsed.hasZero = true;
+    } else if (f.endsWith('xx')) {
+      const bucket = parseInt(f.charAt(0), 10);
+      parsed.ranges.push({ min: bucket * 100, max: bucket * 100 + 99 });
+    } else {
+      parsed.exact.add(parseInt(f, 10));
     }
+  }
+  return parsed;
+}
+
+// Helper: Match parsed status filter (no string processing)
+// ⚡ Bolt Optimization: Numeric checks using pre-parsed filters. Expected impact: O(N) string allocations eliminated.
+function matchesParsedStatusFilter(status, parsed) {
+  const s = status || 0;
+  if (s === 0 && parsed.hasZero) return true;
+
+  if (parsed.exact.has(s)) return true;
+  for (let j = 0; j < parsed.ranges.length; j++) {
+    if (s >= parsed.ranges[j].min && s <= parsed.ranges[j].max) return true;
   }
   return false;
 }
