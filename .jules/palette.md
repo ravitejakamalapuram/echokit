@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-23 - Contextual tooltips on generic utility buttons
+**Learning:** Icon-only buttons (like `✕`) or text buttons with generic names (like `Reset`) in lists or dense UI contexts are ambiguous for screen readers when they use generic labels like "remove" or "Reset", and equally ambiguous for sighted users if they lack descriptive `title` tooltips.
+**Action:** Always provide explicit, context-dependent `title` and `aria-label` attributes for generic buttons (e.g. "Remove chain step", "Reset mock call count") to ensure clarity for all users.

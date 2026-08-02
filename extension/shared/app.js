@@ -1592,7 +1592,7 @@ function renderDetail(i, conflicts) {
     <div class="ek-detail-head">
       <span class="ek-method ${(i.method||'GET').toUpperCase()}">${(i.method||'GET').toUpperCase()}</span>
       <div class="ek-detail-title">${escapeHtml(i.url)}</div>
-      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="close" aria-label="close">✕</button>
+      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="Close request details" aria-label="Close request details">✕</button>
     </div>
     <div class="ek-detail-body">
       ${conflicts.length > 1 ? `
@@ -1671,7 +1671,7 @@ function renderDetail(i, conflicts) {
             </div>
             <div class="ek-row-inline" style="margin-top:6px;gap:6px">
               <button class="ek-btn ek-btn-ghost" data-action="format-json" data-id="${i.id}" data-testid="format-json-btn">Format JSON</button>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}">Reset</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}" title="Reset response body" aria-label="Reset response body">Reset</button>
               <span class="ek-subtle ek-row-inline-end" data-testid="body-save-status">saved</span>
             </div>
           </div>
@@ -1682,7 +1682,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-kv-row">
                   <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
                   <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
-                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="Remove header" aria-label="Remove header">×</button>
                 </div>
               `).join('')}
             </div>
@@ -1751,7 +1751,7 @@ function renderDetail(i, conflicts) {
             <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
               value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
             <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
-            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
+            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px" title="Reset mock call count" aria-label="Reset mock call count">Reset</button>` : ''}
           </div>
         </div>
       </div>
@@ -1767,7 +1767,7 @@ function renderDetail(i, conflicts) {
                 <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
                 <span class="ek-subtle">loop</span>
               </label>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn" title="Reset chain cursor" aria-label="Reset chain cursor">Reset cursor</button>
             ` : ''}
           </div>
         </div>
@@ -1779,7 +1779,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
                   <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
-                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="Remove chain step" aria-label="Remove chain step">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
               </div>
@@ -2508,7 +2508,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="Remove request header rule" aria-label="Remove request header rule">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
@@ -2523,7 +2523,7 @@ function renderBlocklistRule(b, idx) {
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
                 <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
-                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="Remove blocklist rule" aria-label="Remove blocklist rule">×</button>
               </div>
             `;
 }
@@ -2535,7 +2535,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="Remove rewrite rule" aria-label="Remove rewrite rule">×</button>
                 </div>
               </div>
             `;
@@ -2553,7 +2553,7 @@ function renderTransformRule(r, idx) {
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="Remove transform rule" aria-label="Remove transform rule">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
