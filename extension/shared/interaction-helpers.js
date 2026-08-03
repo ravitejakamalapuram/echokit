@@ -359,17 +359,15 @@ export function calculateTimelineScale(interactions) {
     return { minTime: 0, maxTime: 1, totalSpan: 1, timeLabel: '0ms' };
   }
 
-  // Calculate start time for each interaction
-  const rows = interactions.map(i => ({
-    startAt: i.timestamp - (i.durationMs || 0),
-    endAt: i.timestamp
-  }));
+  // ⚡ Bolt Optimization: Eliminate O(N) array allocation. Compute min/max directly in a single pass. Expected impact: Reduced GC pressure and faster scale calculation.
+  let minTime = interactions[0].timestamp - (interactions[0].durationMs || 0);
+  let maxTime = interactions[0].timestamp;
 
-  let minTime = rows[0].startAt;
-  let maxTime = rows[0].endAt;
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i].startAt < minTime) minTime = rows[i].startAt;
-    if (rows[i].endAt > maxTime) maxTime = rows[i].endAt;
+  for (let i = 1; i < interactions.length; i++) {
+    const startAt = interactions[i].timestamp - (interactions[i].durationMs || 0);
+    const endAt = interactions[i].timestamp;
+    if (startAt < minTime) minTime = startAt;
+    if (endAt > maxTime) maxTime = endAt;
   }
   const totalSpan = Math.max(maxTime - minTime, 1);
 
