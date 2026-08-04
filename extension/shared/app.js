@@ -1582,7 +1582,12 @@ function renderDetailEmpty() {
 }
 
 function renderDetail(i, conflicts) {
-  const activeId = conflicts.length > 1 ? (i.activeVersionId || conflicts.sort((a,b)=>b.timestamp-a.timestamp)[0].id) : i.id;
+  // ⚡ Bolt Optimization: Sort conflicts once to prevent redundant O(N log N) operations during render
+  // Expected impact: Eliminates duplicate array sorting in the hot render path
+  if (conflicts.length > 1) {
+    conflicts.sort((a,b) => b.timestamp - a.timestamp);
+  }
+  const activeId = conflicts.length > 1 ? (i.activeVersionId || conflicts[0].id) : i.id;
   const overrideBody = i.overrideBody ?? i.responseBody ?? '';
   const overrideStatus = i.overrideStatus ?? i.responseStatus ?? 200;
   const overrideHeaders = i.overrideHeaders || i.responseHeaders || {};
@@ -1602,7 +1607,7 @@ function renderDetail(i, conflicts) {
           <span class="ek-conflict-badge">${conflicts.length}</span>
           <div class="ek-row-inline-end ek-version-picker">
             <select class="ek-select" data-action="set-active-version" data-testid="version-select">
-              ${conflicts.sort((a,b)=>b.timestamp-a.timestamp).map(c =>
+              ${conflicts.map(c =>
                 `<option value="${escapeHtml(c.id)}" ${c.id === activeId ? 'selected' : ''}>${escapeHtml(new Date(c.timestamp).toLocaleString())} — ${escapeHtml(String(c.responseStatus))}</option>`
               ).join('')}
             </select>
