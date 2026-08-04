@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2024-05-18 - Eliminated duplicate array sorting in render loop
+**Learning:** Found an unnecessary O(N log N) optimization bottleneck in `renderDetail` where `.sort()` was being called twice on the `conflicts` array in the same hot path (once to compute an ID and once inside a template string map).
+**Action:** Always extract and hoist `.sort()` mutations on arrays to a single pass outside template literals or conditional initializers.
