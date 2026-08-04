@@ -1638,8 +1638,8 @@ function renderDetail(i, conflicts) {
             <div class="ek-field">
               <div class="ek-label">Latency (ms)</div>
               <div class="ek-row-inline">
-                <input class="ek-slider" type="range" min="0" max="10000" step="50" value="${i.mockLatency || 0}" data-action="update-latency" data-id="${i.id}" data-testid="latency-slider"/>
-                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}"/>
+                <input class="ek-slider" type="range" min="0" max="10000" step="50" value="${i.mockLatency || 0}" data-action="update-latency" data-id="${i.id}" data-testid="latency-slider" aria-label="Mock latency in milliseconds" title="Mock latency in milliseconds"/>
+                <input class="ek-input" type="number" min="0" style="max-width: 88px" value="${i.mockLatency || 0}" data-action="update-latency-input" data-id="${i.id}" aria-label="Mock latency in milliseconds input" title="Mock latency in milliseconds input"/>
               </div>
             </div>
           </div>
@@ -1661,7 +1661,7 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-body">
           <div class="ek-field">
             <div class="ek-label">Status Code</div>
-            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input"/>
+            <input class="ek-input" type="number" value="${overrideStatus}" data-action="update-status" data-id="${i.id}" data-testid="status-input" aria-label="Mock response status code" title="Mock response status code"/>
           </div>
           <div class="ek-field">
             <div class="ek-label">Body (raw JSON or text)</div>

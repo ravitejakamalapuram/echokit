@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-22 - Missing explicit associations for form inputs
+**Learning:** Some form inputs (like latency sliders and status code inputs) rely on visual grouping with generic `div` labels instead of semantic `<label for="id">` tags, making them inaccessible to screen readers which don't inherently associate the visual text with the input.
+**Action:** When a semantic `<label for="id">` cannot be used or is missing, always provide explicit `aria-label` and `title` attributes for form inputs to ensure screen reader compatibility.
