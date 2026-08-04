@@ -169,6 +169,7 @@ class MockEventSource {
     mocking: false,
     // mockIndex is a per-mode map: { mode -> { key -> [versions] } }
     mockIndex: { strict: {}, 'ignore-query': {}, 'ignore-body': {}, 'path-wildcard': {} },
+    localMockHits: new Map(),
   };
   window.__echokitState = state;
 
@@ -408,7 +409,14 @@ class MockEventSource {
       // Filter out conditional mocks that have hit their limit (local count)
       const available = versions.filter(v => {
         if (!v.mockMaxCount) return true;
-        return (v.mockCallCount || 0) < v.mockMaxCount;
+        const localCount = state.localMockHits.get(v.id) || 0;
+        const actualCount = Math.max(v.mockCallCount || 0, localCount);
+        // Clear local cache if background explicitly resets it
+        if ((v.mockCallCount || 0) === 0 && localCount > 0) {
+          state.localMockHits.delete(v.id);
+          return 0 < v.mockMaxCount;
+        }
+        return actualCount < v.mockMaxCount;
       });
       if (!available.length) continue;
       const active = available[0].activeVersionId;
@@ -417,7 +425,10 @@ class MockEventSource {
       if (!mock) mock = available[0];
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
-        mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        const localCount = state.localMockHits.get(mock.id) || 0;
+        const actualCount = Math.max(mock.mockCallCount || 0, localCount);
+        state.localMockHits.set(mock.id, actualCount + 1);
+        mock.mockCallCount = actualCount + 1;
         // We intentionally don't set mockEnabled=false here so the state remains consistent
         // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });
