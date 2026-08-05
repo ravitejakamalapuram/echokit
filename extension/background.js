@@ -871,7 +871,7 @@ async function handleEchokitInteractionRecord(msg, sender, fromTabId) {
   const hash = matchKeys.strict;
   const existing = all.find(i => i.hash === hash && i.tabId === tabId) || null;
   const interaction = {
-    id: existing ? existing.id : `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: existing ? existing.id : `int_${Date.now()}_${crypto.randomUUID().split("-")[0]}`,
     hash,
     matchKeys,
     matchMode: existing ? existing.matchMode || 'strict' : 'strict',
@@ -1421,7 +1421,7 @@ async function handleEchokitImportHar(msg) {
       const resBody = res.content?.text || '';
       const mk = computeMatchKeys(method, url, reqBody);
       await putInteraction({
-        id: `int_har_${Date.now()}_${imported}_${Math.random().toString(36).slice(2, 6)}`,
+        id: `int_har_${Date.now()}_${imported}_${crypto.randomUUID().slice(0, 4)}`,
         hash: mk.strict,
         matchKeys: mk,
         matchMode: 'strict',
@@ -1515,7 +1515,7 @@ async function handleEchokitImportOpenapi(msg) {
       if (!resBody) resBody = `{"status":"${resp.description || 'ok'}"}`;
       const mk = computeMatchKeys(method, url, reqBody);
       await putInteraction({
-        id: `int_oas_${Date.now()}_${imported}_${Math.random().toString(36).slice(2, 6)}`,
+        id: `int_oas_${Date.now()}_${imported}_${crypto.randomUUID().slice(0, 4)}`,
         hash: mk.strict,
         matchKeys: mk,
         matchMode: 'strict',
