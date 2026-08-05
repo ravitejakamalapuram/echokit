@@ -172,6 +172,9 @@ class MockEventSource {
   };
   window.__echokitState = state;
 
+  // Track mock hits locally to avoid race conditions with background sync
+  const localMockHits = new Map();
+
   // ---------- Matcher (inlined — MAIN world can't import shared modules) ----------
   // NOTE: This is a hand-inlined copy of shared/matcher.js. Any changes to
   // shared/matcher.js MUST be manually mirrored here. The only difference:
@@ -287,6 +290,7 @@ class MockEventSource {
   window.addEventListener('message', (ev) => {
     // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
     try {
+      if (ev.source !== window) return;
       const d = ev.data;
       if (!d || d.source !== SRC_CONTENT) return;
       if (d.type === 'echokit:mockIndex') {
@@ -294,6 +298,11 @@ class MockEventSource {
         const p = d.payload || {};
         if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
         else { state.mockIndex = p; }
+        // Clear local hits when background sends a fresh mock index,
+        // or they will accumulate forever for new mock definitions.
+        // We only care about tracking *recent* rapid local hits.
+        // Actually, we shouldn't clear here because background state could be stale due to race conditions.
+        // The Math.max handles reconciliation.
       }
       else if (d.type === 'echokit:tabState') {
         const p = d.payload || {};
@@ -408,7 +417,9 @@ class MockEventSource {
       // Filter out conditional mocks that have hit their limit (local count)
       const available = versions.filter(v => {
         if (!v.mockMaxCount) return true;
-        return (v.mockCallCount || 0) < v.mockMaxCount;
+        const localHits = localMockHits.get(v.id) || 0;
+        const currentHits = Math.max(v.mockCallCount || 0, localHits);
+        return currentHits < v.mockMaxCount;
       });
       if (!available.length) continue;
       const active = available[0].activeVersionId;
@@ -417,7 +428,10 @@ class MockEventSource {
       if (!mock) mock = available[0];
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
-        mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        const localHits = localMockHits.get(mock.id) || 0;
+        const currentHits = Math.max(mock.mockCallCount || 0, localHits);
+        localMockHits.set(mock.id, currentHits + 1);
+        mock.mockCallCount = currentHits + 1;
         // We intentionally don't set mockEnabled=false here so the state remains consistent
         // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });
