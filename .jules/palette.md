@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2026-08-04 - Missing context labels on import dialog inputs
+**Learning:** Form inputs within modals or dialogs (like textareas and file inputs) that rely on adjacent instructional text (e.g., a preceding `div` element) lack context for screen reader users and sighted users hovering over them, as they are not explicitly associated via a `label`.
+**Action:** Always provide explicit `aria-label` and `title` attributes for standalone form inputs in dialogs to ensure clarity for screen readers and provide visual tooltips on hover.

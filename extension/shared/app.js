@@ -2466,8 +2466,8 @@ function showImportDialog() {
     <div class="ek-modal" data-testid="import-modal">
       <div class="ek-modal-title">Import mocks</div>
       <div class="ek-subtle">Paste an EchoKit export JSON, or choose a file.</div>
-      <textarea class="ek-textarea" style="min-height:120px" placeholder='{"version":2,"interactions":[…]}'></textarea>
-      <input type="file" accept="application/json,.json" data-testid="import-file"/>
+      <textarea class="ek-textarea" style="min-height:120px" placeholder='{"version":2,"interactions":[…]}' aria-label="Paste EchoKit export JSON" title="Paste EchoKit export JSON"></textarea>
+      <input type="file" accept="application/json,.json" data-testid="import-file" aria-label="Choose a file to import" title="Choose a file to import"/>
       <label class="ek-row-inline" style="gap:6px">
         <input type="radio" name="ek-strategy" value="merge" checked/> <span>Merge (replace by id)</span>
       </label>
