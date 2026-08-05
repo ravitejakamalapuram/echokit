@@ -223,6 +223,8 @@ export const INTERACTION_COLUMNS = {
   }
 };
 
+const columnsCache = {};
+
 /**
  * Get columns visible in a specific mode.
  *
@@ -230,9 +232,16 @@ export const INTERACTION_COLUMNS = {
  * @returns {Array<Column>} Columns visible in this mode
  */
 export function getColumnsForMode(mode) {
-  return Object.values(INTERACTION_COLUMNS).filter(col =>
-    col.visibleIn.includes(mode)
-  );
+  // ⚡ Bolt Optimization: Memoize the resolution of columns for each mode.
+  // Expected impact: Eliminates O(N) array allocation and .filter() iterations
+  // on every row/header render, significantly reducing garbage collection pressure
+  // and CPU overhead in hot loops.
+  if (!columnsCache[mode]) {
+    columnsCache[mode] = Object.values(INTERACTION_COLUMNS).filter(col =>
+      col.visibleIn.includes(mode)
+    );
+  }
+  return columnsCache[mode];
 }
 
 /**
