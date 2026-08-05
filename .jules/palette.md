@@ -19,5 +19,12 @@
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
 
 ## 2025-02-23 - Missing context on dialog Cancel buttons
+
 **Learning:** Text-only buttons like "Cancel" in modal dialogs provide context through their text for screen readers, but adding explicit `title` attributes gives sighted mouse users immediate visual tooltips, and pairing it with an identical `aria-label` ensures full parity across all user interaction modes.
 **Action:** Always provide explicit `title` and `aria-label` attributes for dialog action buttons to ensure parity between mouse users and screen reader users.
+
+## 2025-02-23 - Explicit context for generic remove/close buttons
+
+**Learning:** Generic icon-only buttons in lists (like `ek-kv-remove` or `ek-close`) must have explicit context in their `aria-label` and `title` attributes indicating exactly what item they act upon (e.g., 'remove chain step' instead of a generic 'remove') to ensure clarity for screen readers.
+**Action:** Always provide explicit contextual `title` and `aria-label` attributes for list item removal or modal close buttons to avoid ambiguity for screen reader and sighted mouse users.
+

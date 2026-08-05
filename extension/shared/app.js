@@ -1596,7 +1596,7 @@ function renderDetail(i, conflicts) {
     <div class="ek-detail-head">
       <span class="ek-method ${(i.method||'GET').toUpperCase()}">${(i.method||'GET').toUpperCase()}</span>
       <div class="ek-detail-title">${escapeHtml(i.url)}</div>
-      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="close" aria-label="close">✕</button>
+      <button class="ek-close" data-action="close-detail" data-testid="close-detail" title="close details" aria-label="close details">✕</button>
     </div>
     <div class="ek-detail-body">
       ${conflicts.length > 1 ? `
@@ -1686,7 +1686,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-kv-row">
                   <input class="ek-input" value="${escapeHtml(k)}" data-action="header-key" data-id="${i.id}" data-idx="${idx}" data-orig="${escapeHtml(k)}"/>
                   <input class="ek-input" value="${escapeHtml(String(v))}" data-action="header-val" data-id="${i.id}" data-key="${escapeHtml(k)}"/>
-                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-action="header-remove" data-id="${i.id}" data-key="${escapeHtml(k)}" title="remove header override" aria-label="remove header override">×</button>
                 </div>
               `).join('')}
             </div>
@@ -1783,7 +1783,7 @@ function renderDetail(i, conflicts) {
                 <div class="ek-row-inline" style="gap:6px;margin-bottom:4px">
                   <span class="ek-subtle" style="min-width:60px">step ${sIdx + 1}${active ? ' • next' : ''}</span>
                   <input class="ek-input" type="number" value="${step.status || 200}" data-action="chain-status" data-id="${i.id}" data-step="${sIdx}" style="max-width:80px" data-testid="chain-status-${sIdx}" placeholder="status"/>
-                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove ek-row-inline-end" data-action="chain-remove" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-remove-${sIdx}" title="remove chain step" aria-label="remove chain step">×</button>
                 </div>
                 <textarea class="ek-textarea" style="min-height:50px;font-size:11px" data-action="chain-body" data-id="${i.id}" data-step="${sIdx}" data-testid="chain-body-${sIdx}" placeholder="response body (string or JSON)">${escapeHtml(typeof step.body === 'string' ? step.body : JSON.stringify(step.body || ''))}</textarea>
               </div>
@@ -2512,7 +2512,7 @@ function renderRequestHeaderRule(r, idx) {
                     <option value="remove" ${r.mode==='remove'?'selected':''}>Remove</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled!==false?'checked':''} data-a="rh-toggle" data-idx="${idx}" data-testid="requestheader-toggle-${idx}"/><span class="ek-subtle">${r.enabled!==false?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rh-remove" data-idx="${idx}" data-testid="requestheader-remove-${idx}" title="remove request header rule" aria-label="remove request header rule">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.value || '')}" data-a="rh-value" data-idx="${idx}" placeholder="${r.mode === 'remove' ? '(not needed for remove)' : 'Header value'}" ${r.mode === 'remove' ? 'disabled' : ''} style="flex:2" data-testid="requestheader-value-${idx}"/>
@@ -2527,7 +2527,7 @@ function renderBlocklistRule(b, idx) {
               <div class="ek-kv-row">
                 <input class="ek-input" value="${escapeHtml(b.pattern)}" data-a="bl-pattern" data-idx="${idx}" placeholder="e.g. ||tracking.example.com^"/>
                 <label class="ek-row-inline" style="gap:6px"><input type="checkbox" ${b.enabled?'checked':''} data-a="bl-toggle" data-idx="${idx}"/> <span class="ek-subtle">${b.enabled ? 'ON' : 'off'}</span></label>
-                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove" aria-label="remove">×</button>
+                <button class="ek-kv-remove" data-a="bl-remove" data-idx="${idx}" title="remove blocklist rule" aria-label="remove blocklist rule">×</button>
               </div>
             `;
 }
@@ -2539,7 +2539,7 @@ function renderRewriteRule(r, idx) {
                 <input class="ek-input" value="${escapeHtml(r.to || '')}" data-a="rw-to" data-idx="${idx}" placeholder="to (replacement)" data-testid="rewrite-to-${idx}"/>
                 <div style="display:flex;gap:6px;align-items:center">
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="rw-toggle" data-idx="${idx}" data-testid="rewrite-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="rw-remove" data-idx="${idx}" data-testid="rewrite-remove-${idx}" title="remove rewrite rule" aria-label="remove rewrite rule">×</button>
                 </div>
               </div>
             `;
@@ -2557,7 +2557,7 @@ function renderTransformRule(r, idx) {
                     <option value="regex-replace-body" ${r.action==='regex-replace-body'?'selected':''}>regex replace body</option>
                   </select>
                   <label class="ek-row-inline" style="gap:4px"><input type="checkbox" ${r.enabled?'checked':''} data-a="tr-toggle" data-idx="${idx}" data-testid="transform-toggle-${idx}"/><span class="ek-subtle">${r.enabled?'ON':'off'}</span></label>
-                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove" aria-label="remove">×</button>
+                  <button class="ek-kv-remove" data-a="tr-remove" data-idx="${idx}" data-testid="transform-remove-${idx}" title="remove transform rule" aria-label="remove transform rule">×</button>
                 </div>
                 <div class="ek-row-inline" style="gap:6px">
                   <input class="ek-input" value="${escapeHtml(r.key || '')}" data-a="tr-key" data-idx="${idx}" placeholder="${r.action === 'set-body' ? '(unused)' : (r.action === 'regex-replace-body' ? 'regex pattern' : 'header name')}" style="flex:1" data-testid="transform-key-${idx}"/>
