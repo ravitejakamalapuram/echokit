@@ -223,6 +223,9 @@ export const INTERACTION_COLUMNS = {
   }
 };
 
+// Cache to prevent O(N) array allocations during row rendering
+const _columnsCache = new Map();
+
 /**
  * Get columns visible in a specific mode.
  *
@@ -230,9 +233,14 @@ export const INTERACTION_COLUMNS = {
  * @returns {Array<Column>} Columns visible in this mode
  */
 export function getColumnsForMode(mode) {
-  return Object.values(INTERACTION_COLUMNS).filter(col =>
+  if (_columnsCache.has(mode)) {
+    return _columnsCache.get(mode);
+  }
+  const columns = Object.values(INTERACTION_COLUMNS).filter(col =>
     col.visibleIn.includes(mode)
   );
+  _columnsCache.set(mode, columns);
+  return columns;
 }
 
 /**
