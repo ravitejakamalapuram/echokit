@@ -1615,8 +1615,8 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-head">
           <span>Mock Behaviour</span>
           <div class="ek-row-inline-end">
-            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}">
-              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}"/>
+            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}" title="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}">
+              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}" aria-label="${i.mockEnabled ? 'Disable mock' : 'Enable mock'}"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">${i.mockEnabled ? 'ON' : 'OFF'}</span>
             </label>
@@ -2629,8 +2629,8 @@ function renderSettingsGeneral(s, isDevTools) {
             </button>
           </div>
         </div>
-        <label class="ek-switch ${s.corsOverride?'on':''}">
-          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
+        <label class="ek-switch ${s.corsOverride?'on':''}" title="${s.corsOverride ? 'Disable CORS Override' : 'Enable CORS Override'}">
+          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle" aria-label="${s.corsOverride ? 'Disable CORS Override' : 'Enable CORS Override'}"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.corsOverride?'ON':'OFF'}</span>
         </label>
@@ -2641,8 +2641,8 @@ function renderSettingsGeneral(s, isDevTools) {
           <div class="ek-settings-title">Auto-open popup on refresh</div>
           <div class="ek-settings-hint">When a tab reloads while recording, pop this panel back open.</div>
         </div>
-        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}">
-          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle"/>
+        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}" title="${s.autoOpenOnRefresh ? 'Disable auto-open popup on refresh' : 'Enable auto-open popup on refresh'}">
+          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle" aria-label="${s.autoOpenOnRefresh ? 'Disable auto-open popup on refresh' : 'Enable auto-open popup on refresh'}"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
         </label>
