@@ -164,6 +164,7 @@ class MockEventSource {
   const SRC_INJECTED = 'echokit-injected';
   const SRC_CONTENT = 'echokit-content';
 
+  const localMockHits = new Map();
   const state = {
     recording: false,
     mocking: false,
@@ -294,6 +295,23 @@ class MockEventSource {
         const p = d.payload || {};
         if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
         else { state.mockIndex = p; }
+
+        // Reconcile local mock hits with incoming state
+        if (state.mockIndex) {
+          for (const mode of Object.keys(state.mockIndex)) {
+            for (const key of Object.keys(state.mockIndex[mode])) {
+              for (const mock of state.mockIndex[mode][key]) {
+                if (mock.mockMaxCount != null) {
+                  if (mock.mockCallCount === 0) {
+                     localMockHits.delete(mock.id);
+                  } else {
+                     mock.mockCallCount = Math.max(mock.mockCallCount || 0, localMockHits.get(mock.id) || 0);
+                  }
+                }
+              }
+            }
+          }
+        }
       }
       else if (d.type === 'echokit:tabState') {
         const p = d.payload || {};
@@ -417,7 +435,10 @@ class MockEventSource {
       if (!mock) mock = available[0];
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
-        mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        const localCount = (localMockHits.get(mock.id) || mock.mockCallCount || 0) + 1;
+        localMockHits.set(mock.id, localCount);
+        mock.mockCallCount = localCount;
+
         // We intentionally don't set mockEnabled=false here so the state remains consistent
         // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });

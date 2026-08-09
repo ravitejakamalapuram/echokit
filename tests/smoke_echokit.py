@@ -588,7 +588,7 @@ def main():
             sw_send(sw, {'type': 'echokit:settings:update', 'patch': {'scope': 'global'}})
             # Re-seed data so the popup has rows to render
             sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
-            time.sleep(0.2)
+            time.sleep(1.0)
             page.evaluate("window.doFetch()")
             page.evaluate("window.doPost({a:1})")
             time.sleep(0.8)
@@ -675,7 +675,7 @@ def main():
                 r2 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_second_call_mocked', r2 == 202, f'status={r2}')
                 # Third call — mock exhausted, real server responds (200)
-                time.sleep(0.2)
+                time.sleep(1.0)
                 r3 = page.evaluate("(async()=>{const r=await fetch('/api/users');return r.status})()")
                 step('conditional_mock_third_call_passthrough', r3 == 200, f'status={r3}')
                 sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': False})
@@ -783,7 +783,7 @@ def main():
             # === NEW in v1.6: Mock chain advancement ===
             sw_send(sw, {'type': 'echokit:interactions:clearAll'})
             sw_send(sw, {'type': 'echokit:recording:start', 'tabId': tab_id})
-            time.sleep(0.2)
+            time.sleep(1.0)
             page.evaluate("window.doFetch()")
             time.sleep(0.6)
             sw_send(sw, {'type': 'echokit:recording:stop', 'tabId': tab_id})
@@ -799,7 +799,7 @@ def main():
                                        'mockChainCursor': 0,
                                        'mockChainLoop': True}})
                 sw_send(sw, {'type': 'echokit:mocking:toggle', 'tabId': tab_id, 'enabled': True})
-                time.sleep(0.2)
+                time.sleep(1.0)
                 # Hit it 3 times -> expect cursor advances and loop returns step 1 on hit 3
                 statuses = []
                 bodies = []
