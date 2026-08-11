@@ -17,3 +17,6 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+## 2026-08-11 - Toggle Switches ARIA Labels
+**Learning:** Toggle switches formatted as custom styled checkboxes using wrapper `<label>` elements lack proper screen reader names (like 'ON'/'OFF') and hover tooltips.
+**Action:** Add `title` to the outer wrapper `<label>` for sighted users and explicitly define `aria-label` on the interactive `<input type="checkbox">` to maintain identical explicit context for screen readers.

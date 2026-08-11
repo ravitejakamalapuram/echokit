@@ -477,12 +477,12 @@ function renderHeader() {
           ? `<button class="ek-btn ek-btn-record" data-action="stop-recording" data-testid="stop-recording-btn">STOP</button>`
           : `<button class="ek-btn" data-action="start-recording" data-testid="start-recording-btn">● REC</button>`}
         <label class="ek-switch ${mocking ? 'on' : ''}" data-testid="mock-master-toggle" title="Toggle mocking for this tab (Alt+Shift+M)">
-          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking">
+          <input type="checkbox" ${mocking ? 'checked' : ''} data-action="toggle-mocking" aria-label="Toggle mocking for this tab (Alt+Shift+M)">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">MOCK</span>
         </label>
         <label class="ek-switch ${cors ? 'on' : ''}" data-testid="cors-master-toggle" title="Inject permissive Access-Control-Allow-* on real responses (global)">
-          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master">
+          <input type="checkbox" ${cors ? 'checked' : ''} data-action="toggle-cors-master" aria-label="Inject permissive Access-Control-Allow-* on real responses (global)">
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">CORS</span>
         </label>
@@ -1615,8 +1615,8 @@ function renderDetail(i, conflicts) {
         <div class="ek-section-head">
           <span>Mock Behaviour</span>
           <div class="ek-row-inline-end">
-            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}">
-              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}"/>
+            <label class="ek-switch ${i.mockEnabled ? 'on' : ''}" title="Toggle mock">
+              <input type="checkbox" ${i.mockEnabled ? 'checked' : ''} data-action="toggle-mock" data-id="${i.id}" aria-label="Toggle mock"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">${i.mockEnabled ? 'ON' : 'OFF'}</span>
             </label>
@@ -1719,7 +1719,7 @@ function renderDetail(i, conflicts) {
           <span>${i.method === 'WS' ? 'WebSocket Frames' : 'SSE Events'}</span>
           <div class="ek-row-inline-end">
             <label class="ek-switch ${i.wsLoop ? 'on' : ''}" title="Loop replay">
-              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}"/>
+              <input type="checkbox" ${i.wsLoop ? 'checked' : ''} data-action="update-ws-loop" data-id="${i.id}" aria-label="Loop replay"/>
               <span class="ek-switch-track"></span>
               <span class="ek-switch-label">Loop</span>
             </label>
@@ -2629,8 +2629,8 @@ function renderSettingsGeneral(s, isDevTools) {
             </button>
           </div>
         </div>
-        <label class="ek-switch ${s.corsOverride?'on':''}">
-          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle"/>
+        <label class="ek-switch ${s.corsOverride?'on':''}" title="Toggle CORS override">
+          <input type="checkbox" ${s.corsOverride?'checked':''} data-a="cors" data-testid="cors-toggle" aria-label="Toggle CORS override"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.corsOverride?'ON':'OFF'}</span>
         </label>
@@ -2641,8 +2641,8 @@ function renderSettingsGeneral(s, isDevTools) {
           <div class="ek-settings-title">Auto-open popup on refresh</div>
           <div class="ek-settings-hint">When a tab reloads while recording, pop this panel back open.</div>
         </div>
-        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}">
-          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle"/>
+        <label class="ek-switch ${s.autoOpenOnRefresh?'on':''}" title="Auto-open DevTools on refresh">
+          <input type="checkbox" ${s.autoOpenOnRefresh?'checked':''} data-a="auto-open" data-testid="auto-open-toggle" aria-label="Auto-open DevTools on refresh"/>
           <span class="ek-switch-track"></span>
           <span class="ek-switch-label">${s.autoOpenOnRefresh?'ON':'OFF'}</span>
         </label>
