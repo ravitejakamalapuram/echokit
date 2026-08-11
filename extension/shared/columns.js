@@ -229,10 +229,18 @@ export const INTERACTION_COLUMNS = {
  * @param {string} mode - 'popup' or 'devtools'
  * @returns {Array<Column>} Columns visible in this mode
  */
+// ⚡ Bolt: Cache column configuration by mode to eliminate O(N) array allocation overhead.
+// This prevents redundant Object.values() and .filter() calls when this function
+// is called repeatedly inside rendering loops for each interaction row.
+const _columnsCache = new Map();
+
 export function getColumnsForMode(mode) {
-  return Object.values(INTERACTION_COLUMNS).filter(col =>
-    col.visibleIn.includes(mode)
-  );
+  if (!_columnsCache.has(mode)) {
+    _columnsCache.set(mode, Object.values(INTERACTION_COLUMNS).filter(col =>
+      col.visibleIn.includes(mode)
+    ));
+  }
+  return _columnsCache.get(mode);
 }
 
 /**
