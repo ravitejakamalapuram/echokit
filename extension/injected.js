@@ -418,6 +418,24 @@ class MockEventSource {
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
         mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+
+        // Edge Case Fix: Since the background script state syncing via postMessage is async,
+        // we proactively update our local state index to prevent a race condition
+        // if another request fires immediately before the background sync returns.
+        if (state.mockIndex) {
+            for (const m of MODES) {
+                if (state.mockIndex[m]) {
+                    for (const key in state.mockIndex[m]) {
+                        for (const v of state.mockIndex[m][key]) {
+                            if (v.id === mock.id) {
+                                v.mockCallCount = mock.mockCallCount;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // We intentionally don't set mockEnabled=false here so the state remains consistent
         // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });

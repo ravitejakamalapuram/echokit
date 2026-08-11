@@ -19,3 +19,6 @@
 ## 2026-08-11 - O(N) Array Allocation Overhead in Column Lookups
 **Learning:** In the EchoKit UI codebase, configuration getters that dynamically filter and compute array representations (e.g., `getColumnsForMode` executing `Object.values().filter()`) cause severe garbage collection pressure and O(N) performance bottlenecks when called inside unoptimized O(N) row-rendering loops (e.g., `renderInteractionRow`).
 **Action:** Use a simple `Map` to memoize and cache the computed configuration arrays by mode to provide an O(1) lookup and prevent redundant array allocations during tight rendering loops.
+## 2026-08-11 - Async State Sync Race Condition in injected.js
+**Learning:** In `injected.js`, conditional mock hit tracking communicates with the background script via `postMessage`, but the background script's state broadcast back to the content script is asynchronous. This creates a flaky race condition in E2E tests where rapid sequential requests evaluate against a stale local `state.mockIndex`.
+**Action:** When an interaction occurs in the frontend that is guaranteed to change state in the background, proactively mutate the local `state` in `injected.js` (e.g., updating `v.mockCallCount`) before emitting the message to the background, ensuring immediate consistency for subsequent rapid evaluations.
