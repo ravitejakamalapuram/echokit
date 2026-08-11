@@ -229,10 +229,16 @@ export const INTERACTION_COLUMNS = {
  * @param {string} mode - 'popup' or 'devtools'
  * @returns {Array<Column>} Columns visible in this mode
  */
+const columnsCache = new Map();
+
 export function getColumnsForMode(mode) {
-  return Object.values(INTERACTION_COLUMNS).filter(col =>
-    col.visibleIn.includes(mode)
-  );
+  if (!columnsCache.has(mode)) {
+    columnsCache.set(
+      mode,
+      Object.values(INTERACTION_COLUMNS).filter(col => col.visibleIn.includes(mode))
+    );
+  }
+  return columnsCache.get(mode);
 }
 
 /**
