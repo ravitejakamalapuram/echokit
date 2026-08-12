@@ -223,6 +223,8 @@ export const INTERACTION_COLUMNS = {
   }
 };
 
+const columnsCache = new Map();
+
 /**
  * Get columns visible in a specific mode.
  *
@@ -230,9 +232,14 @@ export const INTERACTION_COLUMNS = {
  * @returns {Array<Column>} Columns visible in this mode
  */
 export function getColumnsForMode(mode) {
-  return Object.values(INTERACTION_COLUMNS).filter(col =>
+  if (columnsCache.has(mode)) {
+    return columnsCache.get(mode);
+  }
+  const columns = Object.values(INTERACTION_COLUMNS).filter(col =>
     col.visibleIn.includes(mode)
   );
+  columnsCache.set(mode, columns);
+  return columns;
 }
 
 /**
