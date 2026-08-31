@@ -292,8 +292,26 @@ class MockEventSource {
       if (d.type === 'echokit:mockIndex') {
         // payload may be { mocks, blocked } (new) or the bare index (legacy)
         const p = d.payload || {};
-        if (p.mocks) { state.mockIndex = p.mocks; state.blockedKeys = p.blocked || state.blockedKeys; }
-        else { state.mockIndex = p; }
+        const newMocks = p.mocks || p;
+        if (p.mocks) { state.blockedKeys = p.blocked || state.blockedKeys; }
+
+        // Reconcile local hit counts to prevent race conditions where stale
+        // background state overwrites fresh local increments
+        for (const mode of Object.keys(newMocks)) {
+          const keys = newMocks[mode];
+          for (const key of Object.keys(keys)) {
+            for (const mock of keys[key]) {
+              const localHitCount = localMockHits.get(mock.id) || 0;
+              // Reconcile: use max of local vs remote. If remote resets to 0, respect it.
+              if (mock.mockCallCount === 0 && localHitCount > 0) {
+                 localMockHits.delete(mock.id);
+              } else {
+                 mock.mockCallCount = Math.max(mock.mockCallCount || 0, localHitCount);
+              }
+            }
+          }
+        }
+        state.mockIndex = newMocks;
       }
       else if (d.type === 'echokit:tabState') {
         const p = d.payload || {};
@@ -398,6 +416,8 @@ class MockEventSource {
     }
     return false;
   }
+  const localMockHits = new Map();
+
   function pickMock(keys) {
     if (!state.mocking) return null;
     for (const mode of MODES) {
@@ -417,7 +437,9 @@ class MockEventSource {
       if (!mock) mock = available[0];
       // Track conditional mock hit locally + notify background
       if (mock.mockMaxCount != null) {
-        mock.mockCallCount = (mock.mockCallCount || 0) + 1;
+        const newCount = (mock.mockCallCount || 0) + 1;
+        mock.mockCallCount = newCount;
+        localMockHits.set(mock.id, newCount);
         // We intentionally don't set mockEnabled=false here so the state remains consistent
         // with the background script. available.filter already checks mockCallCount < mockMaxCount.
         emit('mock-hit', { id: mock.id });
