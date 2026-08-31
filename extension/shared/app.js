@@ -3241,9 +3241,9 @@ function sortInteractions(interactions, sortBy, sortOrder) {
 
   const comparators = {
     timestamp: (a, b) => a.timestamp - b.timestamp,
-    // ⚡ Bolt: localeCompare is O(N log N) slow bottleneck; use explicit comparison for URLs
+    // ⚡ Bolt: Replace localeCompare with direct comparisons within Array.prototype.sort for URLs
     url: (a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0),
-    // ⚡ Bolt: explicit comparison is orders of magnitude faster for simple ASCII strings like methods
+    // ⚡ Bolt: Replace localeCompare with direct comparisons for HTTP methods
     method: (a, b) => (a.method < b.method ? -1 : a.method > b.method ? 1 : 0),
     status: (a, b) => (a.responseStatus || 0) - (b.responseStatus || 0),
     duration: (a, b) => (a.durationMs || 0) - (b.durationMs || 0)
