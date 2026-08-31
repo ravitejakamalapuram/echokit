@@ -17,3 +17,7 @@
 ## 2024-07-16 - Accessible Dynamic Notifications
 **Learning:** Dynamic DOM-injected toast notifications require `role="status"` and `aria-live="polite"` to be announced by screen readers without disrupting the user's flow.
 **Action:** Always include these ARIA attributes when dynamically generating non-intrusive status messages in the UI.
+
+## 2025-02-23 - Missing context on dialog Cancel buttons
+**Learning:** Text-only buttons like "Cancel" in modal dialogs provide context through their text for screen readers, but adding explicit `title` attributes gives sighted mouse users immediate visual tooltips, and pairing it with an identical `aria-label` ensures full parity across all user interaction modes.
+**Action:** Always provide explicit `title` and `aria-label` attributes for dialog action buttons to ensure parity between mouse users and screen reader users.
