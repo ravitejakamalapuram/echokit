@@ -945,7 +945,7 @@ function renderToolbar(filteredCount) {
     // POPUP: Simple toolbar (current implementation)
     return `
       <div class="ek-toolbar">
-        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" autocomplete="off" spellcheck="false"/>
+        <input class="ek-search" type="text" placeholder="search url…" value="${escapeHtml(state.search)}" data-action="search" data-testid="search-input" aria-label="Search URL" title="Search URL" autocomplete="off" spellcheck="false"/>
         <div class="ek-method-chips">
           ${methods.map(m => `<button type="button" class="ek-chip ${state.methodFilter === m ? 'active' : ''}" data-action="filter-method" data-method="${m}" data-testid="filter-${m.toLowerCase()}" title="Filter by ${m}" aria-label="Filter by ${m}" aria-pressed="${state.methodFilter === m ? 'true' : 'false'}">${m}</button>`).join('')}
         </div>
@@ -978,6 +978,8 @@ function renderAdvancedToolbar(filteredCount) {
                value="${escapeHtml(state.search)}"
                data-action="search"
                data-testid="search-input"
+               aria-label="Search URL, method, or status"
+               title="Search URL, method, or status"
                autocomplete="off"
                spellcheck="false"/>
         <button type="button"
@@ -1077,13 +1079,17 @@ function renderBodySearchFilter() {
              placeholder="Request body contains…"
              value="${escapeHtml(state.filters.requestBodyContains)}"
              data-action="filter-request-body"
-             data-testid="filter-request-body"/>
+             data-testid="filter-request-body"
+             aria-label="Filter by request body content"
+             title="Filter by request body content"/>
       <input class="ek-input"
              type="text"
              placeholder="Response body contains…"
              value="${escapeHtml(state.filters.responseBodyContains)}"
              data-action="filter-response-body"
-             data-testid="filter-response-body"/>
+             data-testid="filter-response-body"
+             aria-label="Filter by response body content"
+             title="Filter by response body content"/>
     </div>
   `;
 }
@@ -1675,7 +1681,7 @@ function renderDetail(i, conflicts) {
             </div>
             <div class="ek-row-inline" style="margin-top:6px;gap:6px">
               <button class="ek-btn ek-btn-ghost" data-action="format-json" data-id="${i.id}" data-testid="format-json-btn">Format JSON</button>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}">Reset</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-body" data-id="${i.id}" aria-label="Reset response body" title="Reset response body">Reset</button>
               <span class="ek-subtle ek-row-inline-end" data-testid="body-save-status">saved</span>
             </div>
           </div>
@@ -1755,7 +1761,7 @@ function renderDetail(i, conflicts) {
             <input class="ek-input" type="number" min="0" placeholder="∞ unlimited" style="max-width:120px"
               value="${i.mockMaxCount ?? ''}" data-action="update-max-count" data-id="${i.id}" data-testid="max-count-input"/>
             <span class="ek-subtle">${i.mockCallCount ? `${i.mockCallCount} hit${i.mockCallCount === 1 ? '' : 's'}` : ''}</span>
-            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px">Reset</button>` : ''}
+            ${i.mockCallCount ? `<button class="ek-btn ek-btn-ghost" data-action="reset-mock-count" data-id="${i.id}" style="font-size:10px" aria-label="Reset mock hit count" title="Reset mock hit count">Reset</button>` : ''}
           </div>
         </div>
       </div>
@@ -1771,7 +1777,7 @@ function renderDetail(i, conflicts) {
                 <input type="checkbox" ${i.mockChainLoop !== false ? 'checked' : ''} data-action="update-chain-loop" data-id="${i.id}" data-testid="chain-loop-toggle"/>
                 <span class="ek-subtle">loop</span>
               </label>
-              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn">Reset cursor</button>
+              <button class="ek-btn ek-btn-ghost" data-action="reset-chain-cursor" data-id="${i.id}" style="font-size:10px;margin-left:6px" data-testid="chain-reset-btn" aria-label="Reset mock chain cursor" title="Reset mock chain cursor">Reset cursor</button>
             ` : ''}
           </div>
         </div>
