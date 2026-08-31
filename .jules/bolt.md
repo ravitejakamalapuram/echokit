@@ -16,3 +16,6 @@
 ## 2025-02-18 - Math.max(...array) Call Stack Exhaustion and Performance Degradation
 **Learning:** Using spread syntax with `Math.max(...rows.map(...))` or `Math.min(...rows.map(...))` on large datasets in rendering and calculation loops (like `calculateTimelineScale`) can cause a `Maximum call stack size exceeded` error due to engine argument limits. It also hurts performance by allocating intermediate mapped arrays and spreading them.
 **Action:** Replace `Math.max(...map())` and `Math.min(...map())` with explicit single-pass `for` or `for...of` loops to compute minimum and maximum values without risking stack overflow or redundant array allocations.
+## 2025-02-18 - Passing Precomputed Arrays to Nested Render Functions
+**Learning:** Calling expensive O(N) array filtering functions like `filteredInteractions()` multiple times within nested rendering components (e.g., inside `render()` and then again inside `renderInteractionListNew()`) creates unnecessary CPU overhead and performance degradation, especially with large datasets.
+**Action:** Pass the already pre-computed list as a parameter down to nested rendering functions to completely eliminate the redundant computation passes and improve UI responsiveness.

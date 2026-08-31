@@ -246,8 +246,10 @@ function applyTheme() {
 /**
  * Render interaction list using new componentized system.
  * Uses layout classes from Phase 3 that delegate to rendering functions from Phase 2.
+ * ⚡ Bolt Optimization: Added precomputedList parameter to avoid redundant O(N) calls to filteredInteractions()
+ * on every render.
  */
-function renderInteractionListNew() {
+function renderInteractionListNew(precomputedList = null) {
   const container = root.querySelector('[data-testid="api-list"]');
   if (!container) return;
 
@@ -324,7 +326,9 @@ function renderInteractionListNew() {
   }
 
   // Update layout with current data
-  const filtered = filteredInteractions();
+  // ⚡ Bolt Optimization: Use passed precomputedList instead of re-running the expensive O(N) filter loop
+  // Expected impact: Eliminates one full array pass + stringify on large payloads per nested render
+  const filtered = precomputedList || filteredInteractions();
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -384,7 +388,7 @@ function render() {
 
   // Use new componentized rendering for list view (not waterfall)
   if (!state.waterfall) {
-    renderInteractionListNew();
+    renderInteractionListNew(list);
   }
 
   bindEvents();
