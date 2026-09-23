@@ -98,14 +98,14 @@ jobs:
           test -f website/style.css
           echo "✅ Website files validated"
 
+      # cloudflare/pages-action was removed from GitHub; wrangler-action runs
+      # the same `wrangler pages deploy` that it wrapped.
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
-          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: echokit-website
-          directory:   website
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          apiToken:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command:   pages deploy website --project-name=echokit-website --branch=main
 
   # ── Deploy Worker ──────────────────────────────────────────────────────────────
   deploy-worker:
