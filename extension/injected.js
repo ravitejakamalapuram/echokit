@@ -287,6 +287,9 @@ class MockEventSource {
   window.addEventListener('message', (ev) => {
     // Edge case fix: Wrap in try-catch to prevent malformed messages from breaking state
     try {
+      // Only accept messages from this window (the content script). A cross-origin
+      // iframe can postMessage to the parent and would otherwise inject mock data.
+      if (ev.source !== window) return;
       const d = ev.data;
       if (!d || d.source !== SRC_CONTENT) return;
       if (d.type === 'echokit:mockIndex') {
