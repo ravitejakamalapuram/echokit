@@ -93,11 +93,12 @@ jobs:
               echo "worker=false" >> $GITHUB_OUTPUT
             fi
 
+            # Store releases are on demand only (Actions → Continuous Delivery → Run workflow,
+            # release_bump != none). Publishing on every push kept re-uploading while the item
+            # was in review (ITEM_NOT_UPDATABLE) and burned a version tag each time.
+            echo "extension=false" >> $GITHUB_OUTPUT
             if echo "$CHANGED" | grep '^extension/' | grep -qv '\.md$'; then
-              echo "extension=true" >> $GITHUB_OUTPUT
-              echo "📦 extension/ changes detected"
-            else
-              echo "extension=false" >> $GITHUB_OUTPUT
+              echo "📦 extension/ changed; run the workflow manually to release it"
             fi
           fi
 
@@ -177,7 +178,7 @@ jobs:
     if: needs.detect-changes.outputs.extension == 'true'
     permissions:
       contents: write
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@main
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@v1
     with:
       extension-dir: 'extension'
       publish-target: 'default'
