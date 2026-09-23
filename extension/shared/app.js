@@ -6,6 +6,7 @@ import { highlightJSON, isValidJSON } from './json-highlight.js';
 import { createLayout } from './layouts.js';
 import { renderWaterfall as renderWaterfallNew } from './waterfall-renderer.js';
 import { getConflictCount, getConflicts, parseUrl } from './interaction-helpers.js';
+import { REVIEW_URL } from './review-prompt.js';
 
 const BG = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 
@@ -69,6 +70,7 @@ const state = {
   isPro: false,
   trial: false,
   trialDaysLeft: 0,
+  reviewPrompt: false,
   waterfall: false,
   search: '',
   // OLD filters (kept for popup backward compatibility)
@@ -160,6 +162,7 @@ async function refresh() {
   state.isPro = resp.isPro || false;
   state.trial = resp.trial || false;
   state.trialDaysLeft = resp.trialDaysLeft || 0;
+  state.reviewPrompt = resp.reviewPrompt === true;
 }
 
 /**
@@ -364,6 +367,7 @@ function render() {
   root.innerHTML = sanitizeHTML(`
     <div class="ek-app" data-testid="echokit-app">
       ${renderHeader()}
+      ${renderReviewBanner()}
       ${renderToolbar(list.length)}
       <div class="ek-main">
         <div class="ek-list" data-testid="api-list">
@@ -395,6 +399,31 @@ function render() {
   restoreUIState(snapshot);
   renderMenu();
   renderAllCodeEditors();
+}
+
+/**
+ * Small, dismissible "rate EchoKit" banner. The service worker decides when it
+ * is due (after 3 completed record→mock loops, never while recording, once only).
+ * @returns {string} Banner HTML, or '' when not due.
+ */
+function renderReviewBanner() {
+  if (!state.reviewPrompt || state.tab?.recording) return '';
+  return `
+    <div class="ek-review-banner" role="status" data-testid="review-banner">
+      <span class="ek-review-text">Enjoying EchoKit? A quick review helps other developers find it.</span>
+      <button type="button" class="ek-btn ek-btn-primary" data-action="review-rate" data-testid="review-rate-btn">Rate it</button>
+      <button type="button" class="ek-btn ek-btn-ghost" data-action="review-later" data-testid="review-later-btn">Not now</button>
+    </div>
+  `;
+}
+
+async function onReviewRespond(response) {
+  state.reviewPrompt = false;
+  render();
+  if (response === 'rate') {
+    chrome.tabs.create({ url: REVIEW_URL }).catch(() => window.open(REVIEW_URL, '_blank'));
+  }
+  try { await BG({ type: 'echokit:review:respond', response }); } catch {}
 }
 
 // Snapshot focus, selection, and scroll positions so we can restore after innerHTML wipe.
@@ -1865,6 +1894,8 @@ function bindGlobalEvents(el, action, id) {
     return true;
   }
   if (action === 'start-recording') { el.addEventListener('click', onStartRecording); return true; }
+  if (action === 'review-rate') { el.addEventListener('click', () => onReviewRespond('rate')); return true; }
+  if (action === 'review-later') { el.addEventListener('click', () => onReviewRespond('later')); return true; }
   if (action === 'stop-recording') { el.addEventListener('click', onStopRecording); return true; }
   if (action === 'toggle-mocking') { el.addEventListener('change', onToggleMocking); return true; }
   if (action === 'toggle-cors-master') {

@@ -54,6 +54,9 @@ The giant amber **MOCKING ACTIVE** banner guarantees you always know which mode 
 | Conflict handling — multi-version badge + version dropdown (latest wins by default) | ✅ |
 | CORS override toggle (scope-aware `declarativeNetRequest` dynamic rules) | ✅ |
 | WebSocket / SSE mock replay (frame-timed, loop mode) | ✅ |
+| First-run "Try a 10-second demo" checklist on the welcome page (JSONPlaceholder) | ✅ |
+| Once-only, dismissible review banner after 3 completed record→mock loops | ✅ |
+| Exports carry a `_generator` credit field (ignored on import) | ✅ |
 
 ### Pro features (v1.4–v1.5)
 
@@ -168,10 +171,13 @@ extension/
 │   ├── styles.css         # Design tokens + all UI components
 │   ├── matcher.js         # FNV-1a hashing + URL/body normalisation
 │   ├── store.js           # IndexedDB wrapper (background-only)
+│   ├── review-prompt.js   # Once-only review banner state (loop counter, asked flag)
+│   ├── export-format.js   # Mock-set export envelope (version, _generator)
 │   └── json-highlight.js  # JSON syntax highlighter for response viewer
 ├── icons/                 # icon16.png, icon48.png, icon128.png
 └── onboarding/
-    └── welcome.html       # First-install welcome page
+    ├── welcome.html       # First-install welcome page + 10-second demo checklist
+    └── welcome.js         # Welcome page behaviour (CSP forbids inline scripts)
 ```
 
 > **Tech debt**: `shared/app.js` at ~2800 lines is slated for refactoring (Issue [#8](https://github.com/ravitejakamalapuram/echokit/issues/8)) into modules: `header.js`, `menu.js`, `settings-dialog.js`, `request-detail.js`, `waterfall.js`.
