@@ -13,6 +13,7 @@ import {
   putInteraction, getInteraction, deleteInteraction, getAllInteractions,
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
+import { computeProStatus, recordInstall } from './shared/pro-status.js';
 const SESSION_KEY = 'echokit_tab_state';
 const SETTINGS_KEY = 'echokit_settings';
 const CORS_RULESET_ID = 1001;
@@ -145,6 +146,16 @@ const LICENSE_ENDPOINT_ALLOWLIST = ['https://echokit-license.echokit-rk.workers.
  * The endpoint is read from chrome.storage.sync but restricted to the allowlist
  * to prevent SSRF via a compromised sync account.
  */
+async function resolveLicenseEndpoint() {
+  const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
+  const stored = cfg.echokit_license_endpoint;
+  // Only accept the stored endpoint if it matches the allowlist.
+  if (stored && LICENSE_ENDPOINT_ALLOWLIST.some(prefix => stored.startsWith(prefix))) {
+    return stored;
+  }
+  if (stored) dbg('[EchoKit license] Ignoring non-allowlisted endpoint:', stored);
+  return DEFAULT_LICENSE_WORKER_URL;
+}
 async function validateLicenseRemote(key) {
   // Returns { ok: true, valid, plan, expiresAt } or { ok: false, error }.
   if (!key) return {
@@ -153,15 +164,7 @@ async function validateLicenseRemote(key) {
   };
   let endpoint;
   try {
-    const cfg = await chrome.storage.sync.get('echokit_license_endpoint');
-    const stored = cfg.echokit_license_endpoint;
-    // Only accept the stored endpoint if it matches the allowlist.
-    if (stored && LICENSE_ENDPOINT_ALLOWLIST.some(prefix => stored.startsWith(prefix))) {
-      endpoint = stored;
-    } else {
-      if (stored) dbg('[EchoKit license] Ignoring non-allowlisted endpoint:', stored);
-      endpoint = DEFAULT_LICENSE_WORKER_URL;
-    }
+    endpoint = await resolveLicenseEndpoint();
   } catch (e) {
     // Storage read failed - propagate error instead of falling back
     return {
@@ -206,26 +209,25 @@ async function validateLicenseRemote(key) {
     };
   }
 }
-// NOTE: isLicenseValid() function temporarily disabled during free access period
-// See the commented version below after getProStatus() - will be restored with LemonSqueezy
-
-// Checks license key OR active trial. Returns { pro, trial, trialDaysLeft }.
+// Pro status: license key, grandfathered early adopter, or active trial —
+// but only once the owner flips the remote paywall switch (GET /v1/config on
+// the license worker). Until then (or if the config is unreachable with no
+// cache) everyone gets Pro with reason 'free-period'.
+// Returns { pro, trial, trialDaysLeft, reason, paywallEnabled?, checkoutUrls?, grandfatherUntil? }.
 async function getProStatus() {
-  // TODO: Temporary free access during LemonSqueezy payment integration
-  // This bypasses license validation and grants Pro access to all users.
-  // REVERT THIS once LemonSqueezy integration is complete and payment flow is live.
-  // Expected completion: When LemonSqueezy merchant verification completes
-  // Original implementation: Check git history for license validation logic
-  return {
-    pro: true,
-    trial: false,
-    trialDaysLeft: 0
-  };
+  let endpoint = DEFAULT_LICENSE_WORKER_URL;
+  try {
+    endpoint = await resolveLicenseEndpoint();
+  } catch {}
+  return computeProStatus({
+    localStorage: chrome.storage.local,
+    syncStorage: chrome.storage.sync,
+    fetchFn: (...args) => fetch(...args),
+    endpoint,
+    isLicenseValid
+  });
 }
 
-// NOTE: isLicenseValid() function temporarily unused during free access period
-// The function below will be re-enabled when license validation is restored
-/* TEMPORARILY DISABLED - Will be restored with LemonSqueezy integration
 async function isLicenseValid(key) {
   // Format gate first — short-circuits for empty / obviously bad keys.
   if (!validateLicenseKey(key)) return false;
@@ -266,7 +268,7 @@ async function isLicenseValid(key) {
   // on the next extension restart / after the 24h cache expires.
   return true;
 }
-END TEMPORARILY DISABLED */
+
 function buildMockIndexFor(interactions, ctx) {
   const index = {
     strict: {},
@@ -1302,6 +1304,9 @@ async function handleEchokitLicenseCheck() {
     pro: proStatus.pro,
     trial: proStatus.trial,
     trialDaysLeft: proStatus.trialDaysLeft,
+    reason: proStatus.reason,
+    paywallEnabled: proStatus.paywallEnabled,
+    checkoutUrls: proStatus.checkoutUrls || null,
     key: stored['echokit_license'] || ''
   };
 }
@@ -1793,8 +1798,13 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 chrome.runtime.onInstalled.addListener(async info => {
   await hydrate();
   await pushAllTabs();
+  try {
+    await recordInstall(info.reason, chrome.storage.local);
+  } catch (e) {
+    console.warn('[EchoKit] Failed to record install metadata:', e);
+  }
   if (info.reason === 'install') {
-    // Grant 7-day Pro trial automatically
+    // Grant 7-day Pro trial automatically (only matters once the paywall is on)
     const trialExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
     await chrome.storage.sync.set({
       echokit_trial_expiry: trialExpiry

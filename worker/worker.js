@@ -4,6 +4,7 @@
 //   POST /v1/validate              { key, deviceId? } → { valid, plan, expiresAt, error? }
 //   POST /v1/issue        (admin)  { plan, expiresAt } → { key }
 //   POST /v1/lemonsqueezy-webhook  LemonSqueezy payment webhook (auto-issue licenses)
+//   GET  /v1/config                → { paywallEnabled, grandfatherUntil, checkoutUrls }
 //   GET  /__health                 → { ok: true }
 //
 // Key format:  EK-{PLAN}-{EXPIRY}-{SIG}
@@ -117,6 +118,32 @@ async function issueKey(plan, expiresAt, secret) {
   return `EK-${plan}-${expiry}-${sig}`;
 }
 
+// Remote paywall switch. Driven entirely by wrangler vars so the owner can
+// turn paid Pro on/off (and set the grandfather window) without shipping a
+// new Chrome Web Store release. Defaults are "paywall off".
+//   PAYWALL_ENABLED       "true" to enforce licenses; anything else = off
+//   GRANDFATHER_UNTIL     ISO date; early adopters keep Pro until then ("" = none)
+//   CHECKOUT_URL_MONTHLY / CHECKOUT_URL_ANNUAL / CHECKOUT_URL_LIFETIME
+export function buildConfig(env = {}) {
+  const paywallEnabled = String(env.PAYWALL_ENABLED || '').trim().toLowerCase() === 'true';
+
+  let grandfatherUntil = null;
+  const rawGrandfather = String(env.GRANDFATHER_UNTIL || '').trim();
+  if (rawGrandfather) {
+    const t = Date.parse(rawGrandfather);
+    if (!Number.isNaN(t)) grandfatherUntil = new Date(t).toISOString();
+  }
+
+  const monthly = String(env.CHECKOUT_URL_MONTHLY || '').trim();
+  const annual = String(env.CHECKOUT_URL_ANNUAL || '').trim();
+  const lifetime = String(env.CHECKOUT_URL_LIFETIME || '').trim();
+  const checkoutUrls = monthly || annual || lifetime
+    ? { monthly: monthly || null, annual: annual || null, lifetime: lifetime || null }
+    : null;
+
+  return { paywallEnabled, grandfatherUntil, checkoutUrls };
+}
+
 async function readJson(req) {
   try { return await req.json(); } catch { return null; }
 }
@@ -133,6 +160,12 @@ export default {
         version: '1.0.0',
         timestamp: new Date().toISOString()
       }, { headers: corsHeaders() });
+    }
+
+    if (url.pathname === '/v1/config' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return Response.json(buildConfig(env), {
+        headers: { ...corsHeaders(), 'cache-control': 'public, max-age=3600' }
+      });
     }
 
     if (url.pathname === '/v1/validate' && request.method === 'POST') {

@@ -10,6 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Remote paywall switch: the license worker serves `GET /v1/config` (`paywallEnabled`, `grandfatherUntil`, `checkoutUrls`) and the extension reads it (6h cache, fails open) so paid Pro can be turned on without a store release. Paywall stays **off**; existing users are marked early adopters for a grandfather window. See `docs/PAYWALL_SWITCH.md`.
 - Comprehensive engineering review completed (archived in `docs/archive/engineering-review-2026-06-27.md`)
 - Technical debt action items extracted to `TODO.md` under P2 priority
 

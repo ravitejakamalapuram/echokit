@@ -62,6 +62,26 @@ Returns `{ "key": "EK-PRO-1769904000-…", … }`.
 
 For a Lifetime (LTD) key, set `expiresAt: 0`.
 
+### `GET /v1/config`
+
+The remote paywall switch the extension reads (cached 6h client-side,
+`Cache-Control: public, max-age=3600` at the edge). Driven by `[vars]` in
+`wrangler.toml`:
+
+| Var | Default | Meaning |
+|-----|---------|---------|
+| `PAYWALL_ENABLED` | `"false"` | Only the literal `"true"` enforces licenses |
+| `GRANDFATHER_UNTIL` | `""` | ISO date; early adopters keep Pro until then (`""` → `null`) |
+| `CHECKOUT_URL_MONTHLY` / `_ANNUAL` / `_LIFETIME` | `""` | LemonSqueezy checkout links (all empty → `null`) |
+
+```json
+{ "paywallEnabled": false, "grandfatherUntil": null, "checkoutUrls": null }
+```
+
+If the extension can't reach this endpoint and has no cached copy it assumes
+`paywallEnabled: false`, so an outage never locks users out. Go-live steps:
+[`docs/PAYWALL_SWITCH.md`](../docs/PAYWALL_SWITCH.md).
+
 ### `GET /__health`
 
 Returns `{ ok: true }` — useful for monitoring.
