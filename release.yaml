@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ravitejakamalapuram/release-platform/main/schema/release.schema.json
+# Release contract for ravitejakamalapuram/release-platform@v2 (keyless Chrome Web Store publishing).
+# website/ and worker/ are deployed separately by .github/workflows/cd.yml (Cloudflare).
+app: echokit
+test: npm ci && npm run lint && npm test
+# Playwright smoke test against the packaged extension directory (headless Chromium).
+e2e: >-
+  python3 -m venv "$RUNNER_TEMP/e2e-venv" &&
+  . "$RUNNER_TEMP/e2e-venv/bin/activate" &&
+  pip install --quiet playwright websockets &&
+  python -m playwright install --with-deps chromium &&
+  python tests/smoke_echokit.py
+targets:
+  - type: chrome
+    item_id: jndhbmaokpclbpjoogffaimahadpidcf
+    path: extension # plain JS, no build step
+    node: "22"

@@ -1,13 +1,11 @@
-name: Continuous Integration
+name: ci
 
 on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,10 +13,8 @@ concurrency:
 
 jobs:
   ci:
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-ci.yml@v1
-    with:
-      extension-dir: 'extension'
-      run-lint: true
-      run-unit-tests: true
-      run-e2e-tests: true
-      e2e-test-script: 'tests/smoke_echokit.py'
+    permissions:
+      contents: read
+      actions: read   # lets app-ci.yml find which release-platform commit it runs at
+    uses: ravitejakamalapuram/release-platform/.github/workflows/app-ci.yml@v2
+    # Deliberately no `secrets:` and no id-token: PR code never sees credentials.
