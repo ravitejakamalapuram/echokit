@@ -1,0 +1,27 @@
+name: Store Status
+
+# Live review/publish state of every extension under the Chrome Web Store
+# publisher. Lives here because this repo holds the publisher's CWS API secrets.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 3 * * *'
+
+jobs:
+  chrome-web-store:
+    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-status.yml@v1
+    with:
+      publisher-id: '9637cb78-fa33-49dd-a4cb-91066ff182e3'
+      extension-ids: >-
+        echokit=jndhbmaokpclbpjoogffaimahadpidcf
+        json-workbench=higmlhleblpmdogjccpmjlnilpmhohal
+        cors-enabler=bfegjbdhenoahnnajgmlkcdkfcjgnjjc
+        session-transfer=fnfmlchbfofjdfeibgdkcibfjjlfcefc
+        stellartab=efpigokkcblmjdnameafogblekknbhdc
+        gitaverses=hebmlallhbgfnjjcnilphllknhfoddnk
+        telugupanchangam=obgpdlhkahmdiepklldjnnmfmbhmgenn
+        teleport-extension=oimdkmacklcheogoakhdgilcedkcbikb
+    secrets:
+      chrome-client-id: ${{ secrets.CWS_CLIENT_ID }}
+      chrome-client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+      chrome-refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
