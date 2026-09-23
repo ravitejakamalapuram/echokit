@@ -8,7 +8,7 @@
       "name": "EchoKit — API Recorder & Mocker (Chrome Extension)",
       "type": "chrome-extension",
       "path": "extension",
-      "status": "draft",
+      "status": "published",
       "storeId": "jndhbmaokpclbpjoogffaimahadpidcf",
       "storeUrl": "https://chromewebstore.google.com/detail/jndhbmaokpclbpjoogffaimahadpidcf",
       "developerConsoleUrl": "https://chrome.google.com/webstore/devconsole/9637cb78-fa33-49dd-a4cb-91066ff182e3/jndhbmaokpclbpjoogffaimahadpidcf",

@@ -1,5 +1,24 @@
 # Changelog
 
+## [2026-09-23]
+
+## 🚀 Features
+- feat: first-run demo, once-only review prompt, export _generator credit (#322) (b61e6eb) by raviteja kamalapuram
+- feat: remote paywall switch via worker /v1/config (#321) (b7a583c) by raviteja kamalapuram
+
+## 🐛 Bug Fixes
+- fix(security): ignore postMessage from other windows in the page hook (#320) (dfe1046) by raviteja kamalapuram
+
+## 📝 Documentation
+- docs: update comprehensive engineering review report (#297) (3bd73e7) by raviteja kamalapuram
+
+## 🔧 Other Changes
+- ci: daily Chrome Web Store status report for all extensions (#319) (a02e675) by raviteja kamalapuram
+- ci: release to the Chrome Web Store on demand and pin shared workflows to v1 (#318) (820709d) by raviteja kamalapuram
+- chore: fix store metadata and remove committed junk (#317) (1e5956f) by raviteja kamalapuram
+- 🛡️ Sentinel: Prevent timing attacks on admin token verification (#312) (f599f48) by raviteja kamalapuram
+
+
 All notable changes to EchoKit are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
