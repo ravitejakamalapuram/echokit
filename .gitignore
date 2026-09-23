@@ -49,3 +49,6 @@ backend/
 frontend/
 design_guidelines.json
 memory/test_credentials.md
+
+# Agent/PR scratch output
+pr_body.json
