@@ -86,14 +86,16 @@ You'll be asked to justify each permission at submission:
 | `storage` | Remember per-extension settings (theme, scope, CORS toggle, auto-open). |
 | `tabs` | Per-tab recording state and messaging to content scripts. |
 | `activeTab` | Read current tab URL to display the host in the popup footer. |
-| `scripting` | (reserved for dynamic script injection — currently unused; remove before submission if you want to trim, see note below). |
+| `scripting` | Runs a user-initiated function in the selected tab to read or write that page's localStorage, used by the 'Copy/Paste localStorage' developer utility (`chrome.scripting.executeScript` in `background.js`). |
 | `declarativeNetRequest` | Implement the optional CORS-override feature (inject permissive CORS response headers on user request). |
 | `unlimitedStorage` | Recordings can exceed 10 MB; IndexedDB needs elbow-room. |
-| `notifications` | (reserved — currently unused). Remove before submission unless we add notifications. |
+| `clipboardRead` | Reads clipboard contents only when the user clicks 'Paste localStorage' or 'Paste cookies'. |
+| `clipboardWrite` | Copies the selected tab's localStorage/cookies or a shared mock-set link when the user clicks a copy action. |
+| `cookies` | Reads/sets cookies for the selected tab's URL only via the 'Copy/Paste cookies' developer utility. |
 | `host_permissions: <all_urls>` | The extension records and mocks requests on whatever page the user is debugging. Without `<all_urls>` the core product cannot function. |
 
 ### Note before submission
-Trim unused permissions (`scripting`, `notifications` if we don't ship notifications) — the Chrome Web Store review team is strict about the principle of least privilege.
+Every permission above is in use (audited 2026-09: `scripting` backs the localStorage copy/paste bridge; `notifications` is not requested). The canonical justification text lives in `app-metadata.json` → `permissionJustifications`; keep this table in sync with it and with `extension/manifest.json`. The Chrome Web Store review team is strict about least privilege, so remove any permission as soon as its feature goes away.
 
 ---
 

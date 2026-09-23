@@ -10,9 +10,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **10-second first-run demo** on the welcome page: opens JSONPlaceholder in a new tab and walks through record → stop → MOCK on → edit response → reload, with a copyable two-call `fetch` snippet (`/todos/1`, `/users/1`). Uses existing permissions only (extension pages can't be recorded, so the demo runs on a real https page).
+- **Review prompt**: after 3 completed record→mock loops (a MOCK-on session in which at least one request was served from a mock), the popup/DevTools panel shows a small, non-modal banner — "Enjoying EchoKit? A quick review helps other developers find it." [Rate it] [Not now]. Asked at most once (state in `chrome.storage.local` → `echokit_review_prompt`), never while any tab is recording. New message type `echokit:review:respond`.
+- Exported and Gist-uploaded mock sets include a top-level `"_generator": "EchoKit — https://echokit.dev"` field. The extension importer and `echokit-server` only read `interactions`, so existing and new files stay interchangeable.
+- Unit tests: `tests/test-review-prompt.js`, `tests/test-export-format.js` (includes CLI loading an export with `_generator`).
 - Remote paywall switch: the license worker serves `GET /v1/config` (`paywallEnabled`, `grandfatherUntil`, `checkoutUrls`) and the extension reads it (6h cache, fails open) so paid Pro can be turned on without a store release. Paywall stays **off**; existing users are marked early adopters for a grandfather window. See `docs/PAYWALL_SWITCH.md`.
 - Comprehensive engineering review completed (archived in `docs/archive/engineering-review-2026-06-27.md`)
 - Technical debt action items extracted to `TODO.md` under P2 priority
+
+### Fixed
+- Welcome page "Pin EchoKit" button did nothing: its inline `<script>` was blocked by the extension-page CSP (`script-src 'self'`). Moved to `onboarding/welcome.js`.
+
+### Docs
+- `store/chrome-web-store.md` permission table now matches the manifest: `scripting` is in use (localStorage copy/paste bridge) and `notifications` is not requested, so the stale "reserved / unused" rows are gone.
 
 ### Planned
 - LemonSqueezy payment integration (Merchant of Record, global tax handling)

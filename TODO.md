@@ -197,7 +197,8 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
 
 - [ ] **Onboarding tour** (extension)
   - First install → highlight Record button → mock toggle → settings
-  - Use `/app/extension/onboarding/welcome.html` as starting point
+  - Use `extension/onboarding/welcome.html` as starting point
+  - [x] Welcome page "Try a 10-second demo" checklist against JSONPlaceholder (record → stop → mock → edit → reload)
 
 - [ ] **Keyboard shortcuts modal**
   - Already exists. Add: `/` to focus search, `Esc` to close detail, `j/k` to nav rows.

@@ -14,6 +14,8 @@ import {
   clearAllInteractions, getMeta, setMeta
 } from './shared/store.js';
 import { computeProStatus, recordInstall } from './shared/pro-status.js';
+import { getReviewState, recordMockLoop, shouldShowReviewPrompt, markReviewPromptAnswered } from './shared/review-prompt.js';
+import { buildMockExport } from './shared/export-format.js';
 const SESSION_KEY = 'echokit_tab_state';
 const SETTINGS_KEY = 'echokit_settings';
 const CORS_RULESET_ID = 1001;
@@ -769,8 +771,29 @@ async function handleEchokitGetState(msg, sender, fromTabId) {
     isPro: proStatus.pro,
     trial: proStatus.trial,
     trialDaysLeft: proStatus.trialDaysLeft,
+    reviewPrompt: await isReviewPromptDue(),
     mockIndex: index,
     blockedKeys
+  };
+}
+function anyTabRecording() {
+  for (const st of tabState.values()) if (st.recording) return true;
+  return false;
+}
+// Review banner is due after enough completed record→mock loops, never while recording.
+async function isReviewPromptDue() {
+  try {
+    return shouldShowReviewPrompt(await getReviewState(chrome.storage.local), {
+      recording: anyTabRecording()
+    });
+  } catch {
+    return false;
+  }
+}
+async function handleEchokitReviewRespond(msg) {
+  await markReviewPromptAnswered(chrome.storage.local, msg.response);
+  return {
+    ok: true
   };
 }
 async function handleEchokitRecordingStart(msg) {
@@ -819,6 +842,8 @@ async function handleEchokitMockingToggle(msg) {
   const tabId = msg.tabId;
   const st = getTab(tabId);
   st.mocking = !!msg.enabled;
+  // Each MOCK-on period is one mock session for the review-prompt loop count.
+  st.mockSessionId = st.mocking ? `mock_${tabId}_${Date.now()}` : null;
   await persistTabState();
   await pushTabMeta(tabId);
   return {
@@ -952,11 +977,7 @@ async function handleEchokitInteractionSetActiveVersion(msg) {
 async function handleEchokitExport() {
   return {
     ok: true,
-    data: {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      interactions: await getAllInteractions()
-    }
+    data: buildMockExport(await getAllInteractions())
   };
 }
 async function handleEchokitExportHar() {
@@ -1193,11 +1214,7 @@ async function handleEchokitGistUpload(msg) {
     error: 'missing github token'
   };
   const all = await getAllInteractions();
-  const payload = {
-    version: 2,
-    exportedAt: new Date().toISOString(),
-    interactions: all
-  };
+  const payload = buildMockExport(all);
   try {
     const res = await fetch('https://api.github.com/gists', {
       method: 'POST',
@@ -1367,7 +1384,12 @@ async function handleEchokitLicenseSetEndpoint(msg) {
     ok: true
   };
 }
-async function handleEchokitMockHit(msg) {
+async function handleEchokitMockHit(msg, sender, fromTabId) {
+  // A mock served while MOCK mode is on completes a record→mock loop.
+  try {
+    const st = fromTabId != null ? tabState.get(fromTabId) : null;
+    if (st?.mocking && st.mockSessionId) await recordMockLoop(chrome.storage.local, st.mockSessionId);
+  } catch {}
   const {
     id
   } = msg.data || {};
@@ -1689,6 +1711,7 @@ const messageHandlers = {
   "echokit:license:set": handleEchokitLicenseSet,
   "echokit:license:setEndpoint": handleEchokitLicenseSetEndpoint,
   "echokit:mock:hit": handleEchokitMockHit,
+  "echokit:review:respond": handleEchokitReviewRespond,
   "echokit:import:har": handleEchokitImportHar,
   "echokit:import:openapi": handleEchokitImportOpenapi,
   "echokit:export:postman": handleEchokitExportPostman,
