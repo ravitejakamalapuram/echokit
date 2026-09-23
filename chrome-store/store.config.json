@@ -1,0 +1,22 @@
+{
+  "name": "EchoKit — API Recorder & Mocker",
+  "shortDescription": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+  "description": "EchoKit — API Recorder & Mocker\n\nRecord real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.\n\nKey Features:\n- Local-first and private: all data operations run strictly inside your browser.\n- High performance: fast processing for developer workflows.\n- Clean and intuitive interface designed for modern productivity.\n\nHow to use:\n1. Open the extension from the Chrome toolbar or side panel.\n2. Load or paste your data to inspect, query, and transform.\n3. Export or copy results instantly.\n",
+  "category": "Developer Tools",
+  "language": "en",
+  "supportUrl": "https://github.com/ravitejakamalapuram/echokit/issues",
+  "websiteUrl": "",
+  "privacyPolicyUrl": "",
+  "publisherId": "",
+  "extensionId": "",
+  "visibility": "PUBLIC",
+  "distribution": "",
+  "screenshots": [
+    "assets/screenshots/01-main-screen.png"
+  ],
+  "promotionalImages": {
+    "smallTile": "assets/promo/small-tile.png",
+    "largeTile": "assets/promo/large-tile.png",
+    "marquee": "assets/promo/marquee.png"
+  }
+}
