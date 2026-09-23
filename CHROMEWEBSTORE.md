@@ -41,23 +41,23 @@ Every permission in manifest.json needs a justification. The review team reads t
 
 | Permission | Type | Justification |
 |---|---|---|
-| `storage` | permissions | Used to persist user settings and configuration preferences locally, ensuring they are preserved across service worker restarts. |
-| `tabs` | permissions | Used to coordinate recording/mocking state transitions and apply CORS modifications to active browser tabs. |
-| `activeTab` | permissions | Used to inject the API recording proxy script into the active tab when requested. |
-| `scripting` | permissions | Used to programmatically inject the recorder proxy code block into the page context. |
-| `declarativeNetRequest` | permissions | Used to dynamically intercept and mock API requests, redirecting matching network URLs to local mock handlers. |
-| `unlimitedStorage` | permissions | Used to allow unlimited local storage space for large captured API recordings, response bodies, and mock sets. |
-| `clipboardRead` | permissions | Used to allow the user to import mocks directly from the clipboard. |
-| `clipboardWrite` | permissions | Used to copy mock interactions, JSON schemas, and API documentation to the clipboard. |
-| `cookies` | permissions | Used to capture, inspect, and temporarily mock cookies during API simulation. |
-| `<all_urls>` | host_permissions | Used to record and mock API traffic across all user-permitted domains for development and testing. |
+| `storage` | permissions | Persists EchoKit settings (recording/mock mode, matching mode, scope, CORS override), license status and per-session tab state in chrome.storage so they survive service-worker restarts. |
+| `tabs` | permissions | Reads the URL/origin of the tab being recorded or mocked and pushes recording/mocking state updates to open tabs so each tab's in-page recorder stays in sync. |
+| `activeTab` | permissions | Lets the popup and DevTools panel act on the tab the user is currently working in when they click the EchoKit toolbar button (e.g. start recording or copy that tab's storage). |
+| `scripting` | permissions | Runs a user-initiated function in the selected tab to read or write that page's localStorage, used by the 'Copy/Paste localStorage' developer utility. |
+| `declarativeNetRequest` | permissions | Installs rules that add CORS response headers when the user enables the CORS override, and blocks API URLs the user adds to the blocklist, for local development and testing. |
+| `unlimitedStorage` | permissions | Recorded API interactions (request/response bodies) are stored locally in IndexedDB and can exceed the default quota for large mock sets. |
+| `clipboardRead` | permissions | Reads clipboard contents only when the user clicks 'Paste localStorage' or 'Paste cookies', to import values previously copied from another environment. |
+| `clipboardWrite` | permissions | Copies the selected tab's localStorage or cookies (for the Copy/Paste developer utilities) and the link of a shared mock set to the clipboard when the user clicks a copy action. |
+| `cookies` | permissions | Reads and sets cookies for the selected tab's URL only when the user uses the 'Copy/Paste cookies' developer utility, e.g. to reproduce a logged-in state across local/staging environments. |
+| `<all_urls>` | host_permissions | EchoKit records and mocks the fetch/XHR traffic of whatever web application the developer is testing, so its recorder/mocking content scripts and CORS/blocklist rules must be able to run on any site the developer opens. Captured data is stored locally. |
 
 ## Privacy & Data Use
 
 ### Data Collection
 **Does the extension collect user data?** No
 
-All extension preferences and inputs are stored locally on the device and never sent off-device.
+Recorded interactions, settings and preferences are stored locally on the device. Nothing is sent off-device unless the user explicitly shares a mock set to their own GitHub Gist or enters a Pro license key (validated against the EchoKit license endpoint).
 
 ### Data Use Certification
 - [x] Data is NOT sold to third parties
@@ -65,7 +65,7 @@ All extension preferences and inputs are stored locally on the device and never 
 - [x] Data is NOT used for creditworthiness or lending purposes
 
 ## Privacy Policy
-Privacy Policy available in `PRIVACY.md` in the project root. Recommended to host via GitHub Pages.
+https://ravitejakamalapuram.github.io/echokit.html (source: `PRIVACY.md`).
 
 ## Version History
 
