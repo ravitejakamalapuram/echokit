@@ -110,8 +110,8 @@ function visibleInContext(interaction, ctx) {
 
 // ---------- License key validation ----------
 // Two-layer check:
-//   1. Format check (offline) — accepts EK-{PLAN}-{EXPIRY?}-{SIG?} keys.
-//   2. Server check via Cloudflare Worker (HMAC-SHA256) — when an endpoint is
+//   1. Format check (offline) — accepts Gumroad keys and EK-{PLAN}-{EXPIRY?}-{SIG?} keys.
+//   2. Server check via Cloudflare Worker (Gumroad license API, or HMAC-SHA256 for EK keys) — when an endpoint is
 //      configured. Result is cached in chrome.storage.local for 24h so the
 //      extension keeps working offline once a key has been validated.
 const LICENSE_CACHE_KEY = 'echokit_license_cache';
@@ -122,11 +122,14 @@ const DEFAULT_LICENSE_WORKER_URL = 'https://echokit-license.echokit-rk.workers.d
  * Determine whether a license key matches the accepted offline formats.
  *
  * @param {string|null|undefined} key - The license key to validate; may be null/undefined.
- * @returns {boolean} `true` if the key begins with `EK-PRO-`, `EK-YEAR-`, or `EK-LTD-` (case-insensitive, trimmed), `false` otherwise.
+ * @returns {boolean} `true` for a Gumroad license key (XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX)
+ *   or a key beginning with `EK-PRO-`, `EK-YEAR-`, or `EK-LTD-` (case-insensitive, trimmed), `false` otherwise.
  */
 function validateLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim().toUpperCase();
+  // Gumroad license keys (sold via Gumroad; verified by the worker).
+  if (/^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$/.test(k)) return true;
   // Legacy short form (EK-PRO-xxxx) and signed long form both accepted at format level.
   return /^EK-(PRO|YEAR|LTD)-/.test(k);
 }
@@ -263,8 +266,9 @@ async function isLicenseValid(key) {
   // working offline / on flaky networks. Cache a short-lived "tentative"
   // result so we retry on the next call.
   //
-  // SECURITY NOTE: This means any string matching `EK-{PRO|YEAR|LTD}-*` will
-  // pass as a valid Pro key while the validation worker is down. This is an
+  // SECURITY NOTE: This means any string matching `EK-{PRO|YEAR|LTD}-*` (or
+  // the Gumroad key shape) will pass as a valid Pro key while the validation
+  // worker or Gumroad is down. This is an
   // intentional UX trade-off (better to let real customers keep working than
   // to lock everyone out during an outage). The HMAC server check runs again
   // on the next extension restart / after the 24h cache expires.
@@ -1345,7 +1349,7 @@ async function handleEchokitLicenseSet(msg) {
   const trimmed = key.trim();
   if (!validateLicenseKey(trimmed)) return {
     ok: false,
-    error: 'Invalid license key. Expected EK-PRO-…, EK-YEAR-…, or EK-LTD-…'
+    error: 'Invalid license key. Paste the key from your Gumroad receipt (XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX) or an EK-… key.'
   };
   await chrome.storage.sync.set({
     echokit_license: trimmed

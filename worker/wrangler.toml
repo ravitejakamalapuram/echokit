@@ -4,16 +4,16 @@
 #   cd /app/worker
 #   npm i -g wrangler
 #   wrangler login
-#   wrangler secret put ECHOKIT_HMAC_SECRET   # paste a 256-bit hex string
+#   wrangler secret put ECHOKIT_HMAC_SECRET   # paste a 256-bit hex string (legacy EK-* keys)
 #   wrangler deploy
 
 name = "echokit-license"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
-# The Worker is publicly callable; protection comes from the HMAC signature
-# baked into each license key. Every license is signed by ECHOKIT_HMAC_SECRET
-# so the Worker can verify keys without a database.
+# The Worker is publicly callable. Gumroad license keys are checked against
+# Gumroad's license API; legacy EK-* keys are verified with the HMAC signature
+# baked into each key (ECHOKIT_HMAC_SECRET), so no database is needed.
 [vars]
 ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 
@@ -22,9 +22,16 @@ ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 # installed extension without a Chrome Web Store release.
 PAYWALL_ENABLED = "false"          # "true" enforces licenses. Keep "false" until go-live.
 GRANDFATHER_UNTIL = ""             # ISO date, e.g. "2026-12-31T00:00:00Z"; "" = no grandfathering
-CHECKOUT_URL_MONTHLY = ""
-CHECKOUT_URL_ANNUAL = ""
-CHECKOUT_URL_LIFETIME = ""
+CHECKOUT_URL_MONTHLY = "https://raviteja852.gumroad.com/l/echokit-pro?recurrence=monthly"
+CHECKOUT_URL_ANNUAL = "https://raviteja852.gumroad.com/l/echokit-pro?recurrence=yearly"
+CHECKOUT_URL_LIFETIME = "https://raviteja852.gumroad.com/l/echokit-lifetime"
+
+# Gumroad products whose license keys unlock Pro (public ids, not secrets).
+# Format: JSON {"<product_id>": PLAN} or "<product_id>:PLAN,<product_id>:PLAN".
+# PLAN = MEMBERSHIP (PRO or YEAR from the purchase recurrence) | PRO | YEAR | LTD.
+#   21jW8YdWBWjVy8EmcKEgMQ==  "EchoKit Pro" membership ($5/month, $49/year)
+#   nPgt8NsB8fkhPFtt61SR8w==  "EchoKit Pro Lifetime" ($199 one-time)
+GUMROAD_PRODUCT_IDS = '{"21jW8YdWBWjVy8EmcKEgMQ==":"MEMBERSHIP","nPgt8NsB8fkhPFtt61SR8w==":"LTD"}'
 
 # Custom domain routing is configured in Cloudflare Dashboard
 # Route: api.echo-kit.com/* -> Zone: echo-kit.com
