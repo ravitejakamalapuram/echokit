@@ -17,6 +17,15 @@ compatibility_date = "2025-01-01"
 [vars]
 ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 
+# Remote paywall switch, served at GET /v1/config (see docs/PAYWALL_SWITCH.md).
+# Changing these and redeploying the worker turns paid Pro on/off for every
+# installed extension without a Chrome Web Store release.
+PAYWALL_ENABLED = "false"          # "true" enforces licenses. Keep "false" until go-live.
+GRANDFATHER_UNTIL = ""             # ISO date, e.g. "2026-12-31T00:00:00Z"; "" = no grandfathering
+CHECKOUT_URL_MONTHLY = ""
+CHECKOUT_URL_ANNUAL = ""
+CHECKOUT_URL_LIFETIME = ""
+
 # Custom domain routing is configured in Cloudflare Dashboard
 # Route: api.echo-kit.com/* -> Zone: echo-kit.com
 # The worker is accessible at both api.echo-kit.com and the workers.dev URL

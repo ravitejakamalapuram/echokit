@@ -5,7 +5,7 @@
 import { webcrypto } from 'crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-import { issueKey, verifyKey } from './worker.js';
+import worker, { issueKey, verifyKey, buildConfig } from './worker.js';
 
 const SECRET = 'test-secret-do-not-use-in-prod';
 let pass = 0, fail = 0;
@@ -48,6 +48,39 @@ expect('wrong secret rejects key', !v6.valid && v6.error === 'invalid signature'
 // 7. Malformed key
 const v7 = await verifyKey('not-a-key', SECRET);
 expect('malformed key rejected', !v7.valid && v7.error === 'malformed key', JSON.stringify(v7));
+
+// 8. /v1/config defaults to paywall off
+const c1 = buildConfig({});
+expect('config defaults to paywall off', c1.paywallEnabled === false && c1.grandfatherUntil === null && c1.checkoutUrls === null, JSON.stringify(c1));
+
+// 9. /v1/config reads vars
+const c2 = buildConfig({
+  PAYWALL_ENABLED: 'true',
+  GRANDFATHER_UNTIL: '2026-12-31',
+  CHECKOUT_URL_MONTHLY: 'https://pay.example/m',
+  CHECKOUT_URL_LIFETIME: 'https://pay.example/l'
+});
+expect('config reads PAYWALL_ENABLED/GRANDFATHER_UNTIL/checkout vars',
+  c2.paywallEnabled === true && c2.grandfatherUntil === '2026-12-31T00:00:00.000Z' &&
+  c2.checkoutUrls.monthly === 'https://pay.example/m' && c2.checkoutUrls.annual === null &&
+  c2.checkoutUrls.lifetime === 'https://pay.example/l', JSON.stringify(c2));
+
+// 10. Only the literal "true" enables the paywall; bad dates are ignored
+const c3 = buildConfig({ PAYWALL_ENABLED: 'yes', GRANDFATHER_UNTIL: 'not-a-date' });
+expect('non-"true" PAYWALL_ENABLED stays off, invalid date → null', c3.paywallEnabled === false && c3.grandfatherUntil === null, JSON.stringify(c3));
+
+// 11. GET /v1/config over the fetch handler: JSON + cache + CORS headers
+const r11 = await worker.fetch(new Request('https://api.example/v1/config'), { PAYWALL_ENABLED: 'false' });
+const j11 = await r11.json();
+expect('GET /v1/config returns 200 JSON with paywall off',
+  r11.status === 200 && j11.paywallEnabled === false && 'grandfatherUntil' in j11 && 'checkoutUrls' in j11, JSON.stringify(j11));
+expect('GET /v1/config sets cache-control and CORS',
+  r11.headers.get('cache-control') === 'public, max-age=3600' && r11.headers.get('access-control-allow-origin') === '*',
+  `${r11.headers.get('cache-control')} / ${r11.headers.get('access-control-allow-origin')}`);
+
+// 12. POST /v1/config is not routed
+const r12 = await worker.fetch(new Request('https://api.example/v1/config', { method: 'POST' }), {});
+expect('POST /v1/config → 404', r12.status === 404, String(r12.status));
 
 console.log(`\nPassed: ${pass}  Failed: ${fail}`);
 process.exit(fail ? 1 : 0);
