@@ -1,19 +1,24 @@
 // EchoKit license-validation Cloudflare Worker
 //
 // Endpoints:
-//   POST /v1/validate              { key, deviceId? } → { valid, plan, expiresAt, error? }
+//   POST /v1/validate              { key, deviceId? } → { valid, plan, expiresAt, source?, error? }
 //   POST /v1/issue        (admin)  { plan, expiresAt } → { key }
-//   POST /v1/lemonsqueezy-webhook  LemonSqueezy payment webhook (auto-issue licenses)
 //   GET  /v1/config                → { paywallEnabled, grandfatherUntil, checkoutUrls }
 //   GET  /__health                 → { ok: true }
 //
-// Key format:  EK-{PLAN}-{EXPIRY}-{SIG}
-//   PLAN     = "PRO" | "YEAR" | "LTD"
-//   EXPIRY   = unix-seconds (0 for LTD = never expires)
-//   SIG      = first 16 hex chars of HMAC-SHA256(secret, `${PLAN}|${EXPIRY}`)
+// /v1/validate accepts two kinds of key:
 //
-// The Worker has no database — every key is self-signed, so revocation
-// requires rotating ECHOKIT_HMAC_SECRET.
+// 1. Gumroad license keys (XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX), the key a
+//    customer receives when buying EchoKit Pro on Gumroad. The Worker checks
+//    them with Gumroad's POST /v2/licenses/verify against every product id in
+//    GUMROAD_PRODUCT_IDS (see parseGumroadProducts).
+//
+// 2. Self-signed HMAC keys (issued via /v1/issue), kept for backward compat:
+//    Key format:  EK-{PLAN}-{EXPIRY}-{SIG}
+//      PLAN     = "PRO" | "YEAR" | "LTD"
+//      EXPIRY   = unix-seconds (0 for LTD = never expires)
+//      SIG      = first 16 hex chars of HMAC-SHA256(secret, `${PLAN}|${EXPIRY}`)
+//    Revoking an HMAC key requires rotating ECHOKIT_HMAC_SECRET.
 
 const ALLOWED_PLANS = new Set(['PRO', 'YEAR', 'LTD']);
 const SIG_LEN = 16;
@@ -25,59 +30,6 @@ function corsHeaders() {
     'access-control-allow-headers': 'content-type, authorization',
     'access-control-max-age': '86400'
   };
-}
-
-// Helper: build license key email template
-function buildLicenseEmail(key, planName, expiryText, source = null) {
-  const sourceAttribution = source === 'lemonsqueezy'
-    ? 'Powered by LemonSqueezy 🍋<br>\n    '
-    : '';
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #f59e0b; color: #000; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
-    .header h1 { margin: 0; font-size: 24px; }
-    .key-box { background: #f3f4f6; border: 2px solid #f59e0b; border-radius: 6px; padding: 16px; margin: 20px 0; font-family: 'Monaco', 'Courier New', monospace; font-size: 16px; text-align: center; }
-    .instructions { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; }
-    .footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🎉 Welcome to EchoKit ${planName}!</h1>
-  </div>
-
-  <p>Thank you for purchasing EchoKit ${planName}! Your license key is ready.</p>
-
-  <div class="key-box">
-    ${key}
-  </div>
-
-  <p><strong>Plan:</strong> ${planName}<br>
-  <strong>Status:</strong> ${expiryText}</p>
-
-  <div class="instructions">
-    <strong>How to activate:</strong><br>
-    1. Open the EchoKit Chrome extension<br>
-    2. Click the menu (⋮) → Settings<br>
-    3. Paste your license key in the "License Key" field<br>
-    4. Click "Activate"<br>
-    5. All Pro features unlock instantly!
-  </div>
-
-  <p>Need help? Visit <a href="https://github.com/ravitejakamalapuram/echokit">github.com/ravitejakamalapuram/echokit</a> or reply to this email.</p>
-
-  <div class="footer">
-    EchoKit — API Recorder & Mocker<br>
-    ${sourceAttribution}This is an automated email. Your license key is cryptographically signed and cannot be changed.
-  </div>
-</body>
-</html>
-  `.trim();
 }
 
 async function hmacSha256Hex(secret, message) {
@@ -116,6 +68,157 @@ async function issueKey(plan, expiresAt, secret) {
   const expiry = expiresAt ? String(Math.floor(expiresAt)) : '0';
   const sig = (await hmacSha256Hex(secret, `${plan}|${expiry}`)).slice(0, SIG_LEN);
   return `EK-${plan}-${expiry}-${sig}`;
+}
+
+// ---------- Gumroad licenses ----------
+
+const GUMROAD_VERIFY_URL = 'https://api.gumroad.com/v2/licenses/verify';
+const GUMROAD_KEY_RE = /^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$/;
+// Plan label meaning "a membership: derive PRO/YEAR from purchase.recurrence".
+const MEMBERSHIP_PLAN = 'MEMBERSHIP';
+const GUMROAD_TIMEOUT_MS = 8000;
+// Per-isolate cache of Gumroad answers, so a burst of validations for the same
+// key doesn't hit Gumroad each time. The extension also caches for 24h.
+const GUMROAD_CACHE_VALID_MS = 10 * 60 * 1000;
+const GUMROAD_CACHE_INVALID_MS = 2 * 60 * 1000;
+const GUMROAD_CACHE_MAX = 500;
+const gumroadCache = new Map();
+
+/** True when `key` looks like a Gumroad license key. */
+export function isGumroadKey(key) {
+  return typeof key === 'string' && GUMROAD_KEY_RE.test(key.trim().toUpperCase());
+}
+
+/**
+ * Parse the GUMROAD_PRODUCT_IDS var into [{ id, plan }].
+ *
+ * Accepts either JSON ({"<product_id>": "MEMBERSHIP" | "PRO" | "YEAR" | "LTD"})
+ * or a comma list of `<product_id>:<PLAN>` pairs. Gumroad product ids are
+ * base64 and can end in "=", so the plan is taken after the LAST colon.
+ * MEMBERSHIP means the plan comes from the purchase's recurrence
+ * (yearly → YEAR, anything else → PRO).
+ */
+export function parseGumroadProducts(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return [];
+  const valid = new Set([...ALLOWED_PLANS, MEMBERSHIP_PLAN]);
+  const out = [];
+  const push = (id, plan) => {
+    const pid = String(id || '').trim();
+    const p = String(plan || '').trim().toUpperCase();
+    if (pid && valid.has(p)) out.push({ id: pid, plan: p });
+  };
+  if (text.startsWith('{')) {
+    try {
+      const obj = JSON.parse(text);
+      for (const [id, plan] of Object.entries(obj || {})) push(id, plan);
+    } catch {
+      return [];
+    }
+    return out;
+  }
+  for (const part of text.split(',')) {
+    const i = part.lastIndexOf(':');
+    if (i > 0) push(part.slice(0, i), part.slice(i + 1));
+  }
+  return out;
+}
+
+/**
+ * Decide whether a Gumroad verify response grants Pro.
+ * Invalid when refunded, charged back, an unresolved dispute, or (for
+ * memberships) the subscription was cancelled, ended or failed to charge.
+ */
+export function evaluateGumroadPurchase(json, productPlan) {
+  if (!json || json.success !== true || !json.purchase) {
+    return { valid: false, error: 'unknown license key' };
+  }
+  const p = json.purchase;
+  if (p.refunded) return { valid: false, error: 'refunded' };
+  if (p.chargebacked) return { valid: false, error: 'chargebacked' };
+  if (p.disputed && !p.dispute_won) return { valid: false, error: 'disputed' };
+  if (p.subscription_ended_at) return { valid: false, error: 'subscription ended' };
+  if (p.subscription_cancelled_at) return { valid: false, error: 'subscription cancelled' };
+  if (p.subscription_failed_at) return { valid: false, error: 'subscription payment failed' };
+
+  let plan = productPlan;
+  if (plan === MEMBERSHIP_PLAN) {
+    plan = String(p.recurrence || '').toLowerCase() === 'yearly' ? 'YEAR' : 'PRO';
+  }
+  return { valid: true, plan, expiresAt: null, source: 'gumroad' };
+}
+
+/**
+ * Verify a Gumroad license key against every configured product.
+ * Returns { valid, plan?, expiresAt?, source?, error? }. When Gumroad can't be
+ * reached (network error, timeout, 429 or 5xx) and no product accepted the key,
+ * returns { valid: false, error, unavailable: true }; that answer isn't cached.
+ */
+export async function verifyGumroadKey(key, env = {}, { fetchFn = fetch, now = Date.now() } = {}) {
+  const products = parseGumroadProducts(env.GUMROAD_PRODUCT_IDS);
+  if (!products.length) return { valid: false, error: 'gumroad licensing not configured' };
+  const licenseKey = String(key).trim().toUpperCase();
+
+  const cached = gumroadCache.get(licenseKey);
+  if (cached && cached.until > now) return cached.result;
+
+  let firstFailure = null;
+  let unavailable = false;
+  for (const { id, plan } of products) {
+    let json = null;
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), GUMROAD_TIMEOUT_MS) : null;
+      let res;
+      try {
+        res = await fetchFn(GUMROAD_VERIFY_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            product_id: id,
+            license_key: licenseKey,
+            increment_uses_count: 'false'
+          }).toString(),
+          signal: controller ? controller.signal : undefined
+        });
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+      // Gumroad answers 404 + { success: false } for a key that isn't for
+      // this product. 5xx / 429 mean Gumroad itself is unhappy.
+      if (res.status >= 500 || res.status === 429) {
+        unavailable = true;
+        continue;
+      }
+      json = await res.json();
+    } catch {
+      unavailable = true;
+      continue;
+    }
+    if (json && json.success === true) {
+      const result = evaluateGumroadPurchase(json, plan);
+      if (result.valid) return remember(licenseKey, result, now);
+      // Key belongs to this product but is no longer entitled. Keep looking
+      // in case the customer also owns another plan (e.g. upgraded to LTD).
+      firstFailure = firstFailure || result;
+    }
+  }
+
+  if (firstFailure) return remember(licenseKey, firstFailure, now);
+  if (unavailable) return { valid: false, error: 'license server unavailable', unavailable: true };
+  return remember(licenseKey, { valid: false, error: 'unknown license key' }, now);
+}
+
+function remember(key, result, now) {
+  if (gumroadCache.size >= GUMROAD_CACHE_MAX) gumroadCache.delete(gumroadCache.keys().next().value);
+  const ttl = result.valid ? GUMROAD_CACHE_VALID_MS : GUMROAD_CACHE_INVALID_MS;
+  gumroadCache.set(key, { result, until: now + ttl });
+  return result;
+}
+
+/** Test hook: forget cached Gumroad answers. */
+export function clearGumroadCache() {
+  gumroadCache.clear();
 }
 
 // Remote paywall switch. Driven entirely by wrangler vars so the owner can
@@ -173,7 +276,15 @@ export default {
       if (!body || !body.key) {
         return Response.json({ valid: false, error: 'missing key' }, { status: 400, headers: corsHeaders() });
       }
-      const result = await verifyKey(String(body.key).trim(), env.ECHOKIT_HMAC_SECRET);
+      const key = String(body.key).trim();
+      if (isGumroadKey(key)) {
+        const result = await verifyGumroadKey(key, env);
+        // 503 when Gumroad is down, so the extension treats it as "couldn't
+        // check" (keeps the user working) rather than "key rejected".
+        const { unavailable, ...payload } = result;
+        return Response.json(payload, { status: unavailable ? 503 : 200, headers: corsHeaders() });
+      }
+      const result = await verifyKey(key, env.ECHOKIT_HMAC_SECRET);
       return Response.json(result, { headers: corsHeaders() });
     }
 
@@ -191,154 +302,6 @@ export default {
         return Response.json({ key, plan, expiresAt }, { headers: corsHeaders() });
       } catch (e) {
         return Response.json({ error: e.message }, { status: 400, headers: corsHeaders() });
-      }
-    }
-
-    // LemonSqueezy webhook: auto-issue license keys on successful payment
-    if (url.pathname === '/v1/lemonsqueezy-webhook' && request.method === 'POST') {
-      try {
-        const body = await request.text();
-        const signature = request.headers.get('x-signature');
-
-        // Verify webhook signature
-        if (!signature || !env.LEMONSQUEEZY_WEBHOOK_SECRET) {
-          return Response.json({ error: 'missing signature or webhook secret not configured' },
-            { status: 400, headers: corsHeaders() });
-        }
-
-        // Verify HMAC signature from LemonSqueezy
-        const expectedSignature = await hmacSha256Hex(env.LEMONSQUEEZY_WEBHOOK_SECRET, body);
-        if (!timingSafeEqual(signature, expectedSignature)) {
-          return Response.json({ error: 'invalid signature' },
-            { status: 401, headers: corsHeaders() });
-        }
-
-        // Parse event
-        const event = JSON.parse(body);
-        const eventType = event.meta?.event_name;
-
-        // Handle successful purchase events
-        // IMPORTANT: Only process subscription_created for subscriptions to avoid duplicates
-        // For one-time purchases, order_created is sufficient
-        // LemonSqueezy sends BOTH order_created AND subscription_created for subscriptions
-        if (eventType === 'subscription_created' || eventType === 'order_created') {
-          // For order_created: check if it's a subscription order
-          if (eventType === 'order_created') {
-            const attributes = event.data?.attributes || {};
-            const firstOrderItem = attributes.first_order_item;
-
-            // Skip if this order has a subscription (subscription_created will handle it)
-            if (firstOrderItem?.subscription_id) {
-              console.log('LemonSqueezy: Skipping order_created for subscription (will be handled by subscription_created)');
-              return Response.json({ received: true, skipped: 'subscription order' }, { headers: corsHeaders() });
-            }
-          }
-
-          // Process the purchase (both subscription_created and one-time order_created)
-          const attributes = event.data?.attributes || {};
-          const email = attributes.user_email || attributes.customer_email;
-
-        // Detect plan based on price (simpler than custom data!)
-          // LemonSqueezy webhook includes: total, total_usd, currency
-          const totalUsd = attributes.total_usd || 0; // Amount in cents (USD)
-          const total = attributes.total || 0; // Amount in customer's currency (cents)
-
-          // Detect plan from amount:
-          // $5.00 = 500 cents = Monthly (PRO)
-          // $49.00 = 4900 cents = Annual (YEAR)
-          // $199.00 = 19900 cents = Lifetime (LTD)
-          let plan = 'PRO'; // Default to monthly
-
-          // Use total_usd for consistent detection (always in USD cents)
-          // Use thresholds to handle potential discounts or price variations
-          if (totalUsd >= 19900) {
-            // $199+ = Lifetime
-            plan = 'LTD';
-          } else if (totalUsd >= 4900) {
-            // $49+ = Annual
-            plan = 'YEAR';
-          } else {
-            // < $49 = Monthly
-            plan = 'PRO';
-          }
-
-          // Allow custom_data override (takes precedence over price detection)
-          // Fallback order: 1) Price-based detection, 2) Custom data override
-          const customData = event.meta?.custom_data || {};
-          if (customData.echokit_plan) {
-            plan = customData.echokit_plan.toUpperCase();
-          }
-
-          // Validate plan
-          if (!ALLOWED_PLANS.has(plan)) {
-            console.error(`Invalid plan from LemonSqueezy: ${plan}`);
-            return Response.json({ error: 'invalid plan' }, { status: 400, headers: corsHeaders() });
-          }
-
-          // Determine expiry based on plan
-          let expiresAt = 0; // LTD default (never expires)
-          if (plan === 'PRO') {
-            // Monthly: expires in 30 days
-            expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
-          } else if (plan === 'YEAR') {
-            // Annual: expires in 365 days
-            expiresAt = Math.floor(Date.now() / 1000) + (365 * 86400);
-          }
-
-          // Issue the license key
-          const key = await issueKey(plan, expiresAt, env.ECHOKIT_HMAC_SECRET);
-
-          // Send email with license key (reuse email logic from Stripe webhook)
-          if (email && env.RESEND_API_KEY) {
-            const planName = plan === 'LTD' ? 'Lifetime' : plan === 'YEAR' ? 'Annual' : 'Monthly';
-            const expiryText = expiresAt === 0 ? 'Never expires' : `Expires: ${new Date(expiresAt * 1000).toLocaleDateString()}`;
-
-            const emailBody = buildLicenseEmail(key, planName, expiryText, 'lemonsqueezy');
-
-            try {
-              const emailRes = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  from: 'EchoKit <no-reply@mail.echo-kit.com>',
-                  to: [email],
-                  subject: `Your EchoKit ${planName} License Key`,
-                  html: emailBody
-                })
-              });
-
-              const emailResult = await emailRes.json();
-              console.log(`LemonSqueezy: Email sent to ${email}:`, emailResult);
-            } catch (emailErr) {
-              console.error('LemonSqueezy: Failed to send email:', emailErr);
-              // Don't fail the webhook - key is still issued
-            }
-          }
-
-          // Log for monitoring
-          console.log(`LemonSqueezy: Issued ${plan} license for ${email}: ${key} (expires: ${expiresAt || 'never'})`);
-
-          // Return success
-          return Response.json({
-            ok: true,
-            key,
-            plan,
-            expiresAt,
-            emailSent: !!(email && env.RESEND_API_KEY),
-            source: 'lemonsqueezy'
-          }, { headers: corsHeaders() });
-        }
-
-        // Acknowledge other event types
-        return Response.json({ received: true, event: eventType }, { headers: corsHeaders() });
-
-      } catch (e) {
-        console.error('LemonSqueezy webhook error:', e);
-        return Response.json({ error: 'webhook processing failed: ' + e.message },
-          { status: 500, headers: corsHeaders() });
       }
     }
 

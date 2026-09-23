@@ -1,13 +1,14 @@
 # EchoKit License Worker
 
-Cloudflare Worker for license key validation, issuance, and automated delivery via LemonSqueezy payments.
+Cloudflare Worker that validates EchoKit Pro licenses and serves the remote
+paywall switch.
 
 **Features:**
-- ✅ Self-signed HMAC-SHA256 keys (no database required)
-- ✅ Automated LemonSqueezy payment integration
-- ✅ Email delivery via Resend
-- ✅ 3 pricing tiers: PRO ($5/month), YEAR ($49/year), LTD ($199 lifetime)
-- ✅ Admin API for manual key issuance
+- Gumroad license keys verified with Gumroad's license API (EchoKit Pro is sold on Gumroad)
+- Legacy self-signed HMAC-SHA256 `EK-*` keys still accepted (no database)
+- 3 pricing tiers: PRO ($5/month), YEAR ($49/year), LTD ($199 lifetime)
+- Admin API for manual `EK-*` key issuance
+- `GET /v1/config` paywall switch with Gumroad checkout links
 
 ## Quick Start
 
@@ -19,13 +20,12 @@ wrangler deploy
 
 Configure secrets:
 ```bash
-wrangler secret put ECHOKIT_HMAC_SECRET        # License signing (openssl rand -hex 32)
+wrangler secret put ECHOKIT_HMAC_SECRET        # Legacy EK-* key signing (openssl rand -hex 32)
 wrangler secret put ECHOKIT_ADMIN_TOKEN        # Admin API auth
-wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET # LemonSqueezy webhook verification
-wrangler secret put RESEND_API_KEY             # Email delivery
 ```
 
-**📖 Full Setup Guide**: See `LEMONSQUEEZY_SETUP.md`
+Gumroad needs no secret: license verification only uses the public product
+ids in `GUMROAD_PRODUCT_IDS` (`wrangler.toml` `[vars]`).
 
 Your worker URL: `https://echokit-license.<your-account>.workers.dev`
 
@@ -34,13 +34,25 @@ Your worker URL: `https://echokit-license.<your-account>.workers.dev`
 ### `POST /v1/validate`
 
 ```json
-{ "key": "EK-PRO-1769904000-7c8a44eb37c12d61", "deviceId": "optional" }
+{ "key": "6F0E4C97-B72A4E69-A11BF6C4-AF6517E7", "deviceId": "optional" }
 ```
+
+`key` is either a Gumroad license key or a legacy `EK-*` key.
+
+- **Gumroad key** (`XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX`): the worker calls
+  `POST https://api.gumroad.com/v2/licenses/verify` (`increment_uses_count=false`)
+  for each product in `GUMROAD_PRODUCT_IDS` until one accepts it. The key is
+  valid unless the purchase was refunded, charged back, lost a dispute, or (for
+  the membership) the subscription was cancelled, ended or failed to charge.
+  Answers are cached per worker isolate (10 min valid, 2 min invalid). If
+  Gumroad is unreachable the worker answers **503**, and the extension treats
+  that as "couldn't check" rather than "rejected".
+- **`EK-*` key**: HMAC signature and expiry check, as below.
 
 Response:
 
 ```json
-{ "valid": true, "plan": "PRO", "expiresAt": 1769904000 }
+{ "valid": true, "plan": "PRO", "expiresAt": null, "source": "gumroad" }
 ```
 
 or
@@ -72,7 +84,8 @@ The remote paywall switch the extension reads (cached 6h client-side,
 |-----|---------|---------|
 | `PAYWALL_ENABLED` | `"false"` | Only the literal `"true"` enforces licenses |
 | `GRANDFATHER_UNTIL` | `""` | ISO date; early adopters keep Pro until then (`""` → `null`) |
-| `CHECKOUT_URL_MONTHLY` / `_ANNUAL` / `_LIFETIME` | `""` | LemonSqueezy checkout links (all empty → `null`) |
+| `CHECKOUT_URL_MONTHLY` / `_ANNUAL` / `_LIFETIME` | Gumroad links | Checkout links (all empty → `null`) |
+| `GUMROAD_PRODUCT_IDS` | both products | JSON `{"<product_id>": PLAN}` or `id:PLAN,id:PLAN`. PLAN = `MEMBERSHIP` (PRO/YEAR from the purchase recurrence), `PRO`, `YEAR` or `LTD` |
 
 ```json
 { "paywallEnabled": false, "grandfatherUntil": null, "checkoutUrls": null }
@@ -86,7 +99,7 @@ If the extension can't reach this endpoint and has no cached copy it assumes
 
 Returns `{ ok: true }` — useful for monitoring.
 
-## Key format
+## Legacy `EK-*` key format
 
 ```
 EK-{PLAN}-{EXPIRY}-{SIG}
@@ -111,8 +124,8 @@ keys become invalid** — this is the revocation mechanism.
 
 ### License Validation Flow
 1. User enters license key in extension settings
-2. Extension validates format: `EK-{PLAN}-{EXPIRY}-{SIG}`
-3. Extension calls `/v1/validate` for cryptographic verification
+2. Extension checks the format: a Gumroad key or `EK-{PLAN}-{EXPIRY}-{SIG}`
+3. Extension calls `/v1/validate` (Gumroad API or HMAC check)
 4. Result cached for 24 hours
 5. Pro features unlock
 
@@ -132,4 +145,15 @@ keys become invalid** — this is the revocation mechanism.
 
 ## Payment Integration
 
-See `LEMONSQUEEZY_SETUP.md` for complete LemonSqueezy integration guide.
+EchoKit Pro is sold on Gumroad (seller `raviteja852`):
+
+| Product | Checkout | `product_id` | Plan |
+|---------|----------|--------------|------|
+| EchoKit Pro (membership, $5/month or $49/year) | https://raviteja852.gumroad.com/l/echokit-pro | `21jW8YdWBWjVy8EmcKEgMQ==` | `MEMBERSHIP` → PRO / YEAR |
+| EchoKit Pro Lifetime ($199) | https://raviteja852.gumroad.com/l/echokit-lifetime | `nPgt8NsB8fkhPFtt61SR8w==` | `LTD` |
+
+Both products have "License key" enabled on their Content tab, so Gumroad
+emails the buyer a key. No webhook is needed: the worker checks keys live.
+
+The earlier LemonSqueezy webhook was removed; its setup guide and scripts are in
+`docs/archive/*LEMONSQUEEZY*` / `docs/archive/*lemonsqueezy*`.

@@ -122,7 +122,7 @@
     <h1>Simple, honest <span>pricing</span></h1>
     <p style="margin-bottom: 24px;">Start free. Upgrade when you need advanced mocking, team sync, and unlimited recordings.</p>
     <div style="display: inline-block; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 12px 24px; color: var(--green); font-size: 14px; font-weight: 500; max-width: 650px; margin: 0 auto; line-height: 1.5;">
-      🎉 <strong>Temporary Free Access:</strong> While our LemonSqueezy payment integration is pending, all Pro features are fully enabled in the extension for free!
+      🎉 <strong>Pro is free during launch:</strong> every Pro feature is unlocked in the extension right now, no license needed. Buying Pro is optional during launch: it supports development, and your license keeps Pro unlocked once paid plans begin.
     </div>
   </div>
 
@@ -151,11 +151,10 @@
 
     <!-- Monthly -->
     <div class="plan featured">
-      <div class="plan-badge">FREE FOR NOW</div>
+      <div class="plan-badge">FREE DURING LAUNCH</div>
       <div class="plan-name">Pro Monthly</div>
       <div class="plan-price">
-        <span class="amount" style="text-decoration: line-through; color: var(--text-dim); font-size: 28px;">$5</span>
-        <span class="amount" style="color: var(--green); margin-left: 8px;">$0</span>
+        <span class="amount">$5</span>
         <span class="period">/month</span>
       </div>
       <div class="plan-desc">Full power, billed monthly. Cancel anytime.</div>
@@ -171,15 +170,14 @@
         <li>Conditional mock (fire N times)</li>
         <li>Priority support</li>
       </ul>
-      <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" class="plan-cta cta-primary" target="_blank">Get Pro for Free →</a>
+      <a href="https://raviteja852.gumroad.com/l/echokit-pro?recurrence=monthly" id="btn-monthly" class="plan-cta cta-primary" target="_blank" rel="noopener">Buy Pro Monthly →</a>
     </div>
 
     <!-- Lifetime -->
     <div class="plan">
       <div class="plan-name">Lifetime</div>
       <div class="plan-price">
-        <span class="amount" style="text-decoration: line-through; color: var(--text-dim); font-size: 28px;">$199</span>
-        <span class="amount" style="color: var(--green); margin-left: 8px;">$0</span>
+        <span class="amount">$199</span>
         <span class="period">one-time</span>
       </div>
       <div class="plan-desc">Pay once, own it forever. All future updates included.</div>
@@ -189,13 +187,13 @@
         <li>No recurring charges</li>
         <li>Priority feature requests</li>
       </ul>
-      <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" class="plan-cta cta-primary" target="_blank">Get Lifetime for Free →</a>
+      <a href="https://raviteja852.gumroad.com/l/echokit-lifetime" id="btn-lifetime" class="plan-cta cta-primary" target="_blank" rel="noopener">Buy Lifetime →</a>
     </div>
   </div>
 
   <!-- Annual callout -->
-  <div style="text-align:center;margin:-24px 0 48px;color:var(--text-dim);font-size:13px;display:none;">
-    Prefer annual? <a href="#" id="btn-annual"><strong style="color:var(--amber)">$49/year</strong> — save 18%</a>
+  <div style="text-align:center;margin:-24px 0 48px;color:var(--text-dim);font-size:13px;">
+    Prefer annual? <a href="https://raviteja852.gumroad.com/l/echokit-pro?recurrence=yearly" id="btn-annual" target="_blank" rel="noopener"><strong style="color:var(--amber)">$49/year</strong> — save 18%</a>
   </div>
 
   <!-- Feature comparison -->
@@ -235,7 +233,7 @@
     <h2>Already have a license key?</h2>
     <p>Paste your key below to verify it, then enter it in the extension via <strong>Menu → Settings → License Key</strong>.</p>
     <div class="form">
-      <input id="license-input" type="text" placeholder="EK-PRO-… / EK-YEAR-… / EK-LTD-…" autocomplete="off" spellcheck="false"/>
+      <input id="license-input" type="text" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off" spellcheck="false"/>
       <button onclick="verifyKey()">Verify</button>
     </div>
     <div class="activate-msg" id="activate-msg"></div>
@@ -246,11 +244,11 @@
     <h2>Frequently asked questions</h2>
     <details>
       <summary>Why is EchoKit Pro free right now?</summary>
-      <p>We're transitioning to LemonSqueezy as our payment provider (Merchant of Record with global tax handling). During this transition period, all Pro features are unlocked for everyone. Once the payment integration is complete, we'll announce pricing details and grandfather existing active users.</p>
+      <p>EchoKit is in its launch period, so all Pro features are unlocked for everyone. Paid plans are sold through Gumroad. When paid plans begin, we'll announce it in advance and existing users get a grace period.</p>
     </details>
     <details>
       <summary>How long will Pro features stay free?</summary>
-      <p>The free access period will last until our LemonSqueezy merchant verification and payment integration is complete. We'll provide advance notice before any changes. Install from the <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" target="_blank">Chrome Web Store</a> now to get started!</p>
+      <p>Pro stays free for the whole launch period. We'll give advance notice before paid plans begin. Install from the <a href="https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf" target="_blank">Chrome Web Store</a> now to get started!</p>
     </details>
     <details>
       <summary>What Pro features are currently available?</summary>
@@ -271,18 +269,10 @@
   </footer>
 
   <script>
-    // LemonSqueezy checkout URLs - Temporarily redirected to free Chrome Web Store page
-    const STORE_URL = 'https://chromewebstore.google.com/detail/echokit-api-recorder-mock/jndhbmaokpclbpjoogffaimahadpidcf';
-    const btnMonthly = document.getElementById('btn-monthly');
-    const btnAnnual = document.getElementById('btn-annual');
-    const btnLifetime = document.getElementById('btn-lifetime');
-
-    if (btnMonthly) { btnMonthly.href = STORE_URL; btnMonthly.target = '_blank'; }
-    if (btnAnnual) { btnAnnual.href = STORE_URL; btnAnnual.target = '_blank'; }
-    if (btnLifetime) { btnLifetime.href = STORE_URL; btnLifetime.target = '_blank'; }
+    // Checkout buttons link straight to Gumroad (see worker/wrangler.toml CHECKOUT_URL_*).
 
     async function verifyKey() {
-      const k = document.getElementById('license-input').value.trim().toUpperCase();
+      const k = document.getElementById('license-input').value.trim();
       const msg = document.getElementById('activate-msg');
       if (!k) { msg.textContent = 'Please enter a key.'; msg.className = 'activate-msg err'; return; }
 
