@@ -1,0 +1,35 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+      dry_run:
+        description: "Dry run (build + package only; no upload, no tag)"
+        type: boolean
+        default: false
+      targets:
+        description: "Only these target types (comma list: chrome,android). Empty = all."
+        type: string
+        default: ""
+  # Optional: release on every merge to main.
+  # push:
+  #   branches: [main]
+
+permissions: {}
+
+jobs:
+  release:
+    permissions:
+      contents: write # create the vX.Y.Z tag and GitHub Release
+      id-token: write # keyless Google auth (OIDC -> Workload Identity Federation)
+    uses: ravitejakamalapuram/release-platform/.github/workflows/release.yml@v2
+    with:
+      bump: ${{ inputs.bump || 'auto' }}
+      dry_run: ${{ inputs.dry_run || false }}
+      targets: ${{ inputs.targets || '' }}
+    secrets: inherit # Android only: upload-key secrets. Chrome needs no secrets at all.

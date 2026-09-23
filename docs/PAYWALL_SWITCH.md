@@ -58,8 +58,8 @@ Safety defaults:
    Note that a later `wrangler deploy` from the repo overwrites dashboard
    values with what's in `wrangler.toml`, so keep the file as the source of truth.
 3. Deploy the worker. Merge to `main` (CD deploys on `worker/**` changes) or run
-   **Actions → Continuous Delivery → Run workflow** with
-   `deploy_target=worker` and `release_bump=none`. No extension release is needed.
+   **Actions → Continuous Delivery (website + worker) → Run workflow** with
+   `deploy_target=worker`. No extension release is needed.
 4. Verify:
 
    ```bash

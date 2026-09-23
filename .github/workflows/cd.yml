@@ -1,22 +1,14 @@
-name: Continuous Delivery
+name: Continuous Delivery (website + worker)
 
 on:
   push:
     branches: [main]
     paths:
-      - 'extension/**'
-      - '!extension/**/*.md'
       - 'website/**'
       - 'worker/**'
       - '.github/workflows/cd.yml'
   workflow_dispatch:
     inputs:
-      release_bump:
-        description: 'Version bump type (overrides commit-message detection for extension release)'
-        required: false
-        default: 'none'
-        type: choice
-        options: [none, patch, minor, major]
       deploy_target:
         description: 'Which infrastructure target to deploy'
         required: false
@@ -24,13 +16,13 @@ on:
         type: choice
         options: [none, all, website, worker]
 
-# Never cancel CD runs mid-flight — half-completed deployments or version tags are bad state.
+# Never cancel CD runs mid-flight — half-completed deployments are bad state.
 concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # ── Detect Changed Paths ───────────────────────────────────────────────────────
@@ -40,7 +32,6 @@ jobs:
     outputs:
       website: ${{ steps.changes.outputs.website }}
       worker:  ${{ steps.changes.outputs.worker }}
-      extension: ${{ steps.changes.outputs.extension }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,18 +41,10 @@ jobs:
         id: changes
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            RELEASE_BUMP="${{ inputs.release_bump }}"
             DEPLOY_TARGET="${{ inputs.deploy_target }}"
 
             echo "🖱️ Manual dispatch:"
-            echo "  release_bump: ${RELEASE_BUMP}"
             echo "  deploy_target: ${DEPLOY_TARGET}"
-
-            if [[ "$RELEASE_BUMP" != "none" ]]; then
-              echo "extension=true" >> $GITHUB_OUTPUT
-            else
-              echo "extension=false" >> $GITHUB_OUTPUT
-            fi
 
             if [[ "$DEPLOY_TARGET" == "all" || "$DEPLOY_TARGET" == "website" ]]; then
               echo "website=true" >> $GITHUB_OUTPUT
@@ -93,13 +76,6 @@ jobs:
               echo "worker=false" >> $GITHUB_OUTPUT
             fi
 
-            # Store releases are on demand only (Actions → Continuous Delivery → Run workflow,
-            # release_bump != none). Publishing on every push kept re-uploading while the item
-            # was in review (ITEM_NOT_UPDATABLE) and burned a version tag each time.
-            echo "extension=false" >> $GITHUB_OUTPUT
-            if echo "$CHANGED" | grep '^extension/' | grep -qv '\.md$'; then
-              echo "📦 extension/ changed; run the workflow manually to release it"
-            fi
           fi
 
   # ── Deploy Website ─────────────────────────────────────────────────────────────
@@ -171,20 +147,5 @@ jobs:
           fi
           echo "✅ Custom domain is healthy"
 
-  # ── Deploy & Publish Chrome Extension ──────────────────────────────────────────
-  publish-extension:
-    name: Package & Publish Extension
-    needs: detect-changes
-    if: needs.detect-changes.outputs.extension == 'true'
-    permissions:
-      contents: write
-    uses: ravitejakamalapuram/.github-workflows-shared/.github/workflows/chrome-extension-cd.yml@v1
-    with:
-      extension-dir: 'extension'
-      publish-target: 'default'
-      auto-publish: 'true'
-    secrets:
-      chrome-extension-id: ${{ secrets.CWS_EXTENSION_ID }}
-      chrome-client-id: ${{ secrets.CWS_CLIENT_ID }}
-      chrome-client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
-      chrome-refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+# The Chrome extension is released by .github/workflows/release.yml
+# (ravitejakamalapuram/release-platform@v2, keyless) — not from here.

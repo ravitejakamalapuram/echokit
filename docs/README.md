@@ -18,7 +18,6 @@ Technical deep-dives into subsystems.
 CI/CD, hosting, and publishing guides.
 
 - [`deployment/DEPLOYMENT_GUIDE.md`](deployment/DEPLOYMENT_GUIDE.md) — Step-by-step v1.6.0 deployment guide (worker, npm, Chrome Web Store)
-- [`deployment/CI_CD_IMPLEMENTATION_GUIDE.md`](deployment/CI_CD_IMPLEMENTATION_GUIDE.md) — CI/CD pipeline implementation guide
 - [`deployment/CHROME_PUBLISHING_CICD_SETUP.md`](deployment/CHROME_PUBLISHING_CICD_SETUP.md) — Chrome Web Store auto-publishing pipeline setup
 - [`deployment/CLOUDFLARE_HOSTING_CI_CD_PLAN.md`](deployment/CLOUDFLARE_HOSTING_CI_CD_PLAN.md) — Cloudflare hosting and CI/CD plan
 - [`deployment/AUTOMATED_TESTING.md`](deployment/AUTOMATED_TESTING.md) — Automated testing setup in CI
@@ -30,7 +29,6 @@ CI/CD, hosting, and publishing guides.
 Design system notes and UI history.
 
 - [`design/DESIGN_SYSTEM_UPDATES.md`](design/DESIGN_SYSTEM_UPDATES.md) — Design system changes (v2 design system)
-- [`design/DESIGN_UPGRADE_SUMMARY.md`](design/DESIGN_UPGRADE_SUMMARY.md) — Summary of the v2 UI upgrade
 
 ### github/
 GitHub Actions workflow setup and repo configuration docs.  
@@ -50,7 +48,6 @@ GitHub Actions workflow setup and repo configuration docs.
 Evaluations and research notes.
 
 - [`research/TESTING_FRAMEWORK_COMPARISON.md`](research/TESTING_FRAMEWORK_COMPARISON.md) — Playwright vs Puppeteer vs Selenium for Chrome extension testing
-- [`research/TESTING_RESEARCH_SUMMARY.md`](research/TESTING_RESEARCH_SUMMARY.md) — Summary of testing research findings
 - [`research/CHROME_EXTENSION_CI_CD_TESTING_RESEARCH.md`](research/CHROME_EXTENSION_CI_CD_TESTING_RESEARCH.md) — CI/CD testing research for Chrome extensions
 - [`research/QUICK_REFERENCE_TESTING.md`](research/QUICK_REFERENCE_TESTING.md) — Quick reference for running tests
 
@@ -69,12 +66,10 @@ Debug guides for known issues.
 Completed feature docs kept for historical reference. **Not actively maintained.**
 
 - [`archive/FEATURE_GLOBAL_REQUEST_HEADERS.md`](archive/FEATURE_GLOBAL_REQUEST_HEADERS.md) — Global Request Headers feature implementation notes
-- [`archive/GLOBAL_REQUEST_HEADERS_SUMMARY.md`](archive/GLOBAL_REQUEST_HEADERS_SUMMARY.md) — Summary of Global Request Headers feature
 - [`archive/IMPLEMENTATION_GUIDE_REQUEST_HEADERS.md`](archive/IMPLEMENTATION_GUIDE_REQUEST_HEADERS.md) — Implementation guide for request headers
 - [`archive/IMPLEMENTATION_CHECKLIST.md`](archive/IMPLEMENTATION_CHECKLIST.md) — One-time implementation checklist (completed)
 - [`archive/REVISED_IMPLEMENTATION_PLAN.md`](archive/REVISED_IMPLEMENTATION_PLAN.md) — Revised plan for the initial implementation
 - [`archive/CHANGELOG_GLOBAL_REQUEST_HEADERS.md`](archive/CHANGELOG_GLOBAL_REQUEST_HEADERS.md) — Changelog for global request headers feature
-- [`archive/QE_AUDIT_REPORT.md`](archive/QE_AUDIT_REPORT.md) — QE audit findings report
 
 ---
 
