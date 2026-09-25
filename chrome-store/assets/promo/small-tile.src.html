@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 440px; height: 280px;
+    background: #0a0a0b;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  .frame {
+    position: relative;
+    width: 440px; height: 280px;
+    background:
+      radial-gradient(ellipse 420px 220px at 100% 0%, rgba(251,191,36,0.10), transparent 60%),
+      #0a0a0b;
+    padding: 26px 28px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .badge {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: #fbbf24;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-weight: 800; font-size: 13px; color: #18181b;
+  }
+  .wordmark {
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-weight: 700; font-size: 15px; color: #fafafa; letter-spacing: 3px;
+  }
+  .rule { width: 100%; height: 2px; background: linear-gradient(90deg, #fbbf24, rgba(251,191,36,0)); margin: 16px 0 18px; }
+  .headline {
+    font-size: 27px; line-height: 1.18; font-weight: 700; color: #fafafa;
+    letter-spacing: -0.3px;
+  }
+  .headline em { color: #fbbf24; font-style: normal; }
+  .sub { margin-top: 10px; font-size: 14px; color: #a1a1aa; font-weight: 500; }
+  .chips { position: absolute; left: 28px; bottom: 24px; display: flex; gap: 8px; }
+  .chip {
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 5px 9px; border-radius: 6px;
+    border: 1px solid rgba(96,165,250,0.35); color: #93c5fd; background: rgba(96,165,250,0.10);
+  }
+  .chip.alt { border-color: rgba(52,211,153,0.35); color: #6ee7b7; background: rgba(52,211,153,0.10); }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="brand">
+      <div class="badge">EK</div>
+      <div class="wordmark">ECHOKIT</div>
+    </div>
+    <div class="rule"></div>
+    <div class="headline">Mock any <em>API</em><br>instantly.</div>
+    <div class="sub">Record once. Replay reliably.</div>
+    <div class="chips">
+      <div class="chip">GET</div>
+      <div class="chip alt">POST</div>
+      <div class="chip">WS</div>
+    </div>
+  </div>
+</body>
+</html>
