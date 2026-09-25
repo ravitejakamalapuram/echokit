@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "EchoKit — API Recorder & Mocker",
+  "name": "EchoKit — API Mocker & Recorder",
   "short_name": "EchoKit",
   "version": "1.14.0",
   "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
@@ -25,7 +25,7 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "EchoKit — API Recorder & Mocker",
+    "default_title": "EchoKit — API Mocker & Recorder",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
