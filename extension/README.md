@@ -83,6 +83,7 @@ The giant amber **MOCKING ACTIVE** banner guarantees you always know which mode 
 | API source visibility badges — distinguish mocked vs real vs blocked responses | ✅ |
 | GitHub Gist sync (Pro) — backup and share mock sets | ✅ |
 | Cookie read/write bridge, localStorage read/write bridge | ✅ |
+| Stale-tab detection — tabs open before EchoKit loaded have no interceptor; the popup pings the tab's content script and shows a **Reload tab** prompt instead of falsely claiming to listen | ✅ |
 
 ### Keyboard shortcuts
 
