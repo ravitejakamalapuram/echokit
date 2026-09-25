@@ -853,6 +853,12 @@ def main():
             # content-script listener. Run this last: disabling the extension may
             # invalidate its other open pages (popup/popup3/panel), so nothing
             # after this point may depend on them.
+            # Setup only: toggling the extension off/on and re-acquiring the
+            # service worker is the genuinely flaky part (shadow-DOM timing,
+            # worker respawn). If it fails, skip the block -- but the
+            # assertions below must never be caught here, or a real
+            # regression in the fix under test would pass silently.
+            sw2 = None
             try:
                 ext_page = ctx.new_page()
                 ext_page.goto(f'chrome://extensions/?id={ext_id}')
@@ -862,8 +868,11 @@ def main():
                 toggle.click()
                 ext_page.wait_for_timeout(1000)
                 ext_page.close()
-
                 sw2 = ctx.service_workers[-1] if ctx.service_workers else ctx.wait_for_event('serviceworker', timeout=10000)
+            except Exception as e:
+                print(f'\n⚠️  SKIP POR-119 stale-tab tests (flaky setup): {e}')
+
+            if sw2 is not None:
                 # Clear prior recordings so the popup's interaction list is empty and
                 # renderEmpty() -- the function under test -- actually runs.
                 sw_send(sw2, {'type': 'echokit:interactions:clearAll'})
@@ -894,8 +903,6 @@ def main():
                 step('por119_popup_has_reload_button',
                      popup4.locator('[data-testid="reload-tab-btn"]').count() > 0)
                 popup4.close()
-            except Exception as e:
-                print(f'\n⚠️  SKIP POR-119 stale-tab tests (flaky): {e}')
 
             ctx.close()
     finally:

@@ -434,6 +434,9 @@ function isInjectableUrl(url) {
     const u = new URL(url);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
     if (u.host === 'chromewebstore.google.com' || u.host === 'chrome.google.com') return false;
+    // Chrome's built-in PDF viewer blocks content-script injection even though
+    // the URL keeps its normal http(s) scheme.
+    if (u.pathname.toLowerCase().endsWith('.pdf')) return false;
     return true;
   } catch {
     return false;
