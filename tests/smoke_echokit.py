@@ -844,6 +844,66 @@ def main():
             popup.screenshot(path=screenshot_path)
             print(f'saved {screenshot_path}')
 
+            # === NEW in POR-119: stale-tab liveness ping ===
+            # Reproduce the actual bug directly: toggle the extension off and back
+            # on via chrome://extensions. Chrome does not reinject static content
+            # scripts into tabs that were already open, so `page` (open since the
+            # start of this test) is now in exactly the state a tab left over from
+            # before install would be in -- a real, committed http(s) URL with no
+            # content-script listener. Run this last: disabling the extension may
+            # invalidate its other open pages (popup/popup3/panel), so nothing
+            # after this point may depend on them.
+            # Setup only: toggling the extension off/on and re-acquiring the
+            # service worker is the genuinely flaky part (shadow-DOM timing,
+            # worker respawn). If it fails, skip the block -- but the
+            # assertions below must never be caught here, or a real
+            # regression in the fix under test would pass silently.
+            sw2 = None
+            try:
+                ext_page = ctx.new_page()
+                ext_page.goto(f'chrome://extensions/?id={ext_id}')
+                toggle = ext_page.locator('extensions-detail-view #enableToggle')
+                toggle.click()
+                ext_page.wait_for_timeout(500)
+                toggle.click()
+                ext_page.wait_for_timeout(1000)
+                ext_page.close()
+                sw2 = ctx.service_workers[-1] if ctx.service_workers else ctx.wait_for_event('serviceworker', timeout=10000)
+            except Exception as e:
+                print(f'\n⚠️  SKIP POR-119 stale-tab tests (flaky setup): {e}')
+
+            if sw2 is not None:
+                # Clear prior recordings so the popup's interaction list is empty and
+                # renderEmpty() -- the function under test -- actually runs.
+                sw_send(sw2, {'type': 'echokit:interactions:clearAll'})
+                sw_send(sw2, {'type': 'echokit:recording:start', 'tabId': tab_id})
+                stale_state = sw_send(sw2, {'type': 'echokit:getState', 'tabId': tab_id})
+                stale_tab = stale_state.get('tab') or {}
+                step('por119_reloaded_extension_reports_open_tab_not_alive',
+                     stale_tab.get('alive') is False and stale_tab.get('injectable') is True,
+                     stale_tab)
+
+                # Drive the popup for this tab (the same explicit-tabId entry point
+                # the DevTools panel already uses) and check the real rendered
+                # copy, not just the underlying state.
+                popup4 = ctx.new_page()
+                popup4.goto(f'chrome-extension://{ext_id}/popup/popup.html')
+                popup4.wait_for_selector('[data-testid="echokit-app"]', timeout=10000)
+                popup4.evaluate(f"""
+                    async () => {{
+                      const {{ initEchoKitUI }} = await import('../shared/app.js');
+                      await initEchoKitUI({{ mode: 'popup', root: document.getElementById('ek-root'), tabId: {tab_id} }});
+                    }}
+                """)
+                popup4.wait_for_selector('.ek-empty-state', timeout=3000)
+                empty_message = popup4.locator('.ek-empty-state .ek-empty-message').inner_text()
+                step('por119_popup_shows_reload_prompt_not_listening',
+                     'reload' in empty_message.lower() and 'listening' not in empty_message.lower(),
+                     empty_message)
+                step('por119_popup_has_reload_button',
+                     popup4.locator('[data-testid="reload-tab-btn"]').count() > 0)
+                popup4.close()
+
             ctx.close()
     finally:
         srv.shutdown()

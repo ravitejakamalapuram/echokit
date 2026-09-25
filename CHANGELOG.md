@@ -39,6 +39,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Welcome page "Pin EchoKit" button did nothing: its inline `<script>` was blocked by the extension-page CSP (`script-src 'self'`). Moved to `onboarding/welcome.js`.
+- Tabs open before EchoKit was installed have no content-script interceptor (Chrome does not retroactively inject static content scripts), but the popup claimed to be "Listening for API calls…" anyway, so pressing REC silently captured nothing. The background now pings the tab's content script on every `echokit:getState` call (fails open on a slow-but-real tab) and the popup tells the truth: a **Reload tab** prompt for a stale tab, or "EchoKit cannot record this page" for `chrome://`/Web Store/PDF-viewer pages where no reload will ever help.
 
 ### Docs
 - `store/chrome-web-store.md` permission table now matches the manifest: `scripting` is in use (localStorage copy/paste bridge) and `notifications` is not requested, so the stale "reserved / unused" rows are gone.

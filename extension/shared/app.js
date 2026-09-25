@@ -332,6 +332,9 @@ function renderInteractionListNew(precomputedList = null) {
   // ⚡ Bolt Optimization: Use passed precomputedList instead of re-running the expensive O(N) filter loop
   // Expected impact: Eliminates one full array pass + stringify on large payloads per nested render
   const filtered = precomputedList || filteredInteractions();
+  if (state.mode === 'popup' && layoutInstance.setEmptyReason) {
+    layoutInstance.setEmptyReason(tabLivenessReason());
+  }
   layoutInstance.setInteractions(filtered);
   layoutInstance.setSearchTerm(state.search);
 
@@ -1417,14 +1420,41 @@ function _renderWaterfall(interactions) {
   `;
 }
 
+// Recording is on but the tab has no live interceptor: distinguish a page that
+// merely hasn't loaded EchoKit's content script yet (reload fixes it) from one
+// content scripts can never run on at all (reload never helps). Returns null
+// when neither applies, so callers fall back to their normal empty copy.
+function tabLivenessReason() {
+  if (!state.tab || !state.tab.recording) return null;
+  if (state.tab.injectable === false) return 'not-injectable';
+  if (state.tab.alive === false) return 'stale-tab';
+  return null;
+}
+
 function renderEmpty() {
+  const reason = tabLivenessReason();
+  const notInjectable = reason === 'not-injectable';
+  const stale = reason === 'stale-tab';
+
+  let title = 'No requests recorded yet';
+  let hint = 'Hit the ● REC button above (or press <span class="ek-kbd">Alt+Shift+R</span>) to start capturing fetch/XHR on this tab.';
+  if (notInjectable) {
+    title = 'EchoKit cannot record this page';
+    hint = 'This is a browser or store page — extensions cannot access it, so there is nothing to reload into.';
+  } else if (stale) {
+    title = 'This tab was open before EchoKit loaded — reload it to start capturing';
+    hint = `EchoKit couldn't hook into <span class="ek-tag">${escapeHtml(state.tab.host || 'this page')}</span> before it loaded.`;
+  } else if (state.tab.recording) {
+    title = 'Listening for API calls…';
+    hint = `Trigger some fetch or XHR calls on <span class="ek-tag">${escapeHtml(state.tab.host || 'this page')}</span> — they'll appear here instantly.`;
+  }
+
   return `
     <div class="ek-empty" data-testid="empty-state">
       <div class="ek-empty-mark">[ EK ]</div>
-      <div class="ek-empty-title">${state.tab.recording ? 'Listening for API calls…' : 'No requests recorded yet'}</div>
-      <div class="ek-empty-hint">${state.tab.recording
-        ? `Trigger some fetch or XHR calls on <span class="ek-tag">${escapeHtml(state.tab.host || 'this page')}</span> — they'll appear here instantly.`
-        : 'Hit the ● REC button above (or press <span class="ek-kbd">Alt+Shift+R</span>) to start capturing fetch/XHR on this tab.'}</div>
+      <div class="ek-empty-title">${title}</div>
+      <div class="ek-empty-hint">${hint}</div>
+      ${stale ? `<button type="button" class="ek-btn ek-btn-primary" data-action="reload-tab" data-testid="reload-tab-btn">Reload tab</button>` : ''}
       ${state.allCount > 0 ? `<div class="ek-subtle">${state.allCount} recordings exist in other scopes — change <em>Scope</em> in Settings to see them.</div>` : ''}
     </div>
   `;
@@ -1894,6 +1924,10 @@ function bindGlobalEvents(el, action, id) {
     return true;
   }
   if (action === 'start-recording') { el.addEventListener('click', onStartRecording); return true; }
+  if (action === 'reload-tab') {
+    el.addEventListener('click', () => { if (state.tabId != null) chrome.tabs.reload(state.tabId); });
+    return true;
+  }
   if (action === 'review-rate') { el.addEventListener('click', () => onReviewRespond('rate')); return true; }
   if (action === 'review-later') { el.addEventListener('click', () => onReviewRespond('later')); return true; }
   if (action === 'stop-recording') { el.addEventListener('click', onStopRecording); return true; }

@@ -199,6 +199,7 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - First install → highlight Record button → mock toggle → settings
   - Use `extension/onboarding/welcome.html` as starting point
   - [x] Welcome page "Try a 10-second demo" checklist against JSONPlaceholder (record → stop → mock → edit → reload)
+  - [x] Stale-tab liveness ping — tabs open before install now get an honest "reload tab" prompt instead of a false "Listening…" (POR-119, ADR `docs/adr/0001-first-run-stale-tab-liveness.md`). A full coach-mark tour is still open.
 
 - [ ] **Keyboard shortcuts modal**
   - Already exists. Add: `/` to focus search, `Esc` to close detail, `j/k` to nav rows.

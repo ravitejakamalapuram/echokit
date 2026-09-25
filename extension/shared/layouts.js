@@ -30,7 +30,8 @@ class BaseLayout {
       selectedId: null,
       searchTerm: '',
       sortBy: null,
-      sortOrder: 'asc'
+      sortOrder: 'asc',
+      emptyReason: 'no-data'
     };
     this.listeners = [];
   }
@@ -41,6 +42,15 @@ class BaseLayout {
   setInteractions(interactions) {
     this.state.interactions = interactions;
     this.applyFiltersAndSort();
+  }
+
+  /**
+   * Set the reason shown when the interaction list is empty (e.g. 'stale-tab').
+   * Does not render on its own — call before setInteractions() so the next
+   * render picks it up.
+   */
+  setEmptyReason(reason) {
+    this.state.emptyReason = reason || 'no-data';
   }
 
   /**
@@ -127,7 +137,7 @@ export class PopupLayout extends BaseLayout {
     const html = renderInteractionList(
       this.state.filteredInteractions,
       'popup',
-      { groupByDomain: this.state.groupByDomain }
+      { groupByDomain: this.state.groupByDomain, emptyReason: this.state.emptyReason }
     );
 
     // SECURITY: Sanitize generated HTML before assignment to prevent DOM XSS
