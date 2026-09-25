@@ -8,6 +8,10 @@
   // Allowlisted message types accepted from injected.js.
   const ALLOWED_TYPES = new Set(['record', 'ready', 'mock-hit']);
 
+  // Set once injected.js's 'ready' message arrives — proof the MAIN-world
+  // interceptor is actually hooked, not just that this content script loaded.
+  let sawInjectedReady = false;
+
   /**
    * Validate and sanitize a payload object before forwarding to the background.
    * Returns a plain, safe copy — never the raw untrusted object.
@@ -93,6 +97,7 @@
       chrome.runtime.sendMessage({ type: 'echokit:interaction:record', data: safePayload })
         .catch(() => {});
     } else if (type === 'ready') {
+      sawInjectedReady = true;
       chrome.runtime.sendMessage({ type: 'echokit:contentReady' }).catch(() => {});
     } else if (type === 'mock-hit') {
       if (!safePayload) return;
@@ -101,8 +106,14 @@
   }, false);
 
   // Receive pushes from background and forward to the page.
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || typeof msg !== 'object') return;
+    // Liveness check: the background pings a tab to tell a stale (pre-install)
+    // tab, which has no listener here at all, from one that's genuinely alive.
+    if (msg.type === 'echokit:ping') {
+      sendResponse({ alive: true, sawInjectedReady });
+      return;
+    }
     if (msg.type === 'echokit:mockIndex' || msg.type === 'echokit:tabState' || msg.type === 'echokit:settings') {
       window.postMessage({ source: SRC_CONTENT, type: msg.type, payload: msg.payload }, '/');
     }

@@ -101,10 +101,27 @@ export function renderGroupHeader(domain, count) {
  * Render empty state message.
  *
  * @param {string} mode - 'popup' or 'devtools'
- * @param {string} reason - 'no-data' | 'no-results' | 'no-tab'
+ * @param {string} reason - 'no-data' | 'no-results' | 'no-tab' | 'stale-tab' | 'not-injectable'
  * @returns {string} HTML string
  */
 export function renderEmptyState(mode, reason = 'no-data') {
+  // A tab that predates EchoKit loading has no live interceptor: the fix is a
+  // reload. A page content scripts can never run on (chrome://, Web Store,
+  // PDF viewer) has no fix — don't offer one.
+  if (reason === 'stale-tab') {
+    return `<div class="ek-empty-state">
+      <div class="ek-empty-icon">🔄</div>
+      <div class="ek-empty-message">This tab was open before EchoKit loaded — reload it to start capturing</div>
+      <button type="button" class="ek-btn ek-btn-primary" data-action="reload-tab" data-testid="reload-tab-btn">Reload tab</button>
+    </div>`;
+  }
+  if (reason === 'not-injectable') {
+    return `<div class="ek-empty-state">
+      <div class="ek-empty-icon">🚫</div>
+      <div class="ek-empty-message">EchoKit cannot record this page</div>
+    </div>`;
+  }
+
   const messages = {
     'no-data': 'No interactions recorded yet',
     'no-results': 'No interactions match your filters',
@@ -129,10 +146,10 @@ export function renderEmptyState(mode, reason = 'no-data') {
  * @returns {string} HTML string
  */
 export function renderInteractionList(interactions, mode, options = {}) {
-  const { groupByDomain = false, sortState = {} } = options;
+  const { groupByDomain = false, sortState = {}, emptyReason = 'no-data' } = options;
 
   if (!interactions || interactions.length === 0) {
-    return renderEmptyState(mode, 'no-data');
+    return renderEmptyState(mode, emptyReason);
   }
 
   if (mode === 'popup' && groupByDomain) {

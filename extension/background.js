@@ -425,6 +425,49 @@ async function pushAllTabs() {
 function safeSend(tabId, msg) {
   chrome.tabs.sendMessage(tabId, msg).catch(() => {});
 }
+
+// URL schemes/hosts where a content script can never run — distinct from a stale
+// tab: reloading a chrome:// page or the Web Store will never fix it.
+function isInjectableUrl(url) {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    if (u.host === 'chromewebstore.google.com' || u.host === 'chrome.google.com') return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const PING_TIMEOUT_MS = 300;
+
+/**
+ * Ask the tab's content script whether it (and the MAIN-world interceptor) is alive.
+ * Fails open on timeout: a slow-but-real tab must not be reported as stale.
+ * Only an explicit rejection (no listener in the tab at all) means "not alive".
+ */
+function pingTab(tabId) {
+  return new Promise(resolve => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve({ alive: true, timedOut: true });
+    }, PING_TIMEOUT_MS);
+    chrome.tabs.sendMessage(tabId, { type: 'echokit:ping' }).then(res => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ alive: !!res?.alive, sawInjectedReady: !!res?.sawInjectedReady });
+    }).catch(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ alive: false });
+    });
+  });
+}
 async function updateBadge(tabId) {
   const st = getTab(tabId);
   try {
@@ -725,12 +768,20 @@ async function handleEchokitGetState(msg, sender, fromTabId) {
   const tabId = msg.tabId ?? fromTabId;
   const all = await getAllInteractions();
   let host = '';
+  let tabUrl = '';
   try {
     if (tabId != null) {
       const t = await chrome.tabs.get(tabId);
-      host = hostOf(t?.url || '');
+      tabUrl = t?.url || '';
+      host = hostOf(tabUrl);
     }
   } catch {}
+  let alive = true;
+  let injectable = true;
+  if (tabId != null) {
+    injectable = isInjectableUrl(tabUrl);
+    alive = injectable ? (await pingTab(tabId)).alive : false;
+  }
   const ctx = {
     tabId,
     host,
@@ -767,7 +818,9 @@ async function handleEchokitGetState(msg, sender, fromTabId) {
     tab: tabId != null ? {
       tabId,
       host,
-      ...getTab(tabId)
+      ...getTab(tabId),
+      alive,
+      injectable
     } : null,
     settings,
     interactions: enriched,
