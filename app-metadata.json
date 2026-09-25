@@ -2,10 +2,10 @@
   "appName": "echokit",
   "appType": "chrome-extension",
   "repoName": "echokit",
-  "description": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+  "description": "Intercept fetch/XHR on any page and mock API responses instantly. No backend needed. Record once, replay reliably. For devs & QA.",
   "modules": [
     {
-      "name": "EchoKit — API Recorder & Mocker (Chrome Extension)",
+      "name": "EchoKit — API Mocker & Recorder (Chrome Extension)",
       "type": "chrome-extension",
       "path": "extension",
       "status": "published",
@@ -15,7 +15,7 @@
       "buildScript": "zip -r initial-package.zip extension",
       "artifactPath": "initial-package.zip",
       "cwsListing": {
-        "shortDescription": "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA. Record once, mock reliably.",
+        "shortDescription": "Intercept fetch/XHR on any page and mock API responses instantly. No backend needed. Record once, replay reliably. For devs & QA.",
         "detailedDescription": "EchoKit is a developer tool that simplifies API mocking and testing. Turn on recording, interact with your web application, and convert captured requests/responses into local mocks.\n\nFeatures:\n- Zero setup: runs inside your browser\n- Intercept and mock fetch/XHR requests client-side\n- Simulated latency, error simulation (4xx, 5xx) and API blocking\n- Multiple matching modes (strict, ignore-query, path-wildcard, GraphQL, etc.)\n- Export mock interactions to Postman or HAR format",
         "category": "productivity",
         "singlePurpose": "Enables web developers to record real HTTP network requests and replay them as mocks client-side to simplify testing and development.",
