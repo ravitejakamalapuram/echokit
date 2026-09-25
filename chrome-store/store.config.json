@@ -13,10 +13,5 @@
   "distribution": "",
   "screenshots": [
     "assets/screenshots/01-main-screen.png"
-  ],
-  "promotionalImages": {
-    "smallTile": "assets/promo/small-tile.png",
-    "largeTile": "assets/promo/large-tile.png",
-    "marquee": "assets/promo/marquee.png"
-  }
+  ]
 }
