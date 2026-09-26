@@ -20,8 +20,8 @@ ECHOKIT_PUBLIC_NAME = "EchoKit License API"
 # Remote paywall switch, served at GET /v1/config (see docs/PAYWALL_SWITCH.md).
 # Changing these and redeploying the worker turns paid Pro on/off for every
 # installed extension without a Chrome Web Store release.
-PAYWALL_ENABLED = "false"          # "true" enforces licenses. Keep "false" until go-live.
-GRANDFATHER_UNTIL = ""             # ISO date, e.g. "2026-12-31T00:00:00Z"; "" = no grandfathering
+PAYWALL_ENABLED = "true"           # Paid Pro is live (Gumroad).
+GRANDFATHER_UNTIL = "2026-12-31T00:00:00Z"  # Early adopters keep Pro free until then.
 CHECKOUT_URL_MONTHLY = "https://raviteja852.gumroad.com/l/echokit-pro?recurrence=monthly"
 CHECKOUT_URL_ANNUAL = "https://raviteja852.gumroad.com/l/echokit-pro?recurrence=yearly"
 CHECKOUT_URL_LIFETIME = "https://raviteja852.gumroad.com/l/echokit-lifetime"
