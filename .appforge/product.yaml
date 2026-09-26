@@ -1,0 +1,44 @@
+# Backfilled by the AppForge factory (P1-07). Fields marked null are not yet knowable —
+# they depend on infrastructure (appforge-control, appforge-edge, Paperclip) not built yet.
+product_id: echokit
+name: EchoKit
+description: "Record real API interactions and instantly mock them. Zero setup. Built for frontend devs & QA."
+platform: [chrome]
+state: PRODUCTION
+portfolio_state: GROWTH
+repository: ravitejakamalapuram/echokit
+owner: founder
+team: []
+architecture: null # see specs/PRD.md and CLAUDE.md in this repo for now
+analytics_project: null # appforge-edge not yet provisioned (P1-10)
+store_ids:
+  cws: jndhbmaokpclbpjoogffaimahadpidcf
+monetization:
+  model: freemium
+  provider: gumroad
+pricing:
+  currency: USD
+  plans:
+    - { id: pro-monthly, price_cents: 500, interval: month }
+    - { id: pro-yearly, price_cents: 4900, interval: year }
+    - { id: lifetime, price_cents: 19900, interval: once }
+permissions: .appforge/permissions.yaml
+data_collection:
+  collected: [recorded_api_traffic, license_key, optional_github_gist_sync_content]
+  stored:
+    local: [chrome_storage_sync_settings, chrome_storage_local_license_cache, indexeddb_recordings]
+    remote: []
+  transmitted:
+    endpoints:
+      - "https://echokit-license.echokit-rk.workers.dev"
+      - "https://echokit-license.echokit.dev"
+      - "https://api.github.com/gists" # only when the user opts into team-sync export/import
+  sensitive: [recorded_api_request_response_bodies] # may contain auth tokens/PII depending what the developer records
+  third_party: [gumroad, github_gists_optional]
+  retention: { local: indefinite_until_user_clears, remote: none_by_default }
+  deletion: "Uninstall clears all local storage and IndexedDB recordings; Gist sync data (if used) is deleted by the user on GitHub directly"
+security_classification: medium
+release_channel: default
+current_version: "1.14.1"
+kill_policy: null # not evaluated (product is in GROWTH, not a kill candidate)
+scale_policy: null # not evaluated
