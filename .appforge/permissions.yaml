@@ -1,0 +1,52 @@
+schema: appforge/permissions@1
+permissions:
+  - permission: storage
+    required: true
+    reason: "Persist recording/mock settings, Pro license cache, and per-tab session state (chrome.storage.sync/local/session)"
+    data_access: [user_settings_local, license_state_local]
+    security_impact: low
+  - permission: tabs
+    required: true
+    reason: "Read the active tab's URL/origin so recordings and mocks attach to the right tab"
+    data_access: [tab_url]
+    security_impact: medium
+  - permission: activeTab
+    required: true
+    reason: "Act on the current tab when the user clicks the toolbar button, without a broader host grant for that action"
+    data_access: [tab_url, tab_content_user_triggered]
+    security_impact: low
+  - permission: scripting
+    required: true
+    reason: "Inject a function into the page to read/write localStorage for the Copy/Paste localStorage developer utility"
+    data_access: [page_local_storage]
+    security_impact: medium
+  - permission: declarativeNetRequest
+    required: true
+    reason: "Install rules that add CORS headers or block specific API URLs the developer targets"
+    data_access: [network_headers]
+    security_impact: medium
+  - permission: unlimitedStorage
+    required: true
+    reason: "Recorded API interactions (request/response bodies) are stored in IndexedDB and can exceed the default quota"
+    data_access: [recorded_api_traffic_local]
+    security_impact: low
+  - permission: clipboardRead
+    required: true
+    reason: "Paste localStorage/cookie data the developer copied from another tool, for the Paste utility"
+    data_access: [clipboard_content_user_triggered]
+    security_impact: high
+  - permission: clipboardWrite
+    required: true
+    reason: "Copy localStorage/cookie data and shared mock-set links to the clipboard for the developer"
+    data_access: [clipboard_content_user_triggered]
+    security_impact: medium
+  - permission: cookies
+    required: true
+    reason: "Read/set cookies for the active tab's URL for the Copy/Paste cookies developer utility"
+    data_access: [cookies_active_tab]
+    security_impact: high
+  - permission: "<all_urls>"
+    required: true
+    reason: "Content scripts and declarativeNetRequest rules must work on whatever site the developer is testing, which is not known in advance"
+    data_access: [any_site_content_user_triggered]
+    security_impact: high
