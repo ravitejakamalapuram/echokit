@@ -9,7 +9,7 @@ permissions:
     required: true
     reason: "Read the active tab's URL/origin so recordings and mocks attach to the right tab"
     data_access: [tab_url]
-    security_impact: medium
+    security_impact: high # config/security.yaml: tabs is high-risk when used to read URLs, not just counts/titles
   - permission: activeTab
     required: true
     reason: "Act on the current tab when the user clicks the toolbar button, without a broader host grant for that action"
@@ -19,7 +19,7 @@ permissions:
     required: true
     reason: "Inject a function into the page to read/write localStorage for the Copy/Paste localStorage developer utility"
     data_access: [page_local_storage]
-    security_impact: medium
+    security_impact: high # config/security.yaml: scripting is high-risk when combined with a broad host permission — this extension holds <all_urls>
   - permission: declarativeNetRequest
     required: true
     reason: "Install rules that add CORS headers or block specific API URLs the developer targets"
