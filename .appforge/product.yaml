@@ -6,6 +6,14 @@ description: "Record real API interactions and instantly mock them. Zero setup. 
 platform: [chrome]
 state: PRODUCTION
 portfolio_state: GROWTH
+
+# §22.1 day-30/60/90 clock (APP-41). `first_published` is the
+# clock origin; `store_item_status` ∈ [published, draft, unlisted,
+# internal_track, unpublished] gates whether the clock runs at all.
+# app-metadata.json module status: published; state: PRODUCTION.
+store_item_status: published
+# UNRECOVERABLE from repo evidence — backfill from the CWS listing.
+first_published: null
 repository: ravitejakamalapuram/echokit
 owner: founder
 team: []
