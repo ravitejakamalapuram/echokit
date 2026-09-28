@@ -76,14 +76,11 @@ Legend: 🔴 P0 critical · 🟠 P1 high · 🟡 P2 nice-to-have · 🟢 P3 poli
   - Logs for manual email follow-up (Resend integration ready)
   - See: `worker/worker.js` lines 105-169
 
-- [x] **LemonSqueezy integration** 🌍 ✅ **LIVE IN PRODUCTION**
-  - Endpoint `POST /v1/lemonsqueezy-webhook` deployed and working
-  - Handles `subscription_created` and `order_created` events
-  - Auto-detects plan from price: $5=PRO, $49=YEAR, $199=LTD
-  - Auto-issues cryptographically-signed license keys (EK-{PLAN}-{EXPIRY}-{SIG})
-  - Emails keys via Resend API to customer email
-  - Verified working with test payments
-  - See: `worker/worker.js` lines 164-310
+- [x] **Gumroad integration** 🌍 ✅ **LIVE IN PRODUCTION** (superseded LemonSqueezy 2026-09-24)
+  - EchoKit Pro is sold on Gumroad (seller `raviteja852`); licenses verified via Gumroad's license-verify API
+  - Auto-issues cryptographically-signed license keys (EK-{PLAN}-{EXPIRY}-{SIG}) for legacy holders
+  - The earlier LemonSqueezy webhook was removed; its setup guide lives in `docs/archive/LEMONSQUEEZY_SETUP_SUPERSEDED.md`
+  - See: `worker/README.md`
 
 ---
 
