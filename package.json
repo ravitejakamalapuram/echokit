@@ -8,17 +8,18 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "npm run test:matcher && npm run test:json-highlight && npm run test:store && npm run test:pro-status && npm run test:review-prompt && npm run test:export-format && npm run test:cli",
+    "test": "npm run test:matcher && npm run test:json-highlight && npm run test:store && npm run test:pro-status && npm run test:review-prompt && npm run test:export-format && npm run test:cors-headers && npm run test:cli",
     "test:matcher": "node tests/test-matcher.js",
     "test:json-highlight": "node tests/test-json-highlight.js",
     "test:store": "node tests/test-store.js",
     "test:pro-status": "node tests/test-pro-status.js",
     "test:review-prompt": "node tests/test-review-prompt.js",
     "test:export-format": "node tests/test-export-format.js",
+    "test:cors-headers": "node tests/test-cors-headers.js",
     "test:cli": "node cli/test/test.js",
     "test:smoke": "python3 tests/smoke_echokit.py",
-    "lint": "eslint extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js extension/shared/pro-status.js extension/shared/review-prompt.js extension/shared/export-format.js extension/onboarding/welcome.js cli/bin/echokit-server.js cli/lib --ext .js",
-    "lint:fix": "eslint --fix extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js extension/shared/pro-status.js extension/shared/review-prompt.js extension/shared/export-format.js extension/onboarding/welcome.js cli/bin/echokit-server.js cli/lib --ext .js",
+    "lint": "eslint extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js extension/shared/pro-status.js extension/shared/review-prompt.js extension/shared/export-format.js extension/shared/cors-headers.js extension/onboarding/welcome.js cli/bin/echokit-server.js cli/lib --ext .js",
+    "lint:fix": "eslint --fix extension/background.js extension/injected.js extension/content.js extension/shared/app.js extension/shared/matcher.js extension/shared/store.js extension/shared/pro-status.js extension/shared/review-prompt.js extension/shared/export-format.js extension/shared/cors-headers.js extension/onboarding/welcome.js cli/bin/echokit-server.js cli/lib --ext .js",
     "build": "bash scripts/build-store-zip.sh",
     "build:bump": "bash scripts/build-store-zip.sh --bump"
   },
